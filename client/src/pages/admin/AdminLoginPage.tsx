@@ -1,25 +1,32 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Shield, Lock, Mail, ArrowLeft, Sparkles, Building2, CheckCircle2 } from "lucide-react";
+import { Shield, Lock, Mail, ArrowLeft, Sparkles, Building2, CheckCircle2, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { api } from "@/lib/api";
 
-export const AdminLoginPage: React.FC = () => {
+export const AdminLoginPage = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
-  const handleAdminLogin = (e: React.FormEvent) => {
+  const handleAdminLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
     setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
+    try {
+      await api.auth.adminLogin(email, password);
       setSuccess(true);
       setTimeout(() => {
         navigate("/admin/dashboard");
-      }, 1000);
-    }, 600);
+      }, 800);
+    } catch (err: any) {
+      setError(err.message || "Failed to authenticate administrator.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleFillDemo = () => {
@@ -65,6 +72,14 @@ export const AdminLoginPage: React.FC = () => {
               </p>
             </div>
           </div>
+
+          {/* Error Banner */}
+          {error && (
+            <div className="mb-4 p-3.5 rounded-2xl bg-[#FFF5F5] border border-[#FF8787] text-[#C92A2A] text-xs font-semibold flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              <span>{error}</span>
+            </div>
+          )}
 
           {/* Success Banner */}
           {success ? (

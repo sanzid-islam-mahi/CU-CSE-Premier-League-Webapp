@@ -7,11 +7,441 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Task {
-  id        Int      @id @default(autoincrement())
-  title     String
-  done      Boolean  @default(false)
-  createdAt DateTime @default(now()) @map("created_at")
-
-  @@map("tasks")
+enum UserRole {
+  ADMIN
+  USER
 }
+
+enum SportType {
+  CRICKET
+  FOOTBALL
+}
+
+enum TournamentStatus {
+  DRAFT
+  UPCOMING
+  ONGOING
+  COMPLETED
+  CANCELLED
+}
+
+enum TournamentStage {
+  GROUP_STAGE
+  ROUND_OF_16
+  QUARTER_FINAL
+  SEMI_FINAL
+  THIRD_PLACE
+  FINAL
+}
+
+enum MatchStatus {
+  SCHEDULED
+  TOSS
+  LIVE
+  INNINGS_BREAK
+  HALFTIME
+  COMPLETED
+  ABANDONED
+  POSTPONED
+}
+
+enum CricketWicketType {
+  BOWLED
+  CAUGHT
+  LBW
+  RUN_OUT
+  STUMPED
+  HIT_WICKET
+  RETIRED_HURT
+  OBSTRUCTING
+  TIMED_OUT
+}
+
+enum CricketExtraType {
+  NONE
+  WIDE
+  NO_BALL
+  BYE
+  LEG_BYE
+  PENALTY
+}
+
+enum CricketTossDecision {
+  BAT
+  BOWL
+}
+
+enum FootballEventType {
+  GOAL
+  OWN_GOAL
+  PENALTY_GOAL
+  YELLOW_CARD
+  RED_CARD
+  SECOND_YELLOW
+  SUBSTITUTION
+  PENALTY_MISSED
+}
+
+model Batch {
+  id          Int      @id @default(autoincrement())
+  name        String   // e.g. "20th Batch"
+  session     String   // e.g. "2018-19"
+  batchNumber Int      // e.g. 20
+  slug        String   @unique
+  avatarUrl   String?
+  slogan      String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  users       User[]
+  teams       Team[]
+
+  @@map("batches")
+}
+
+model User {
+  id                  Int      @id @default(autoincrement())
+  studentId           String   @unique // Roll e.g. "19701042" or "ADMIN01"
+  name                String
+  email               String   @unique
+  password            String
+  isTemporaryPassword Boolean  @default(true)
+  role                UserRole @default(USER)
+  batchId             Int?
+  avatarUrl           String?
+  phone               String?
+  bio                 String?
+  
+  // Sports profile details
+  cricketRole         String?  // "Right-hand Bat", "Right-arm Fast", "All-rounder", "Wicketkeeper"
+  battingStyle        String?  // "Right Hand", "Left Hand"
+  bowlingStyle        String?  // "Right-arm Fast", "Right-arm Off-spin", etc.
+  footballPosition    String?  // "Forward", "Midfielder", "Defender", "Goalkeeper"
+  preferredJerseyNo   Int?
+
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  batch               Batch?   @relation(fields: [batchId], references: [id])
+  
+  // Permission & Participation relations
+  organizerTournaments TournamentOrganizer[]
+  captainTeams         Team[]               @relation("TeamCaptain")
+  teamMemberships      TeamMember[]
+  scoredMatches        MatchScorer[]
+  matchSquadEntries    MatchSquad[]
+  
+  // Cricket Match Stats
+  cricketBattingScorecards CricketBattingScorecard[]
+  cricketBowlingScorecards CricketBowlingScorecard[]
+  cricketBallsStriker      CricketBall[]             @relation("StrikerBalls")
+  cricketBallsBowler       CricketBall[]             @relation("BowlerBalls")
+  cricketBallsPlayerOut    CricketBall[]             @relation("PlayerOutBalls")
+  cricketBallsFielder      CricketBall[]             @relation("FielderBalls")
+  
+  // Football Match Stats
+  footballEventsPrimary    FootballMatchEvent[]      @relation("PrimaryPlayerEvents")
+  footballEventsSecondary  FootballMatchEvent[]      @relation("SecondaryPlayerEvents")
+  
+  playerOfTheMatchAwards   Match[]                   @relation("PlayerOfTheMatch")
+
+  @@map("users")
+}
+
+model Tournament {
+  id          Int              @id @default(autoincrement())
+  name        String           // e.g. "CSE Premier League 2026"
+  slug        String           @unique
+  sport       SportType
+  season      String           // e.g. "2026"
+  status      TournamentStatus @default(DRAFT)
+  bannerUrl   String?
+  logoUrl     String?
+  rules       Json?            // overs, points for win/loss/tie, max squad size
+  startDate   DateTime?
+  endDate     DateTime?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  organizers  TournamentOrganizer[]
+  groups      TournamentGroup[]
+  teams       Team[]
+  matches     Match[]
+
+  @@map("tournaments")
+}
+
+model TournamentOrganizer {
+  id           Int        @id @default(autoincrement())
+  tournamentId Int
+  userId       Int
+  assignedAt   DateTime   @default(now())
+
+  tournament   Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([tournamentId, userId])
+  @@map("tournament_organizers")
+}
+
+model TournamentGroup {
+  id           Int        @id @default(autoincrement())
+  tournamentId Int
+  name         String     // e.g. "Group A"
+
+  tournament   Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  teams        Team[]
+  matches      Match[]
+
+  @@map("tournament_groups")
+}
+
+model Team {
+  id            Int          @id @default(autoincrement())
+  tournamentId  Int
+  batchId       Int?         // Nullable for mixed/faculty teams
+  groupId       Int?
+  name          String       // e.g. "Batch 20 Tigers"
+  shortName     String       // e.g. "B20"
+  logoUrl       String?
+  captainId     Int?
+  viceCaptainId Int?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  tournament    Tournament   @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  batch         Batch?       @relation(fields: [batchId], references: [id])
+  group         TournamentGroup? @relation(fields: [groupId], references: [id])
+  captain       User?        @relation("TeamCaptain", fields: [captainId], references: [id])
+
+  members       TeamMember[]
+  homeMatches   Match[]      @relation("HomeTeamMatches")
+  awayMatches   Match[]      @relation("AwayTeamMatches")
+  wonMatches    Match[]      @relation("WonTeamMatches")
+  matchSquads   MatchSquad[]
+
+  @@map("teams")
+}
+
+model TeamMember {
+  id              Int      @id @default(autoincrement())
+  teamId          Int
+  userId          Int
+  jerseyNumber    Int?
+  isCaptain       Boolean  @default(false)
+  isViceCaptain   Boolean  @default(false)
+  isWicketKeeper  Boolean  @default(false)
+  isGoalkeeper    Boolean  @default(false)
+  isActiveInSquad Boolean  @default(true) // For handling squad roster additions/removals mid-tournament
+  joinedAt        DateTime @default(now())
+
+  team            Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([teamId, userId])
+  @@map("team_members")
+}
+
+model Match {
+  id                 Int             @id @default(autoincrement())
+  tournamentId       Int
+  groupId            Int?
+  matchNumber        Int
+  stage              TournamentStage @default(GROUP_STAGE)
+  teamAId            Int
+  teamBId            Int
+  winnerTeamId       Int?
+  isTied             Boolean         @default(false)
+  isNoResult         Boolean         @default(false)
+  status             MatchStatus     @default(SCHEDULED)
+  startTime          DateTime?
+  venue              String?
+  resultSummary      String?
+  tossWinnerTeamId   Int?
+  tossDecision       CricketTossDecision?
+  playerOfTheMatchId Int?
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+
+  tournament         Tournament      @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  group              TournamentGroup? @relation(fields: [groupId], references: [id])
+  teamA              Team            @relation("HomeTeamMatches", fields: [teamAId], references: [id])
+  teamB              Team            @relation("AwayTeamMatches", fields: [teamBId], references: [id])
+  winnerTeam         Team?           @relation("WonTeamMatches", fields: [winnerTeamId], references: [id])
+  playerOfTheMatch   User?           @relation("PlayerOfTheMatch", fields: [playerOfTheMatchId], references: [id])
+
+  scorers            MatchScorer[]
+  matchSquads        MatchSquad[]
+  cricketInnings     CricketInnings[]
+  footballDetail     FootballMatchDetail?
+  footballEvents     FootballMatchEvent[]
+
+  @@map("matches")
+}
+
+model MatchScorer {
+  id         Int      @id @default(autoincrement())
+  matchId    Int
+  userId     Int
+  assignedAt DateTime @default(now())
+
+  match      Match    @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([matchId, userId])
+  @@map("match_scorers")
+}
+
+model MatchSquad {
+  id           Int      @id @default(autoincrement())
+  matchId      Int
+  teamId       Int
+  userId       Int
+  isPlayingXI  Boolean  @default(false)
+  battingOrder Int?
+  position     String?
+
+  match        Match    @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  team         Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([matchId, teamId, userId])
+  @@map("match_squads")
+}
+
+// ---------------- CRICKET MODELS ----------------
+
+model CricketInnings {
+  id             Int          @id @default(autoincrement())
+  matchId        Int
+  inningsNumber  Int          // 1 or 2
+  battingTeamId  Int
+  bowlingTeamId  Int
+  totalRuns      Int          @default(0)
+  totalWickets   Int          @default(0)
+  totalOvers     Float        @default(0.0)
+  wides          Int          @default(0)
+  noBalls        Int          @default(0)
+  byes           Int          @default(0)
+  legByes        Int          @default(0)
+  penaltyRuns    Int          @default(0)
+  isCompleted    Boolean      @default(false)
+
+  match          Match        @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  balls          CricketBall[]
+  battingScorecards CricketBattingScorecard[]
+  bowlingScorecards CricketBowlingScorecard[]
+
+  @@unique([matchId, inningsNumber])
+  @@map("cricket_innings")
+}
+
+model CricketBall {
+  id           Int               @id @default(autoincrement())
+  inningsId    Int
+  overNumber   Int               // 0-indexed (e.g. 0 to 19)
+  ballNumber   Int               // 1 to 6 (for legal balls)
+  bowlerId     Int
+  strikerId    Int
+  nonStrikerId Int
+  runsBat      Int               @default(0)
+  extraType    CricketExtraType  @default(NONE)
+  extraRuns    Int               @default(0)
+  isWicket     Boolean           @default(false)
+  wicketType   CricketWicketType?
+  playerOutId  Int?
+  fielderId    Int?
+  commentary   String?
+  createdAt    DateTime          @default(now())
+
+  innings      CricketInnings    @relation(fields: [inningsId], references: [id], onDelete: Cascade)
+  bowler       User              @relation("BowlerBalls", fields: [bowlerId], references: [id])
+  striker      User              @relation("StrikerBalls", fields: [strikerId], references: [id])
+  playerOut    User?             @relation("PlayerOutBalls", fields: [playerOutId], references: [id])
+  fielder      User?             @relation("FielderBalls", fields: [fielderId], references: [id])
+
+  @@map("cricket_balls")
+}
+
+model CricketBattingScorecard {
+  id           Int               @id @default(autoincrement())
+  inningsId    Int
+  playerId     Int
+  runs         Int               @default(0)
+  balls        Int               @default(0)
+  fours        Int               @default(0)
+  sixes        Int               @default(0)
+  isOut        Boolean           @default(false)
+  wicketType   CricketWicketType?
+  bowlerName   String?
+  fielderName  String?
+  battingOrder Int               @default(1)
+
+  innings      CricketInnings    @relation(fields: [inningsId], references: [id], onDelete: Cascade)
+  player       User              @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@unique([inningsId, playerId])
+  @@map("cricket_batting_scorecards")
+}
+
+model CricketBowlingScorecard {
+  id           Int            @id @default(autoincrement())
+  inningsId    Int
+  playerId     Int
+  overs        Float          @default(0.0)
+  maidens      Int            @default(0)
+  runs         Int            @default(0)
+  wickets      Int            @default(0)
+  wides        Int            @default(0)
+  noBalls      Int            @default(0)
+  bowlingOrder Int            @default(1)
+
+  innings      CricketInnings @relation(fields: [inningsId], references: [id], onDelete: Cascade)
+  player       User           @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@unique([inningsId, playerId])
+  @@map("cricket_bowling_scorecards")
+}
+
+// ---------------- FOOTBALL MODELS ----------------
+
+model FootballMatchDetail {
+  id                   Int      @id @default(autoincrement())
+  matchId              Int      @unique
+  halfDurationMinutes  Int      @default(20)
+  currentHalf          Int      @default(1) // 1 = 1st Half, 2 = 2nd Half, 3 = ET1, 4 = ET2, 5 = Penalties
+  clockSeconds         Int      @default(0)
+  isClockRunning       Boolean  @default(false)
+  teamAScore           Int      @default(0)
+  teamBScore           Int      @default(0)
+  teamAPenaltyScore    Int?
+  teamBPenaltyScore    Int?
+  teamAFouls           Int      @default(0)
+  teamBFouls           Int      @default(0)
+  teamACorners         Int      @default(0)
+  teamBCorners         Int      @default(0)
+
+  match                Match    @relation(fields: [matchId], references: [id], onDelete: Cascade)
+
+  @@map("football_match_details")
+}
+
+model FootballMatchEvent {
+  id                 Int               @id @default(autoincrement())
+  matchId            Int
+  teamId             Int
+  minute             Int
+  stoppageMinute     Int?
+  eventType          FootballEventType
+  primaryPlayerId    Int               // Scorer / Card recipient / Sub In
+  secondaryPlayerId  Int?              // Assist provider / Sub Out
+  description        String?
+  createdAt          DateTime          @default(now())
+
+  match              Match             @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  primaryPlayer      User              @relation("PrimaryPlayerEvents", fields: [primaryPlayerId], references: [id], onDelete: Cascade)
+  secondaryPlayer    User?             @relation("SecondaryPlayerEvents", fields: [secondaryPlayerId], references: [id])
+
+  @@map("football_match_events")
+}
+

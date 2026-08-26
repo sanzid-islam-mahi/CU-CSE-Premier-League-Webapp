@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { 
   Shield, 
@@ -15,9 +15,11 @@ import {
   ArrowLeft, 
   X, 
   UserCheck,
-  RefreshCw
+  RefreshCw,
+  Loader2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { api, type BatchItem, type UserItem, type TournamentItem } from "@/lib/api";
 
 export const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -25,182 +27,239 @@ export const AdminDashboard: React.FC = () => {
   
   // Notice alert state
   const [alertMessage, setAlertMessage] = useState<string | null>(null);
+  const [loadingData, setLoadingData] = useState(true);
 
   // 1. Batches State
-  const [batches, setBatches] = useState([
-    { id: 18, name: "18th Batch", session: "2016-17", batchNumber: 18, slogan: "The Veteran Titans", studentsCount: 16, trophies: 2 },
-    { id: 19, name: "19th Batch", session: "2017-18", batchNumber: 19, slogan: "The Legacy Pioneers", studentsCount: 18, trophies: 3 },
-    { id: 20, name: "20th Batch", session: "2018-19", batchNumber: 20, slogan: "The Invincible Titans", studentsCount: 22, trophies: 4 },
-    { id: 21, name: "21st Batch", session: "2019-20", batchNumber: 21, slogan: "The Red Brick Warriors", studentsCount: 24, trophies: 3 },
-    { id: 22, name: "22nd Batch", session: "2020-21", batchNumber: 22, slogan: "The Rising Royals", studentsCount: 20, trophies: 1 },
-    { id: 23, name: "23rd Batch", session: "2021-22", batchNumber: 23, slogan: "The Challengers", studentsCount: 22, trophies: 0 },
-    { id: 24, name: "24th Batch", session: "2022-23", batchNumber: 24, slogan: "The Spark Pioneers", studentsCount: 18, trophies: 0 },
-    { id: 25, name: "25th Batch", session: "2023-24", batchNumber: 25, slogan: "The Fresh Gladiators", studentsCount: 20, trophies: 0 },
-  ]);
-
-  // Batch Modal State
+  const [batches, setBatches] = useState<BatchItem[]>([]);
   const [showCreateBatchModal, setShowCreateBatchModal] = useState(false);
   const [newBatchName, setNewBatchName] = useState("");
   const [newBatchSession, setNewBatchSession] = useState("");
   const [newBatchNumber, setNewBatchNumber] = useState("");
   const [newBatchSlogan, setNewBatchSlogan] = useState("");
 
-  // 2. Players & Temp Passwords State
-  const [players, setPlayers] = useState([
-    { id: 1, roll: "19701042", name: "Sanzid Rahman", email: "sanzid@cse.cu.ac.bd", batch: "20th Batch", role: "🏏 Bat / ⚽ Fwd", tempPass: "CSEPL@19701042", isTemp: true },
-    { id: 2, roll: "19701015", name: "Tanvir Ahmed", email: "tanvir@cse.cu.ac.bd", batch: "20th Batch", role: "🏏 All / ⚽ Mid", tempPass: null, isTemp: false },
-    { id: 3, roll: "20701004", name: "Farhan Kabir", email: "farhan@cse.cu.ac.bd", batch: "21st Batch", role: "🏏 Fast / ⚽ Def", tempPass: "CSEPL@20701004", isTemp: true },
-    { id: 4, roll: "20701028", name: "Rafid Hasan", email: "rafid@cse.cu.ac.bd", batch: "21st Batch", role: "🏏 Bat / ⚽ Fwd", tempPass: null, isTemp: false },
-    { id: 5, roll: "21701033", name: "Nahid Islam", email: "nahid@cse.cu.ac.bd", batch: "22nd Batch", role: "🏏 Spin / ⚽ Mid", tempPass: "CSEPL@21701033", isTemp: true },
-    { id: 6, roll: "21701050", name: "Shakil Hossain", email: "shakil@cse.cu.ac.bd", batch: "22nd Batch", role: "🏏 All / ⚽ Fwd", tempPass: "CSEPL@21701050", isTemp: true },
-  ]);
-
+  // 2. Players State
+  const [players, setPlayers] = useState<UserItem[]>([]);
   const [playerSearchQuery, setPlayerSearchQuery] = useState("");
+  const [playerBatchFilter, setPlayerBatchFilter] = useState<string>("ALL");
   const [showAddPlayerModal, setShowAddPlayerModal] = useState(false);
   const [showBulkCsvModal, setShowBulkCsvModal] = useState(false);
+  const [csvContent, setCsvContent] = useState("");
   const [newPlayerRoll, setNewPlayerRoll] = useState("");
   const [newPlayerName, setNewPlayerName] = useState("");
   const [newPlayerEmail, setNewPlayerEmail] = useState("");
-  const [newPlayerBatch, setNewPlayerBatch] = useState("20th Batch");
-  const [newPlayerRole, setNewPlayerRole] = useState("🏏 All-Rounder / ⚽ Midfielder");
+  const [newPlayerBatchId, setNewPlayerBatchId] = useState<number | null>(null);
+  const [newPlayerRole, setNewPlayerRole] = useState("🏏 Top-Order Bat");
+  const [newPlayerPosition, setNewPlayerPosition] = useState("⚽ Forward");
 
-  // 3. Tournaments & Organizers State
-  const [tournaments, setTournaments] = useState([
-    {
-      id: 1,
-      name: "CSE Premier League 2026",
-      sport: "Cricket (T10)",
-      season: "2026",
-      status: "ONGOING",
-      organizers: ["Sanzid Rahman (Roll: 19701042)", "Tanvir Ahmed (Roll: 19701015)"],
-      teamsCount: 8,
-      rules: "10 overs per side, 2 overs max per bowler, NRR table",
-    },
-    {
-      id: 2,
-      name: "CSE Futsal Champions Cup 2026",
-      sport: "Football (7-a-side)",
-      season: "2026",
-      status: "ONGOING",
-      organizers: ["Rafid Hasan (Roll: 20701028)", "Nahid Islam (Roll: 21701033)"],
-      teamsCount: 8,
-      rules: "20 min halves, 5 field + 1 GK + 1 floating, GD table",
-    }
-  ]);
-
+  // 3. Tournaments State
+  const [tournaments, setTournaments] = useState<TournamentItem[]>([]);
   const [showCreateTournamentModal, setShowCreateTournamentModal] = useState(false);
   const [showAssignOrganizerModal, setShowAssignOrganizerModal] = useState(false);
-  const [selectedTournamentForOrg, setSelectedTournamentForOrg] = useState(1);
+  const [selectedTournamentForOrg, setSelectedTournamentForOrg] = useState<number | null>(null);
+  const [selectedUserForOrg, setSelectedUserForOrg] = useState<number | null>(null);
   const [newTournamentName, setNewTournamentName] = useState("");
-  const [newTournamentSport, setNewTournamentSport] = useState("Cricket (T10)");
+  const [newTournamentSport, setNewTournamentSport] = useState<"CRICKET" | "FOOTBALL">("CRICKET");
   const [newTournamentSeason, setNewTournamentSeason] = useState("2026");
-  const [newTournamentRules, setNewTournamentRules] = useState("Standard CSE League format");
-  const [organizerStudentSelect, setOrganizerStudentSelect] = useState("Farhan Kabir (Roll: 20701004)");
+  const [newTournamentRules, setNewTournamentRules] = useState("10 overs per side, 2 overs max per bowler");
 
   // 4. Audit Logs State
-  const [auditLogs, setAuditLogs] = useState([
-    { id: 1, time: "Just now", action: "Admin Portal Accessed", user: "admin@cse.cu.ac.bd", ip: "10.12.4.88" },
-    { id: 2, time: "10 mins ago", action: "Temporary pass generated for Roll 21701050", user: "Admin", ip: "10.12.4.88" },
-    { id: 3, time: "1 hour ago", action: "Assigned Organizer permissions for CSE Futsal Cup 2026 to Rafid Hasan", user: "Admin", ip: "10.12.4.88" },
-    { id: 4, time: "3 hours ago", action: "Created Tournament: CSE Premier League 2026 (Cricket T10)", user: "Admin", ip: "10.12.4.88" },
+  const [auditLogs, setAuditLogs] = useState<{ id: number; time: string; action: string; user: string }[]>([
+    { id: 1, time: "Initial", action: "Admin Session Loaded", user: "admin@cse.cu.ac.bd" },
   ]);
 
-  // Handlers
+  // Toast notification helper
   const triggerNotification = (msg: string) => {
     setAlertMessage(msg);
     setAuditLogs(prev => [
-      { id: Date.now(), time: "Just now", action: msg, user: "admin@cse.cu.ac.bd", ip: "10.12.4.88" },
+      { id: Date.now(), time: "Just now", action: msg, user: "admin@cse.cu.ac.bd" },
       ...prev
     ]);
-    setTimeout(() => setAlertMessage(null), 4000);
+    setTimeout(() => setAlertMessage(null), 4500);
   };
 
-  const handleCreateBatch = (e: React.FormEvent) => {
+  // Load all initial data from server API
+  const loadAllData = async () => {
+    try {
+      setLoadingData(true);
+      const [fetchedBatches, fetchedUsers, fetchedTournaments] = await Promise.all([
+        api.batches.getAll().catch(() => []),
+        api.users.getAll().catch(() => []),
+        api.tournaments.getAll().catch(() => []),
+      ]);
+      setBatches(fetchedBatches);
+      setPlayers(fetchedUsers);
+      setTournaments(fetchedTournaments);
+      if (fetchedBatches.length > 0) {
+        setNewPlayerBatchId(fetchedBatches[0].id);
+      }
+      if (fetchedTournaments.length > 0) {
+        setSelectedTournamentForOrg(fetchedTournaments[0].id);
+      }
+      if (fetchedUsers.length > 0) {
+        setSelectedUserForOrg(fetchedUsers[0].id);
+      }
+    } catch (err: any) {
+      triggerNotification("Failed to load some dashboard data. Is the server running?");
+    } finally {
+      setLoadingData(false);
+    }
+  };
+
+  useEffect(() => {
+    loadAllData();
+  }, []);
+
+  // 1. Handle Batch Creation
+  const handleCreateBatch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newBatchName || !newBatchSession) return;
-    const num = parseInt(newBatchNumber) || batches.length + 18;
-    const newBatch = {
-      id: num,
-      name: newBatchName,
-      session: newBatchSession,
-      batchNumber: num,
-      slogan: newBatchSlogan || "The Champions",
-      studentsCount: 0,
-      trophies: 0,
-    };
-    setBatches([...batches, newBatch]);
-    setShowCreateBatchModal(false);
-    setNewBatchName("");
-    setNewBatchSession("");
-    setNewBatchNumber("");
-    setNewBatchSlogan("");
-    triggerNotification(`Batch "${newBatch.name}" created successfully!`);
+    try {
+      const num = parseInt(newBatchNumber) || batches.length + 18;
+      const created = await api.batches.create({
+        name: newBatchName,
+        session: newBatchSession,
+        batchNumber: num,
+        slogan: newBatchSlogan || "The Red Brick Champions",
+      });
+      setBatches(prev => [...prev, created]);
+      setShowCreateBatchModal(false);
+      setNewBatchName("");
+      setNewBatchSession("");
+      setNewBatchNumber("");
+      setNewBatchSlogan("");
+      triggerNotification(`Batch "${created.name}" created successfully!`);
+    } catch (err: any) {
+      alert(err.message || "Failed to create batch.");
+    }
   };
 
-  const handleAddPlayer = (e: React.FormEvent) => {
+  // 2. Handle Player Creation
+  const handleAddPlayer = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newPlayerRoll || !newPlayerName) return;
-    const tempPass = `CSEPL@${newPlayerRoll}`;
-    const newPlayer = {
-      id: players.length + 1,
-      roll: newPlayerRoll,
-      name: newPlayerName,
-      email: newPlayerEmail || `${newPlayerRoll}@cse.cu.ac.bd`,
-      batch: newPlayerBatch,
-      role: newPlayerRole,
-      tempPass: tempPass,
-      isTemp: true,
-    };
-    setPlayers([newPlayer, ...players]);
-    setShowAddPlayerModal(false);
-    setNewPlayerRoll("");
-    setNewPlayerName("");
-    setNewPlayerEmail("");
-    triggerNotification(`Player ${newPlayer.name} added with temp pass: ${tempPass}`);
+    try {
+      const email = newPlayerEmail || `${newPlayerRoll}@cse.cu.ac.bd`;
+      const created = await api.users.create({
+        studentId: newPlayerRoll,
+        name: newPlayerName,
+        email: email,
+        batchId: newPlayerBatchId,
+        cricketRole: newPlayerRole,
+        footballPosition: newPlayerPosition,
+      });
+      setPlayers(prev => [created, ...prev]);
+      setShowAddPlayerModal(false);
+      setNewPlayerRoll("");
+      setNewPlayerName("");
+      setNewPlayerEmail("");
+      triggerNotification(`Player ${created.name} registered! Generated temp pass: CSEPL@${created.studentId}`);
+    } catch (err: any) {
+      alert(err.message || "Failed to create player.");
+    }
   };
 
-  const handleResetTempPass = (player: typeof players[0]) => {
-    const freshPass = `CSEPL@${player.roll}_${Math.floor(100 + Math.random() * 900)}`;
-    setPlayers(players.map(p => p.id === player.id ? { ...p, tempPass: freshPass, isTemp: true } : p));
-    triggerNotification(`Reset temp pass for ${player.name}: ${freshPass}`);
+  // 2.2 Handle Reset Temp Password
+  const handleResetTempPass = async (player: UserItem) => {
+    try {
+      const res = await api.users.resetTempPass(player.id);
+      setPlayers(prev => prev.map(p => p.id === player.id ? { ...p, isTemporaryPassword: true } : p));
+      triggerNotification(`Reset temp pass for ${player.name}: ${res.temporaryPassword}`);
+    } catch (err: any) {
+      alert(err.message || "Failed to reset password.");
+    }
   };
 
-  const handleCreateTournament = (e: React.FormEvent) => {
+  // 2.3 Handle Bulk CSV Import
+  const handleBulkCsvImport = async () => {
+    try {
+      const lines = csvContent.trim().split("\n");
+      const rows: { roll: string; name: string; email: string; batch?: string; role?: string }[] = [];
+
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (!line || (i === 0 && line.toLowerCase().startsWith("roll"))) continue;
+        const parts = line.split(",").map(p => p.trim());
+        if (parts.length >= 2) {
+          rows.push({
+            roll: parts[0],
+            name: parts[1],
+            email: parts[2] || `${parts[0]}@cse.cu.ac.bd`,
+            batch: parts[3] || "20th Batch",
+            role: parts[4] || "🏏 All-Rounder",
+          });
+        }
+      }
+
+      if (rows.length === 0) {
+        alert("No valid player rows found in CSV text.");
+        return;
+      }
+
+      const res = await api.users.bulkImport(rows);
+      setShowBulkCsvModal(false);
+      setCsvContent("");
+      await loadAllData();
+      triggerNotification(res.message || `Imported ${rows.length} players with temporary passwords.`);
+    } catch (err: any) {
+      alert(err.message || "Bulk import failed.");
+    }
+  };
+
+  // 3. Handle Tournament Creation
+  const handleCreateTournament = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTournamentName) return;
-    const newTourn = {
-      id: tournaments.length + 1,
-      name: newTournamentName,
-      sport: newTournamentSport,
-      season: newTournamentSeason,
-      status: "UPCOMING",
-      organizers: ["Admin Delegated"],
-      teamsCount: 8,
-      rules: newTournamentRules,
-    };
-    setTournaments([...tournaments, newTourn]);
-    setShowCreateTournamentModal(false);
-    setNewTournamentName("");
-    triggerNotification(`Tournament "${newTourn.name}" initialized!`);
+    try {
+      const created = await api.tournaments.create({
+        name: newTournamentName,
+        sport: newTournamentSport,
+        season: newTournamentSeason,
+        rules: { description: newTournamentRules },
+      });
+      setTournaments(prev => [created, ...prev]);
+      setShowCreateTournamentModal(false);
+      setNewTournamentName("");
+      triggerNotification(`Tournament "${created.name}" created!`);
+    } catch (err: any) {
+      alert(err.message || "Failed to create tournament.");
+    }
   };
 
-  const handleAssignOrganizer = (e: React.FormEvent) => {
+  // 3.2 Handle Assign Organizer
+  const handleAssignOrganizer = async (e: React.FormEvent) => {
     e.preventDefault();
-    setTournaments(tournaments.map(t => {
-      if (t.id === selectedTournamentForOrg) {
-        return { ...t, organizers: [...t.organizers, organizerStudentSelect] };
-      }
-      return t;
-    }));
-    setShowAssignOrganizerModal(false);
-    triggerNotification(`Assigned ${organizerStudentSelect} as Organizer!`);
+    if (!selectedTournamentForOrg || !selectedUserForOrg) return;
+    try {
+      const res = await api.tournaments.assignOrganizer(selectedTournamentForOrg, selectedUserForOrg);
+      setShowAssignOrganizerModal(false);
+      await loadAllData();
+      triggerNotification(res.message || "Assigned organizer successfully!");
+    } catch (err: any) {
+      alert(err.message || "Failed to assign organizer.");
+    }
   };
 
-  const filteredPlayers = players.filter(p => 
-    p.name.toLowerCase().includes(playerSearchQuery.toLowerCase()) ||
-    p.roll.includes(playerSearchQuery) ||
-    p.batch.toLowerCase().includes(playerSearchQuery.toLowerCase())
-  );
+  // 3.3 Handle Remove Organizer
+  const handleRemoveOrganizer = async (tournamentId: number, userId: number, userName: string) => {
+    if (!confirm(`Are you sure you want to remove ${userName} as an organizer?`)) return;
+    try {
+      await api.tournaments.removeOrganizer(tournamentId, userId);
+      await loadAllData();
+      triggerNotification(`Removed ${userName} from tournament organizers.`);
+    } catch (err: any) {
+      alert(err.message || "Failed to remove organizer.");
+    }
+  };
+
+  // Filter players by query and batch
+  const filteredPlayers = players.filter(p => {
+    const matchesSearch = 
+      p.name.toLowerCase().includes(playerSearchQuery.toLowerCase()) ||
+      p.studentId.includes(playerSearchQuery) ||
+      p.email.toLowerCase().includes(playerSearchQuery.toLowerCase());
+    const matchesBatch = playerBatchFilter === "ALL" || p.batchId?.toString() === playerBatchFilter;
+    return matchesSearch && matchesBatch;
+  });
 
   return (
     <div className="min-h-screen bg-[#FAF7F2] text-[#2C221E] flex flex-col">
@@ -237,7 +296,10 @@ export const AdminDashboard: React.FC = () => {
               </Link>
 
               <button
-                onClick={() => navigate("/")}
+                onClick={() => {
+                  api.auth.logout();
+                  navigate("/");
+                }}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#FAF0E6] hover:bg-[#F5E0D0] text-xs font-bold text-[#842021] border border-[#E8D6C3] transition-colors"
               >
                 <LogOut className="w-3.5 h-3.5" />
@@ -275,11 +337,13 @@ export const AdminDashboard: React.FC = () => {
 
           <div className="bg-white p-5 rounded-3xl border border-[#E5DACB] shadow-xs">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-bold text-[#7C6E63] uppercase">Players</span>
+              <span className="text-xs font-bold text-[#7C6E63] uppercase">Registered Players</span>
               <Users className="w-4 h-4 text-[#9E2A2B]" />
             </div>
-            <p className="text-2xl font-black text-[#2C221E]">{players.length + 136}</p>
-            <p className="text-[11px] text-[#842021] font-semibold mt-1">{players.filter(p => p.isTemp).length} on Temp Passwords</p>
+            <p className="text-2xl font-black text-[#2C221E]">{players.length}</p>
+            <p className="text-[11px] text-[#842021] font-semibold mt-1">
+              {players.filter(p => p.isTemporaryPassword).length} on Temp Passwords
+            </p>
           </div>
 
           <div className="bg-white p-5 rounded-3xl border border-[#E5DACB] shadow-xs">
@@ -293,11 +357,11 @@ export const AdminDashboard: React.FC = () => {
 
           <div className="bg-white p-5 rounded-3xl border border-[#E5DACB] shadow-xs">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-bold text-[#7C6E63] uppercase">Matches Today</span>
+              <span className="text-xs font-bold text-[#7C6E63] uppercase">Status</span>
               <Activity className="w-4 h-4 text-[#9E2A2B]" />
             </div>
-            <p className="text-2xl font-black text-[#2C221E]">2</p>
-            <p className="text-[11px] text-[#9E2A2B] font-bold mt-1">1 Match Live Now</p>
+            <p className="text-2xl font-black text-[#2A7B54]">Online</p>
+            <p className="text-[11px] text-[#7C6E63] font-semibold mt-1">PostgreSQL Connected</p>
           </div>
         </div>
 
@@ -312,7 +376,7 @@ export const AdminDashboard: React.FC = () => {
             }`}
           >
             <Layers className="w-4 h-4" />
-            <span>Batches Management</span>
+            <span>Batches Management ({batches.length})</span>
           </button>
 
           <button
@@ -324,7 +388,7 @@ export const AdminDashboard: React.FC = () => {
             }`}
           >
             <Users className="w-4 h-4" />
-            <span>Players & Temp Passwords</span>
+            <span>Players & Temp Passwords ({players.length})</span>
           </button>
 
           <button
@@ -336,7 +400,7 @@ export const AdminDashboard: React.FC = () => {
             }`}
           >
             <Trophy className="w-4 h-4" />
-            <span>Tournaments & Organizers</span>
+            <span>Tournaments & Organizers ({tournaments.length})</span>
           </button>
 
           <button
@@ -352,13 +416,21 @@ export const AdminDashboard: React.FC = () => {
           </button>
         </div>
 
+        {/* Loading Spinner */}
+        {loadingData && (
+          <div className="py-12 text-center text-[#7C6E63] text-xs font-semibold flex items-center justify-center gap-2">
+            <Loader2 className="w-4 h-4 animate-spin text-[#9E2A2B]" />
+            <span>Syncing database records...</span>
+          </div>
+        )}
+
         {/* TAB 1: BATCHES MANAGEMENT */}
-        {activeTab === "batches" && (
+        {!loadingData && activeTab === "batches" && (
           <div className="space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <h3 className="text-xl font-extrabold text-[#2C221E]">Academic Batches</h3>
-                <p className="text-xs text-[#7C6E63]">Manage department batches, sessions, slogans, and stats</p>
+                <p className="text-xs text-[#7C6E63]">Create and manage department batches, sessions, slogans, and rosters</p>
               </div>
               <Button
                 onClick={() => setShowCreateBatchModal(true)}
@@ -383,12 +455,12 @@ export const AdminDashboard: React.FC = () => {
                     </div>
 
                     <h4 className="font-extrabold text-base text-[#2C221E]">{b.name}</h4>
-                    <p className="text-xs text-[#9E2A2B] font-semibold">{b.slogan}</p>
+                    <p className="text-xs text-[#9E2A2B] font-semibold">{b.slogan || "Red Brick Champions"}</p>
                   </div>
 
                   <div className="pt-3 border-t border-[#EFE8DC] flex items-center justify-between text-xs text-[#6B5E53]">
                     <span>👥 {b.studentsCount} Students</span>
-                    <span className="font-bold text-[#D96B27]">🏆 {b.trophies} Titles</span>
+                    <span className="font-semibold text-[#842021]">🏆 {b.teamsCount} Teams</span>
                   </div>
                 </div>
               ))}
@@ -397,7 +469,7 @@ export const AdminDashboard: React.FC = () => {
         )}
 
         {/* TAB 2: PLAYERS & TEMPORARY PASSWORDS */}
-        {activeTab === "players" && (
+        {!loadingData && activeTab === "players" && (
           <div className="space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
@@ -425,21 +497,36 @@ export const AdminDashboard: React.FC = () => {
               </div>
             </div>
 
-            {/* Search Input Bar */}
-            <div className="bg-white p-3 rounded-2xl border border-[#E5DACB] flex items-center gap-3">
-              <Search className="w-4 h-4 text-[#7C6E63] ml-2" />
-              <input
-                type="text"
-                placeholder="Search by Roll Number, Name, or Batch..."
-                value={playerSearchQuery}
-                onChange={(e) => setPlayerSearchQuery(e.target.value)}
-                className="w-full bg-transparent text-xs text-[#2C221E] focus:outline-none"
-              />
-              {playerSearchQuery && (
-                <button onClick={() => setPlayerSearchQuery("")} className="text-xs text-[#7C6E63] mr-2">
-                  Clear
-                </button>
-              )}
+            {/* Search & Batch Filter */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="sm:col-span-2 bg-white p-3 rounded-2xl border border-[#E5DACB] flex items-center gap-3">
+                <Search className="w-4 h-4 text-[#7C6E63] ml-2" />
+                <input
+                  type="text"
+                  placeholder="Search by Roll Number, Name, or Email..."
+                  value={playerSearchQuery}
+                  onChange={(e) => setPlayerSearchQuery(e.target.value)}
+                  className="w-full bg-transparent text-xs text-[#2C221E] focus:outline-none"
+                />
+                {playerSearchQuery && (
+                  <button onClick={() => setPlayerSearchQuery("")} className="text-xs text-[#7C6E63] mr-2">
+                    Clear
+                  </button>
+                )}
+              </div>
+
+              <div className="bg-white p-2.5 rounded-2xl border border-[#E5DACB] flex items-center">
+                <select
+                  value={playerBatchFilter}
+                  onChange={(e) => setPlayerBatchFilter(e.target.value)}
+                  className="w-full bg-transparent text-xs font-semibold text-[#2C221E] focus:outline-none cursor-pointer"
+                >
+                  <option value="ALL">All Batches ({players.length})</option>
+                  {batches.map(b => (
+                    <option key={b.id} value={b.id.toString()}>{b.name} ({b.session})</option>
+                  ))}
+                </select>
+              </div>
             </div>
 
             {/* Players Table */}
@@ -457,55 +544,64 @@ export const AdminDashboard: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#EFE8DC]">
-                    {filteredPlayers.map((player) => (
-                      <tr key={player.id} className="hover:bg-[#FAF7F2]/60 transition-colors">
-                        <td className="py-3.5 px-4 font-mono font-bold text-[#2C221E]">
-                          {player.roll}
-                        </td>
-                        <td className="py-3.5 px-4">
-                          <p className="font-extrabold text-[#2C221E]">{player.name}</p>
-                          <p className="text-[11px] text-[#7C6E63]">{player.email}</p>
-                        </td>
-                        <td className="py-3.5 px-4 font-semibold text-[#842021]">
-                          {player.batch}
-                        </td>
-                        <td className="py-3.5 px-4 text-[#6B5E53]">
-                          {player.role}
-                        </td>
-                        <td className="py-3.5 px-4">
-                          {player.isTemp ? (
-                            <div className="flex items-center gap-1.5">
-                              <span className="font-mono text-[11px] bg-[#FAF0E6] text-[#842021] px-2 py-0.5 rounded border border-[#E8D6C3]">
-                                {player.tempPass}
-                              </span>
-                              <button
-                                onClick={() => {
-                                  navigator.clipboard.writeText(player.tempPass || "");
-                                  triggerNotification(`Copied temp pass for ${player.name} to clipboard!`);
-                                }}
-                                title="Copy temp pass"
-                                className="p-1 text-[#7C6E63] hover:text-[#9E2A2B]"
-                              >
-                                <Copy className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 text-[11px] text-[#2A7B54] font-bold">
-                              <CheckCircle2 className="w-3.5 h-3.5" /> Password Set
-                            </span>
-                          )}
-                        </td>
-                        <td className="py-3.5 px-4 text-right">
-                          <button
-                            onClick={() => handleResetTempPass(player)}
-                            className="inline-flex items-center gap-1 text-[11px] font-bold text-[#9E2A2B] hover:text-[#842021] bg-[#FAF0E6] hover:bg-[#F5E0D0] px-2.5 py-1 rounded-lg border border-[#E8D6C3] transition-colors"
-                          >
-                            <RefreshCw className="w-3 h-3" />
-                            <span>Reset Pass</span>
-                          </button>
+                    {filteredPlayers.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="py-8 text-center text-xs text-[#7C6E63]">
+                          No registered players found matching your criteria.
                         </td>
                       </tr>
-                    ))}
+                    ) : (
+                      filteredPlayers.map((player) => (
+                        <tr key={player.id} className="hover:bg-[#FAF7F2]/60 transition-colors">
+                          <td className="py-3.5 px-4 font-mono font-bold text-[#2C221E]">
+                            {player.studentId}
+                          </td>
+                          <td className="py-3.5 px-4">
+                            <p className="font-extrabold text-[#2C221E]">{player.name}</p>
+                            <p className="text-[11px] text-[#7C6E63]">{player.email}</p>
+                          </td>
+                          <td className="py-3.5 px-4 font-semibold text-[#842021]">
+                            {player.batch}
+                          </td>
+                          <td className="py-3.5 px-4 text-[#6B5E53]">
+                            <span>{player.cricketRole || "🏏 Player"}</span>
+                            {player.footballPosition && <span className="ml-1 text-[11px]">/ {player.footballPosition}</span>}
+                          </td>
+                          <td className="py-3.5 px-4">
+                            {player.isTemporaryPassword ? (
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-mono text-[11px] bg-[#FAF0E6] text-[#842021] px-2 py-0.5 rounded border border-[#E8D6C3]">
+                                  CSEPL@{player.studentId}
+                                </span>
+                                <button
+                                  onClick={() => {
+                                    navigator.clipboard.writeText(`CSEPL@${player.studentId}`);
+                                    triggerNotification(`Copied temp pass for ${player.name} to clipboard!`);
+                                  }}
+                                  title="Copy temp pass"
+                                  className="p-1 text-[#7C6E63] hover:text-[#9E2A2B]"
+                                >
+                                  <Copy className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 text-[11px] text-[#2A7B54] font-bold">
+                                <CheckCircle2 className="w-3.5 h-3.5" /> Password Set
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-3.5 px-4 text-right">
+                            <button
+                              onClick={() => handleResetTempPass(player)}
+                              className="inline-flex items-center gap-1 text-[11px] font-bold text-[#9E2A2B] hover:text-[#842021] bg-[#FAF0E6] hover:bg-[#F5E0D0] px-2.5 py-1 rounded-lg border border-[#E8D6C3] transition-colors"
+                            >
+                              <RefreshCw className="w-3 h-3" />
+                              <span>Reset Pass</span>
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -514,7 +610,7 @@ export const AdminDashboard: React.FC = () => {
         )}
 
         {/* TAB 3: TOURNAMENTS & ORGANIZERS */}
-        {activeTab === "tournaments" && (
+        {!loadingData && activeTab === "tournaments" && (
           <div className="space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
@@ -547,7 +643,7 @@ export const AdminDashboard: React.FC = () => {
                 <div key={t.id} className="bg-white p-6 rounded-3xl border border-[#E5DACB] shadow-xs space-y-4">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-[#FAF0E6] text-[#842021] border border-[#E8D6C3]">
-                      {t.sport}
+                      {t.sport === "CRICKET" ? "🏏 Cricket" : "⚽ Football"}
                     </span>
                     <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-[#9E2A2B] text-white">
                       {t.status}
@@ -560,19 +656,32 @@ export const AdminDashboard: React.FC = () => {
                   </div>
 
                   <div className="p-3 bg-[#FAF7F2] rounded-2xl border border-[#E8DCCF] text-xs space-y-1">
-                    <p className="font-bold text-[#7C6E63] text-[10px] uppercase">Format & Rules</p>
-                    <p className="text-[#2C221E] font-medium">{t.rules}</p>
+                    <p className="font-bold text-[#7C6E63] text-[10px] uppercase">Format & Specifications</p>
+                    <p className="text-[#2C221E] font-medium">
+                      {typeof t.rules === "object" ? JSON.stringify(t.rules) : (t.rules || "Standard CSE Tournament Rules")}
+                    </p>
                   </div>
 
                   <div className="pt-3 border-t border-[#EFE8DC] space-y-2">
                     <p className="text-[11px] font-bold text-[#7C6E63] uppercase">Assigned Tournament Organizers:</p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {t.organizers.map((org, idx) => (
-                        <span key={idx} className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-[#FAF0E6] text-[#842021] border border-[#E8D6C3]">
-                          👤 {org}
-                        </span>
-                      ))}
-                    </div>
+                    {t.organizers.length === 0 ? (
+                      <p className="text-xs text-[#7C6E63] italic">No student organizers assigned yet.</p>
+                    ) : (
+                      <div className="flex flex-wrap gap-2">
+                        {t.organizers.map((org) => (
+                          <span key={org.id} className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-lg bg-[#FAF0E6] text-[#842021] border border-[#E8D6C3]">
+                            <span>👤 {org.name} ({org.roll})</span>
+                            <button
+                              onClick={() => handleRemoveOrganizer(t.id, org.id, org.name)}
+                              title="Remove organizer"
+                              className="text-[#9E2A2B] hover:text-[#6F1819]"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}
@@ -593,7 +702,7 @@ export const AdminDashboard: React.FC = () => {
                 <div key={log.id} className="flex items-center justify-between p-3 rounded-2xl bg-[#FAF7F2] border border-[#E8DCCF] text-xs">
                   <div className="space-y-0.5">
                     <p className="font-extrabold text-[#2C221E]">{log.action}</p>
-                    <p className="text-[11px] text-[#7C6E63]">By: {log.user} (IP: {log.ip})</p>
+                    <p className="text-[11px] text-[#7C6E63]">By: {log.user}</p>
                   </div>
                   <span className="text-[11px] font-bold text-[#842021] bg-white px-2.5 py-1 rounded-lg border border-[#E5DACB]">
                     {log.time}
@@ -682,8 +791,8 @@ export const AdminDashboard: React.FC = () => {
             <button onClick={() => setShowAddPlayerModal(false)} className="absolute top-4 right-4 text-[#7C6E63] hover:text-[#2C221E]">
               <X className="w-5 h-5" />
             </button>
-            <h3 className="text-lg font-black text-[#2C221E] mb-2">Add Registered Player</h3>
-            <p className="text-xs text-[#7C6E63] mb-4">A temporary password will be auto-generated for the student's first sign-in.</p>
+            <h3 className="text-lg font-black text-[#2C221E] mb-2">Register Player / Student</h3>
+            <p className="text-xs text-[#7C6E63] mb-4">A temporary password will be auto-generated for the student's initial sign-in.</p>
             
             <form onSubmit={handleAddPlayer} className="space-y-3.5 text-xs">
               <div>
@@ -711,30 +820,57 @@ export const AdminDashboard: React.FC = () => {
               </div>
 
               <div>
+                <label className="block font-bold text-[#4A3E35] mb-1">Email Address</label>
+                <input
+                  type="email"
+                  placeholder="e.g. 20701055@cse.cu.ac.bd"
+                  value={newPlayerEmail}
+                  onChange={(e) => setNewPlayerEmail(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-[#D8C7B3] bg-[#FAF7F2] text-[#2C221E] focus:outline-none focus:ring-2 focus:ring-[#9E2A2B]"
+                />
+              </div>
+
+              <div>
                 <label className="block font-bold text-[#4A3E35] mb-1">Batch Assignment</label>
                 <select
-                  value={newPlayerBatch}
-                  onChange={(e) => setNewPlayerBatch(e.target.value)}
+                  value={newPlayerBatchId || ""}
+                  onChange={(e) => setNewPlayerBatchId(Number(e.target.value))}
                   className="w-full px-3.5 py-2.5 rounded-xl border border-[#D8C7B3] bg-[#FAF7F2] text-[#2C221E] focus:outline-none focus:ring-2 focus:ring-[#9E2A2B]"
                 >
                   {batches.map(b => (
-                    <option key={b.id} value={b.name}>{b.name} ({b.session})</option>
+                    <option key={b.id} value={b.id}>{b.name} ({b.session})</option>
                   ))}
                 </select>
               </div>
 
-              <div>
-                <label className="block font-bold text-[#4A3E35] mb-1">Playing Style / Roles</label>
-                <select
-                  value={newPlayerRole}
-                  onChange={(e) => setNewPlayerRole(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-[#D8C7B3] bg-[#FAF7F2] text-[#2C221E] focus:outline-none focus:ring-2 focus:ring-[#9E2A2B]"
-                >
-                  <option value="🏏 All-Rounder / ⚽ Midfielder">🏏 All-Rounder / ⚽ Midfielder</option>
-                  <option value="🏏 Top-Order Bat / ⚽ Forward">🏏 Top-Order Bat / ⚽ Forward</option>
-                  <option value="🏏 Fast Bowler / ⚽ Defender">🏏 Fast Bowler / ⚽ Defender</option>
-                  <option value="🏏 Wicketkeeper / ⚽ Goalkeeper">🏏 Wicketkeeper / ⚽ Goalkeeper</option>
-                </select>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block font-bold text-[#4A3E35] mb-1">Cricket Role</label>
+                  <select
+                    value={newPlayerRole}
+                    onChange={(e) => setNewPlayerRole(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-[#D8C7B3] bg-[#FAF7F2] text-[#2C221E]"
+                  >
+                    <option value="🏏 Top-Order Bat">🏏 Top-Order Bat</option>
+                    <option value="🏏 All-Rounder">🏏 All-Rounder</option>
+                    <option value="🏏 Fast Bowler">🏏 Fast Bowler</option>
+                    <option value="🏏 Spin Bowler">🏏 Spin Bowler</option>
+                    <option value="🏏 Wicketkeeper">🏏 Wicketkeeper</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block font-bold text-[#4A3E35] mb-1">Football Role</label>
+                  <select
+                    value={newPlayerPosition}
+                    onChange={(e) => setNewPlayerPosition(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-[#D8C7B3] bg-[#FAF7F2] text-[#2C221E]"
+                  >
+                    <option value="⚽ Forward">⚽ Forward</option>
+                    <option value="⚽ Midfielder">⚽ Midfielder</option>
+                    <option value="⚽ Defender">⚽ Defender</option>
+                    <option value="⚽ Goalkeeper">⚽ Goalkeeper</option>
+                  </select>
+                </div>
               </div>
 
               <div className="p-2.5 bg-[#FAF0E6] rounded-xl border border-[#E8D6C3] text-[11px] text-[#842021]">
@@ -768,24 +904,23 @@ export const AdminDashboard: React.FC = () => {
               </div>
               <div>
                 <h3 className="text-lg font-black text-[#2C221E]">Bulk Import Batch Players (CSV)</h3>
-                <p className="text-xs text-[#7C6E63]">Upload a CSV file containing Roll, Name, Email, and Batch</p>
+                <p className="text-xs text-[#7C6E63]">Paste CSV text containing Roll, Name, Email, and Batch</p>
               </div>
             </div>
 
-            <div className="p-4 bg-[#FAF7F2] rounded-2xl border border-[#E8DCCF] text-xs space-y-2 mb-4">
-              <p className="font-bold text-[#2C221E]">Expected CSV Format:</p>
-              <pre className="p-2.5 bg-white rounded-xl border border-[#E5DACB] text-[11px] font-mono text-[#842021] overflow-x-auto">
-{`Roll,Name,Email,Batch
-19701042,Sanzid Rahman,sanzid@cse.cu.ac.bd,20th Batch
-19701015,Tanvir Ahmed,tanvir@cse.cu.ac.bd,20th Batch
-20701004,Farhan Kabir,farhan@cse.cu.ac.bd,21st Batch`}
-              </pre>
+            <div className="p-3.5 bg-[#FAF7F2] rounded-2xl border border-[#E8DCCF] text-xs space-y-1.5 mb-3">
+              <p className="font-bold text-[#2C221E]">Expected CSV Columns: <code className="font-mono text-[#9E2A2B]">Roll, Name, Email, Batch, Role</code></p>
             </div>
 
-            <div className="border-2 border-dashed border-[#D8C7B3] rounded-2xl p-6 text-center space-y-2 bg-[#FAF7F2]/50 hover:bg-[#FAF7F2] transition-colors cursor-pointer">
-              <FileSpreadsheet className="w-8 h-8 text-[#9E2A2B] mx-auto opacity-80" />
-              <p className="text-xs font-bold text-[#2C221E]">Click or drag & drop your student CSV file here</p>
-              <p className="text-[10px] text-[#7C6E63]">Auto-generates temporary passwords for all imported rows</p>
+            <div>
+              <textarea
+                rows={5}
+                placeholder="19701042, Sanzid Rahman, sanzid@cse.cu.ac.bd, 20th Batch, 🏏 Top-Order Bat
+19701015, Tanvir Ahmed, tanvir@cse.cu.ac.bd, 20th Batch, 🏏 All-Rounder"
+                value={csvContent}
+                onChange={(e) => setCsvContent(e.target.value)}
+                className="w-full p-3 font-mono text-xs rounded-xl border border-[#D8C7B3] bg-[#FAF7F2] text-[#2C221E] focus:outline-none focus:ring-2 focus:ring-[#9E2A2B]"
+              />
             </div>
 
             <div className="pt-4 flex gap-2">
@@ -793,10 +928,7 @@ export const AdminDashboard: React.FC = () => {
                 Cancel
               </Button>
               <Button
-                onClick={() => {
-                  setShowBulkCsvModal(false);
-                  triggerNotification("Successfully simulated bulk import of 45 students with auto temp passes!");
-                }}
+                onClick={handleBulkCsvImport}
                 className="w-1/2 bg-[#9E2A2B] hover:bg-[#842021] text-white font-bold rounded-xl text-xs"
               >
                 Upload & Generate Passes
@@ -829,17 +961,14 @@ export const AdminDashboard: React.FC = () => {
               </div>
 
               <div>
-                <label className="block font-bold text-[#4A3E35] mb-1">Sport Mode & Format</label>
+                <label className="block font-bold text-[#4A3E35] mb-1">Sport Mode</label>
                 <select
                   value={newTournamentSport}
-                  onChange={(e) => setNewTournamentSport(e.target.value)}
+                  onChange={(e) => setNewTournamentSport(e.target.value as "CRICKET" | "FOOTBALL")}
                   className="w-full px-3.5 py-2.5 rounded-xl border border-[#D8C7B3] bg-[#FAF7F2] text-[#2C221E] focus:outline-none focus:ring-2 focus:ring-[#9E2A2B]"
                 >
-                  <option value="Cricket (T10)">🏏 Cricket (T10 - 10 Overs)</option>
-                  <option value="Cricket (T20)">🏏 Cricket (T20 - 20 Overs)</option>
-                  <option value="Cricket (6 Overs)">🏏 Cricket (Super Sixes - 6 Overs)</option>
-                  <option value="Football (7-a-side)">⚽ Football (7-a-side Futsal)</option>
-                  <option value="Football (11-a-side)">⚽ Football (11-a-side Full Field)</option>
+                  <option value="CRICKET">🏏 Cricket (T10 / T20)</option>
+                  <option value="FOOTBALL">⚽ Football (Futsal / Full)</option>
                 </select>
               </div>
 
@@ -891,7 +1020,7 @@ export const AdminDashboard: React.FC = () => {
               <div>
                 <label className="block font-bold text-[#4A3E35] mb-1">Target Tournament</label>
                 <select
-                  value={selectedTournamentForOrg}
+                  value={selectedTournamentForOrg || ""}
                   onChange={(e) => setSelectedTournamentForOrg(Number(e.target.value))}
                   className="w-full px-3.5 py-2.5 rounded-xl border border-[#D8C7B3] bg-[#FAF7F2] text-[#2C221E] focus:outline-none focus:ring-2 focus:ring-[#9E2A2B]"
                 >
@@ -904,13 +1033,13 @@ export const AdminDashboard: React.FC = () => {
               <div>
                 <label className="block font-bold text-[#4A3E35] mb-1">Select Student / User</label>
                 <select
-                  value={organizerStudentSelect}
-                  onChange={(e) => setOrganizerStudentSelect(e.target.value)}
+                  value={selectedUserForOrg || ""}
+                  onChange={(e) => setSelectedUserForOrg(Number(e.target.value))}
                   className="w-full px-3.5 py-2.5 rounded-xl border border-[#D8C7B3] bg-[#FAF7F2] text-[#2C221E] focus:outline-none focus:ring-2 focus:ring-[#9E2A2B]"
                 >
                   {players.map(p => (
-                    <option key={p.id} value={`${p.name} (Roll: ${p.roll})`}>
-                      {p.name} (Roll: {p.roll}) · {p.batch}
+                    <option key={p.id} value={p.id}>
+                      {p.name} (Roll: {p.studentId}) · {p.batch}
                     </option>
                   ))}
                 </select>
