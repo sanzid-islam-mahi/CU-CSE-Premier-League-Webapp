@@ -431,6 +431,39 @@ export const LiveScorerPage: React.FC = () => {
     }
   };
 
+  // Football Helpers: Get players currently on the field vs bench
+  const getOnFieldPlayers = (teamId: number) => {
+    if (!matchData) return [];
+    const team = teamId === matchData.teamAId ? matchData.teamA : matchData.teamB;
+    if (!team || !team.members) return [];
+
+    const squadForTeam = matchData.matchSquads?.filter((s: any) => s.teamId === teamId) || [];
+    if (squadForTeam.length > 0) {
+      const onFieldUserIds = new Set(
+        squadForTeam.filter((s: any) => s.isPlayingXI).map((s: any) => s.userId)
+      );
+      return team.members.filter((m: any) => onFieldUserIds.has(m.userId));
+    }
+    // Default fallback if lineup wasn't explicitly saved before starting: first 11
+    return team.members.slice(0, 11);
+  };
+
+  const getBenchPlayers = (teamId: number) => {
+    if (!matchData) return [];
+    const team = teamId === matchData.teamAId ? matchData.teamA : matchData.teamB;
+    if (!team || !team.members) return [];
+
+    const squadForTeam = matchData.matchSquads?.filter((s: any) => s.teamId === teamId) || [];
+    if (squadForTeam.length > 0) {
+      const onFieldUserIds = new Set(
+        squadForTeam.filter((s: any) => s.isPlayingXI).map((s: any) => s.userId)
+      );
+      return team.members.filter((m: any) => !onFieldUserIds.has(m.userId));
+    }
+    // Default fallback if lineup wasn't explicitly saved: members beyond first 11
+    return team.members.slice(11);
+  };
+
   // 8. Football: Open Event Modal (Auto-captures current match minute)
   const handleOpenFootballEventModal = (type: string, teamId: number) => {
     const currentMinute = Math.max(1, Math.floor(footballTimerSeconds / 60) + 1);
@@ -1526,15 +1559,17 @@ export const LiveScorerPage: React.FC = () => {
               </div>
 
               <div>
-                <label className="block font-bold mb-1">Player</label>
+                <label className="block font-bold mb-1">
+                  Player on Field ({getOnFieldPlayers(Number(footballEventTeamId)).length} Available)
+                </label>
                 <select
                   required
                   value={footballEventPrimaryPlayerId}
                   onChange={(e) => setFootballEventPrimaryPlayerId(Number(e.target.value))}
-                  className="w-full px-3 py-2 rounded-xl border border-[#D8C7B3] bg-[#FAF7F2]"
+                  className="w-full px-3 py-2 rounded-xl border border-[#D8C7B3] bg-[#FAF7F2] font-semibold"
                 >
-                  <option value="">-- Choose Player --</option>
-                  {(footballEventTeamId === matchData.teamAId ? matchData.teamA : matchData.teamB)?.members?.map((m: any) => (
+                  <option value="">-- Choose Active On-Field Player --</option>
+                  {getOnFieldPlayers(Number(footballEventTeamId)).map((m: any) => (
                     <option key={m.userId} value={m.userId}>{m.user.name} ({m.user.studentId})</option>
                   ))}
                 </select>
@@ -1549,9 +1584,11 @@ export const LiveScorerPage: React.FC = () => {
                     className="w-full px-3 py-2 rounded-xl border border-[#D8C7B3] bg-[#FAF7F2]"
                   >
                     <option value="">-- None (Solo Goal) --</option>
-                    {(footballEventTeamId === matchData.teamAId ? matchData.teamA : matchData.teamB)?.members?.map((m: any) => (
-                      <option key={m.userId} value={m.userId}>{m.user.name}</option>
-                    ))}
+                    {getOnFieldPlayers(Number(footballEventTeamId))
+                      .filter((m: any) => m.userId !== Number(footballEventPrimaryPlayerId))
+                      .map((m: any) => (
+                        <option key={m.userId} value={m.userId}>{m.user.name} ({m.user.studentId})</option>
+                      ))}
                   </select>
                 </div>
               )}
@@ -1592,7 +1629,11 @@ export const LiveScorerPage: React.FC = () => {
                   <label className="block font-bold mb-1">Team</label>
                   <select
                     value={subTeamId}
-                    onChange={(e) => setSubTeamId(Number(e.target.value))}
+                    onChange={(e) => {
+                      setSubTeamId(Number(e.target.value));
+                      setSubPlayerOutId("");
+                      setSubPlayerInId("");
+                    }}
                     className="w-full px-3 py-2 rounded-xl border border-[#D8C7B3] bg-[#FAF7F2]"
                   >
                     <option value={matchData.teamAId}>{matchData.teamA.name}</option>
@@ -1601,41 +1642,52 @@ export const LiveScorerPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Player Out (Leaving Pitch) */}
+              {/* Player Out (Leaving Pitch - ONLY Players on Field) */}
               <div>
-                <label className="block font-black text-[#C92A2A] mb-1">Player Leaving Pitch (OUT) 🟥</label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="font-black text-[#C92A2A]">Player Leaving Pitch (OUT) 🟥</label>
+                  <span className="text-[10px] font-bold text-[#7C6E63]">On Field ({getOnFieldPlayers(Number(subTeamId)).length})</span>
+                </div>
                 <select
                   required
                   value={subPlayerOutId}
                   onChange={(e) => setSubPlayerOutId(Number(e.target.value))}
-                  className="w-full px-3 py-2 rounded-xl border border-[#FFC9C9] bg-[#FFF5F5]"
+                  className="w-full px-3 py-2 rounded-xl border border-[#FFC9C9] bg-[#FFF5F5] font-bold text-[#C92A2A]"
                 >
-                  <option value="">-- Choose Player Out --</option>
-                  {(subTeamId === matchData.teamAId ? matchData.teamA : matchData.teamB)?.members?.map((m: any) => (
+                  <option value="">-- Choose Active On-Field Player --</option>
+                  {getOnFieldPlayers(Number(subTeamId)).map((m: any) => (
                     <option key={m.userId} value={m.userId}>{m.user.name} ({m.user.studentId})</option>
                   ))}
                 </select>
               </div>
 
-              {/* Player In (Entering Pitch) */}
+              {/* Player In (Entering Pitch - ONLY Players other than that / Bench) */}
               <div>
-                <label className="block font-black text-[#2A7B54] mb-1">Player Entering Pitch (IN) 🟩</label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="font-black text-[#2A7B54]">Player Entering Pitch (IN) 🟩</label>
+                  <span className="text-[10px] font-bold text-[#7C6E63]">Bench ({getBenchPlayers(Number(subTeamId)).length})</span>
+                </div>
                 <select
                   required
                   value={subPlayerInId}
                   onChange={(e) => setSubPlayerInId(Number(e.target.value))}
-                  className="w-full px-3 py-2 rounded-xl border border-[#B2F2BB] bg-[#EBFBEE]"
+                  className="w-full px-3 py-2 rounded-xl border border-[#B2F2BB] bg-[#EBFBEE] font-bold text-[#2A7B54]"
                 >
-                  <option value="">-- Choose Player In --</option>
-                  {(subTeamId === matchData.teamAId ? matchData.teamA : matchData.teamB)?.members?.filter((m: any) => m.userId !== Number(subPlayerOutId)).map((m: any) => (
+                  <option value="">-- Choose Bench / Reserve Player --</option>
+                  {getBenchPlayers(Number(subTeamId)).map((m: any) => (
                     <option key={m.userId} value={m.userId}>{m.user.name} ({m.user.studentId})</option>
                   ))}
                 </select>
+                {getBenchPlayers(Number(subTeamId)).length === 0 && (
+                  <p className="text-[11px] text-[#C92A2A] mt-1 font-semibold">
+                    ⚠️ No bench reserve players registered for this team.
+                  </p>
+                )}
               </div>
 
               <div className="pt-2 flex justify-end gap-2">
                 <Button type="button" variant="outline" onClick={() => setShowSubModal(false)}>Cancel</Button>
-                <Button type="submit" disabled={actionLoading} className="bg-[#1864AB] hover:bg-[#15538E] text-white font-bold">
+                <Button type="submit" disabled={actionLoading || getBenchPlayers(Number(subTeamId)).length === 0} className="bg-[#1864AB] hover:bg-[#15538E] text-white font-bold">
                   Confirm Substitution 🔄
                 </Button>
               </div>

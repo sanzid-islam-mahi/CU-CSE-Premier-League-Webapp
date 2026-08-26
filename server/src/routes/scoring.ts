@@ -154,30 +154,39 @@ scoringRouter.post("/:id/setup", requireAuth, async (req: AuthenticatedRequest, 
     // Clear old squads if resetting
     await prisma.matchSquad.deleteMany({ where: { matchId } });
 
-    // Insert Playing XI for Team A
-    if (Array.isArray(teamAPlayerIds) && teamAPlayerIds.length > 0) {
-      await prisma.matchSquad.createMany({
-        data: teamAPlayerIds.map((userId: number, idx: number) => ({
-          matchId,
-          teamId: match.teamAId,
-          userId,
-          isPlayingXI: true,
-          battingOrder: idx + 1,
-        }))
-      });
-    }
+    // Fetch all members of Team A and Team B
+    const matchWithTeams = await prisma.match.findUnique({
+      where: { id: matchId },
+      include: {
+        teamA: { include: { members: true } },
+        teamB: { include: { members: true } }
+      }
+    });
 
-    // Insert Playing XI for Team B
-    if (Array.isArray(teamBPlayerIds) && teamBPlayerIds.length > 0) {
-      await prisma.matchSquad.createMany({
-        data: teamBPlayerIds.map((userId: number, idx: number) => ({
+    if (matchWithTeams) {
+      const selectedASet = new Set((teamAPlayerIds || []).map(Number));
+      const selectedBSet = new Set((teamBPlayerIds || []).map(Number));
+
+      const squadData = [
+        ...matchWithTeams.teamA.members.map((m, idx) => ({
           matchId,
-          teamId: match.teamBId,
-          userId,
-          isPlayingXI: true,
+          teamId: matchWithTeams.teamAId,
+          userId: m.userId,
+          isPlayingXI: selectedASet.has(m.userId),
+          battingOrder: idx + 1,
+        })),
+        ...matchWithTeams.teamB.members.map((m, idx) => ({
+          matchId,
+          teamId: matchWithTeams.teamBId,
+          userId: m.userId,
+          isPlayingXI: selectedBSet.has(m.userId),
           battingOrder: idx + 1,
         }))
-      });
+      ];
+
+      if (squadData.length > 0) {
+        await prisma.matchSquad.createMany({ data: squadData });
+      }
     }
 
     res.json({ message: "Toss and lineups configured successfully." });
@@ -623,6 +632,43 @@ scoringRouter.post("/:id/football/timer", requireAuth, async (req: Authenticated
         where: { id: matchId },
         data: { status }
       });
+
+      // If match is starting LIVE and no squads exist yet, auto-seed default starting XI (first 11 of each team)
+      if (status === "LIVE") {
+        const existingSquadsCount = await prisma.matchSquad.count({ where: { matchId } });
+        if (existingSquadsCount === 0) {
+          const matchWithTeams = await prisma.match.findUnique({
+            where: { id: matchId },
+            include: {
+              teamA: { include: { members: true } },
+              teamB: { include: { members: true } }
+            }
+          });
+
+          if (matchWithTeams) {
+            const squadData = [
+              ...matchWithTeams.teamA.members.map((m, idx) => ({
+                matchId,
+                teamId: matchWithTeams.teamAId,
+                userId: m.userId,
+                isPlayingXI: idx < 11,
+                battingOrder: idx + 1,
+              })),
+              ...matchWithTeams.teamB.members.map((m, idx) => ({
+                matchId,
+                teamId: matchWithTeams.teamBId,
+                userId: m.userId,
+                isPlayingXI: idx < 11,
+                battingOrder: idx + 1,
+              }))
+            ];
+
+            if (squadData.length > 0) {
+              await prisma.matchSquad.createMany({ data: squadData });
+            }
+          }
+        }
+      }
     }
 
     res.json({ message: "Timer state updated.", detail });
