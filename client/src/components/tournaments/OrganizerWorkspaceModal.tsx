@@ -13,7 +13,9 @@ import {
   UserCheck, 
   MapPin, 
   Flame,
-  UserMinus
+  UserMinus,
+  Pencil,
+  Clock
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { api, type BatchItem, type UserItem } from "@/lib/api";
@@ -62,6 +64,18 @@ export const OrganizerWorkspaceModal: React.FC<OrganizerWorkspaceModalProps> = (
   const [matchStage, setMatchStage] = useState("GROUP_STAGE");
   const [matchStartTime, setMatchStartTime] = useState("");
   const [matchVenue, setMatchVenue] = useState(tournament.sport === "CRICKET" ? "CU CSE Ground" : "CU Central Field");
+
+  // Form states: Edit Match
+  const [editingMatch, setEditingMatch] = useState<any | null>(null);
+  const [editMatchTeamAId, setEditMatchTeamAId] = useState<number | "">("");
+  const [editMatchTeamBId, setEditMatchTeamBId] = useState<number | "">("");
+  const [editMatchGroupId, setEditMatchGroupId] = useState<number | "">("");
+  const [editMatchStage, setEditMatchStage] = useState("GROUP_STAGE");
+  const [editMatchStartTime, setEditMatchStartTime] = useState("");
+  const [editMatchVenue, setEditMatchVenue] = useState("");
+  const [editMatchStatus, setEditMatchStatus] = useState("SCHEDULED");
+  const [editMatchWinnerTeamId, setEditMatchWinnerTeamId] = useState<number | "">("");
+  const [editMatchResultSummary, setEditMatchResultSummary] = useState("");
 
   // Scorer assignment state
   const [selectedScorerMatchId, setSelectedScorerMatchId] = useState<number | null>(null);
@@ -226,7 +240,7 @@ export const OrganizerWorkspaceModal: React.FC<OrganizerWorkspaceModalProps> = (
 
   // 9. Auto Generate Round Robin Fixtures Handler
   const handleAutoGenerateFixtures = async () => {
-    if (!confirm("This will automatically generate round-robin match fixtures for all groups in this tournament. Proceed?")) return;
+    if (!confirm("This will regenerate group stage round-robin matches for all groups in this tournament. Existing scheduled group fixtures will be cleanly replaced. Proceed?")) return;
     setLoading(true);
     try {
       const res = await api.matches.generateRoundRobin(tournament.id);
@@ -271,7 +285,53 @@ export const OrganizerWorkspaceModal: React.FC<OrganizerWorkspaceModalProps> = (
     }
   };
 
-  // 11. Delete Match Handler
+  // 11. Open Edit Match Modal
+  const openEditMatchModal = (m: any) => {
+    setEditingMatch(m);
+    setEditMatchTeamAId(m.teamAId || "");
+    setEditMatchTeamBId(m.teamBId || "");
+    setEditMatchGroupId(m.groupId || "");
+    setEditMatchStage(m.stage || "GROUP_STAGE");
+    setEditMatchStartTime(m.startTime ? new Date(m.startTime).toISOString().slice(0, 16) : "");
+    setEditMatchVenue(m.venue || "");
+    setEditMatchStatus(m.status || "SCHEDULED");
+    setEditMatchWinnerTeamId(m.winnerTeamId || "");
+    setEditMatchResultSummary(m.resultSummary || "");
+  };
+
+  // 12. Save Edited Match Handler
+  const handleSaveEditedMatch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingMatch) return;
+    if (editMatchTeamAId === editMatchTeamBId) {
+      alert("A team cannot play against itself.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await api.matches.update(editingMatch.id, {
+        teamAId: editMatchTeamAId !== "" ? Number(editMatchTeamAId) : undefined,
+        teamBId: editMatchTeamBId !== "" ? Number(editMatchTeamBId) : undefined,
+        groupId: editMatchGroupId !== "" ? Number(editMatchGroupId) : null,
+        stage: editMatchStage,
+        startTime: editMatchStartTime ? new Date(editMatchStartTime).toISOString() : null,
+        venue: editMatchVenue || null,
+        status: editMatchStatus,
+        winnerTeamId: editMatchWinnerTeamId !== "" ? Number(editMatchWinnerTeamId) : null,
+        resultSummary: editMatchResultSummary || null,
+      });
+      triggerToast(`Match #${editingMatch.matchNumber} updated successfully!`);
+      setEditingMatch(null);
+      onRefresh();
+    } catch (err: any) {
+      alert(err.message || "Failed to update match.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 13. Delete Match Handler
   const handleDeleteMatch = async (matchId: number, matchNum: number) => {
     if (!confirm(`Are you sure you want to delete Match #${matchNum}?`)) return;
     try {
@@ -283,7 +343,7 @@ export const OrganizerWorkspaceModal: React.FC<OrganizerWorkspaceModalProps> = (
     }
   };
 
-  // 12. Clear All Scheduled Matches Handler
+  // 14. Clear All Scheduled Matches Handler
   const handleClearScheduledMatches = async () => {
     if (!confirm("Are you sure you want to clear all scheduled matches in this tournament? Completed/Live matches will be preserved.")) return;
     setLoading(true);
@@ -298,7 +358,7 @@ export const OrganizerWorkspaceModal: React.FC<OrganizerWorkspaceModalProps> = (
     }
   };
 
-  // 12. Assign Scorer Handler
+  // 15. Assign Scorer Handler
   const handleAssignScorer = async (matchId: number) => {
     if (!selectedScorerUserId) return;
     try {
@@ -978,29 +1038,73 @@ export const OrganizerWorkspaceModal: React.FC<OrganizerWorkspaceModalProps> = (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {tournament.matches?.map((m: any) => (
                     <div key={m.id} className="p-4 bg-white rounded-2xl border border-[#E5DACB] shadow-xs space-y-3 text-xs">
+                      
+                      {/* Match Header with Match # and Actions */}
                       <div className="flex items-center justify-between text-[11px] text-[#7C6E63] pb-2 border-b border-[#EFE8DC]">
-                        <span className="font-bold text-[#9E2A2B]">Match #{m.matchNumber}</span>
-                        <span>{m.stage?.replace("_", " ")} {m.group ? `· ${m.group.name}` : ""}</span>
-                        <button
-                          onClick={() => handleDeleteMatch(m.id, m.matchNumber)}
-                          className="p-1 rounded-lg text-[#C92A2A] hover:bg-[#FFF5F5]"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-[#9E2A2B]">Match #{m.matchNumber}</span>
+                          <span>{m.stage?.replace("_", " ")} {m.group ? `· ${m.group.name}` : ""}</span>
+                        </div>
+
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => openEditMatchModal(m)}
+                            className="p-1.5 rounded-lg text-[#7C6E63] hover:text-[#9E2A2B] hover:bg-[#FAF0E6] transition-colors"
+                            title="Edit Match Details"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteMatch(m.id, m.matchNumber)}
+                            className="p-1.5 rounded-lg text-[#7C6E63] hover:text-[#C92A2A] hover:bg-[#FFF5F5] transition-colors"
+                            title="Delete Match"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </div>
 
+                      {/* Team A vs Team B Display */}
                       <div className="flex items-center justify-between font-extrabold text-sm text-[#2C221E]">
-                        <span>{m.teamA.name}</span>
+                        <span className={m.winnerTeamId === m.teamAId ? "text-[#2A7B54]" : ""}>
+                          {m.teamA.name} {m.winnerTeamId === m.teamAId && "👑"}
+                        </span>
                         <span className="text-xs text-[#9E2A2B] bg-[#FAF0E6] px-2 py-0.5 rounded font-mono">VS</span>
-                        <span>{m.teamB.name}</span>
+                        <span className={m.winnerTeamId === m.teamBId ? "text-[#2A7B54]" : ""}>
+                          {m.teamB.name} {m.winnerTeamId === m.teamBId && "👑"}
+                        </span>
                       </div>
 
-                      <div className="flex items-center justify-between text-[11px] text-[#7C6E63] pt-1">
+                      {/* Result summary if any */}
+                      {m.resultSummary && (
+                        <p className="text-[11px] font-bold text-[#842021] bg-[#FAF0E6] px-2.5 py-1 rounded-lg border border-[#E8D6C3]">
+                          📣 {m.resultSummary}
+                        </p>
+                      )}
+
+                      {/* Venue, Time & Status */}
+                      <div className="flex flex-wrap items-center justify-between gap-1 text-[11px] text-[#7C6E63] pt-1">
                         <span className="flex items-center gap-1">
                           <MapPin className="w-3.5 h-3.5 text-[#9E2A2B]" />
                           <span>{m.venue || "CU CSE Grounds"}</span>
                         </span>
-                        <span className="font-bold text-[#2A7B54]">{m.status}</span>
+
+                        <div className="flex items-center gap-2">
+                          {m.startTime && (
+                            <span className="flex items-center gap-1 font-mono text-[10px] text-[#4A3E35]">
+                              <Clock className="w-3 h-3 text-[#9E2A2B]" />
+                              <span>{new Date(m.startTime).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
+                            </span>
+                          )}
+
+                          <span className={`font-bold px-2 py-0.5 rounded-full text-[10px] ${
+                            m.status === "LIVE" ? "bg-[#FFF5F5] text-[#C92A2A] animate-pulse border border-[#FF8787]" :
+                            m.status === "COMPLETED" ? "bg-[#E6FCF5] text-[#0CA678] border border-[#20C997]" :
+                            "bg-[#FAF0E6] text-[#842021]"
+                          }`}>
+                            {m.status}
+                          </span>
+                        </div>
                       </div>
 
                       {/* Scorer Delegation Cell */}
@@ -1051,6 +1155,199 @@ export const OrganizerWorkspaceModal: React.FC<OrganizerWorkspaceModalProps> = (
         </div>
 
       </div>
+
+      {/* DEDICATED EDIT MATCH MODAL */}
+      {editingMatch && (
+        <div className="fixed inset-0 z-60 flex items-center justify-center p-3 sm:p-4 bg-black/70 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="bg-white border-2 border-[#E5DACB] rounded-3xl shadow-2xl w-full max-w-xl flex flex-col relative overflow-hidden">
+            <div className="h-2 w-full brick-gradient absolute top-0 left-0 right-0" />
+
+            <div className="p-4 sm:p-5 border-b border-[#EFE8DC] flex items-center justify-between bg-[#FAF7F2]">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-[#FAF0E6] text-[#9E2A2B] flex items-center justify-center border border-[#E8D6C3]">
+                  <Pencil className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-[#2C221E]">
+                    Edit Match #{editingMatch.matchNumber} Fixture
+                  </h3>
+                  <p className="text-[11px] text-[#7C6E63]">
+                    Update teams, venue, kickoff timing, group or match status.
+                  </p>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setEditingMatch(null)}
+                className="p-1.5 rounded-xl text-[#7C6E63] hover:bg-[#EFE8DC]"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEditedMatch} className="p-5 space-y-4 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                
+                {/* Team A */}
+                <div>
+                  <label className="block font-bold text-[#4A3E35] mb-1">Team A (Home)</label>
+                  <select
+                    required
+                    value={editMatchTeamAId}
+                    onChange={(e) => setEditMatchTeamAId(Number(e.target.value))}
+                    className="w-full px-3 py-2 rounded-xl border border-[#D8C7B3] bg-[#FAF7F2] text-[#2C221E] focus:outline-none focus:ring-2 focus:ring-[#9E2A2B]"
+                  >
+                    {tournament.teams?.map((t: any) => (
+                      <option key={t.id} value={t.id}>{t.name} ({t.shortName})</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Team B */}
+                <div>
+                  <label className="block font-bold text-[#4A3E35] mb-1">Team B (Away)</label>
+                  <select
+                    required
+                    value={editMatchTeamBId}
+                    onChange={(e) => setEditMatchTeamBId(Number(e.target.value))}
+                    className="w-full px-3 py-2 rounded-xl border border-[#D8C7B3] bg-[#FAF7F2] text-[#2C221E] focus:outline-none focus:ring-2 focus:ring-[#9E2A2B]"
+                  >
+                    {tournament.teams?.map((t: any) => (
+                      <option key={t.id} value={t.id}>{t.name} ({t.shortName})</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Stage */}
+                <div>
+                  <label className="block font-bold text-[#4A3E35] mb-1">Stage</label>
+                  <select
+                    value={editMatchStage}
+                    onChange={(e) => setEditMatchStage(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-[#D8C7B3] bg-[#FAF7F2] text-[#2C221E] focus:outline-none focus:ring-2 focus:ring-[#9E2A2B]"
+                  >
+                    <option value="GROUP_STAGE">Group Stage</option>
+                    <option value="ROUND_OF_16">Round of 16</option>
+                    <option value="QUARTER_FINAL">Quarter Final</option>
+                    <option value="SEMI_FINAL">Semi Final</option>
+                    <option value="THIRD_PLACE">Third Place Playoff</option>
+                    <option value="FINAL">Final</option>
+                  </select>
+                </div>
+
+                {/* Group */}
+                <div>
+                  <label className="block font-bold text-[#4A3E35] mb-1">Group Allocation</label>
+                  <select
+                    value={editMatchGroupId}
+                    onChange={(e) => setEditMatchGroupId(e.target.value === "" ? "" : Number(e.target.value))}
+                    className="w-full px-3 py-2 rounded-xl border border-[#D8C7B3] bg-[#FAF7F2] text-[#2C221E] focus:outline-none focus:ring-2 focus:ring-[#9E2A2B]"
+                  >
+                    <option value="">-- No Group (General/Knockout) --</option>
+                    {tournament.groups?.map((g: any) => (
+                      <option key={g.id} value={g.id}>{g.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Date & Time */}
+                <div>
+                  <label className="block font-bold text-[#4A3E35] mb-1">Kickoff Date & Time</label>
+                  <input
+                    type="datetime-local"
+                    value={editMatchStartTime}
+                    onChange={(e) => setEditMatchStartTime(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-[#D8C7B3] bg-[#FAF7F2] text-[#2C221E] focus:outline-none focus:ring-2 focus:ring-[#9E2A2B]"
+                  />
+                </div>
+
+                {/* Venue */}
+                <div>
+                  <label className="block font-bold text-[#4A3E35] mb-1">Match Venue</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. CU CSE Ground"
+                    value={editMatchVenue}
+                    onChange={(e) => setEditMatchVenue(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-[#D8C7B3] bg-[#FAF7F2] text-[#2C221E] focus:outline-none focus:ring-2 focus:ring-[#9E2A2B]"
+                  />
+                </div>
+
+                {/* Status */}
+                <div>
+                  <label className="block font-bold text-[#4A3E35] mb-1">Match Status</label>
+                  <select
+                    value={editMatchStatus}
+                    onChange={(e) => setEditMatchStatus(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-[#D8C7B3] bg-[#FAF7F2] text-[#2C221E] font-bold focus:outline-none focus:ring-2 focus:ring-[#9E2A2B]"
+                  >
+                    <option value="SCHEDULED">SCHEDULED</option>
+                    <option value="TOSS">TOSS</option>
+                    <option value="LIVE">LIVE 🔴</option>
+                    <option value="INNINGS_BREAK">INNINGS BREAK</option>
+                    <option value="HALFTIME">HALFTIME</option>
+                    <option value="COMPLETED">COMPLETED 🏆</option>
+                    <option value="POSTPONED">POSTPONED</option>
+                    <option value="ABANDONED">ABANDONED</option>
+                  </select>
+                </div>
+
+                {/* Winner Team (if completed) */}
+                {(editMatchStatus === "COMPLETED" || editMatchStatus === "ABANDONED") && (
+                  <div>
+                    <label className="block font-bold text-[#4A3E35] mb-1">Winner Team</label>
+                    <select
+                      value={editMatchWinnerTeamId}
+                      onChange={(e) => setEditMatchWinnerTeamId(e.target.value === "" ? "" : Number(e.target.value))}
+                      className="w-full px-3 py-2 rounded-xl border border-[#D8C7B3] bg-[#FAF7F2] text-[#2C221E] focus:outline-none focus:ring-2 focus:ring-[#9E2A2B]"
+                    >
+                      <option value="">-- No Winner (Tied / Abandoned) --</option>
+                      {tournament.teams?.filter((t: any) => t.id === editMatchTeamAId || t.id === editMatchTeamBId).map((t: any) => (
+                        <option key={t.id} value={t.id}>{t.name} (Winner)</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+              </div>
+
+              {/* Result Summary */}
+              {(editMatchStatus === "COMPLETED" || editMatchStatus === "ABANDONED") && (
+                <div>
+                  <label className="block font-bold text-[#4A3E35] mb-1">Result Summary Note</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. 24th Batch won by 6 runs or Match tied"
+                    value={editMatchResultSummary}
+                    onChange={(e) => setEditMatchResultSummary(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-[#D8C7B3] bg-[#FAF7F2] text-[#2C221E] focus:outline-none focus:ring-2 focus:ring-[#9E2A2B]"
+                  />
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className="pt-3 border-t border-[#EFE8DC] flex items-center justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setEditingMatch(null)}
+                  className="border-[#D8C7B3] text-[#7C6E63] text-xs h-9 rounded-xl font-bold"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={loading}
+                  className="bg-[#9E2A2B] hover:bg-[#842021] text-white text-xs h-9 px-5 rounded-xl font-bold shadow-md shadow-[#9E2A2B]/20"
+                >
+                  Save Changes
+                </Button>
+              </div>
+            </form>
+
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };

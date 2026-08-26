@@ -17,6 +17,9 @@ const scheduleMatchSchema = z.object({
 });
 
 const updateMatchSchema = z.object({
+  teamAId: z.number().int().positive().optional(),
+  teamBId: z.number().int().positive().optional(),
+  groupId: z.number().int().positive().optional().nullable(),
   status: z.enum(["SCHEDULED", "TOSS", "LIVE", "INNINGS_BREAK", "HALFTIME", "COMPLETED", "ABANDONED", "POSTPONED"]).optional(),
   startTime: z.string().optional().nullable(),
   venue: z.string().optional().nullable(),
@@ -351,11 +354,27 @@ matchesRouter.put("/:id", requireAuth, async (req: AuthenticatedRequest, res) =>
       return;
     }
 
-    const { status, startTime, venue, resultSummary, winnerTeamId, isTied, isNoResult, playerOfTheMatchId, stage } = parsed.data;
+    const { 
+      teamAId,
+      teamBId,
+      groupId,
+      status, 
+      startTime, 
+      venue, 
+      resultSummary, 
+      winnerTeamId, 
+      isTied, 
+      isNoResult, 
+      playerOfTheMatchId, 
+      stage 
+    } = parsed.data;
 
     const updated = await prisma.match.update({
       where: { id },
       data: {
+        teamAId: teamAId !== undefined ? teamAId : undefined,
+        teamBId: teamBId !== undefined ? teamBId : undefined,
+        groupId: groupId !== undefined ? groupId : undefined,
         status: status !== undefined ? status : undefined,
         startTime: startTime !== undefined ? (startTime ? new Date(startTime) : null) : undefined,
         venue: venue !== undefined ? venue : undefined,
@@ -369,6 +388,7 @@ matchesRouter.put("/:id", requireAuth, async (req: AuthenticatedRequest, res) =>
       include: {
         teamA: true,
         teamB: true,
+        group: true,
         winnerTeam: true,
         playerOfTheMatch: true,
       }
