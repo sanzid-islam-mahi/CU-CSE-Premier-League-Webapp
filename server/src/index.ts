@@ -11,6 +11,8 @@ import { scoringRouter } from "./routes/scoring.js";
 import uploadRouter from "./routes/upload.js";
 import mediaRouter from "./routes/media.js";
 
+import fs from "fs";
+
 const app = express();
 const PORT = process.env.PORT ?? 3001;
 
@@ -18,7 +20,15 @@ app.use(cors());
 app.use(express.json());
 
 // Serve uploaded media files statically
-app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
+const baseUploadsDir = fs.existsSync(path.join(process.cwd(), "server", "uploads"))
+  ? path.join(process.cwd(), "server", "uploads")
+  : path.join(process.cwd(), "uploads");
+
+if (!fs.existsSync(baseUploadsDir)) {
+  fs.mkdirSync(baseUploadsDir, { recursive: true });
+}
+
+app.use("/uploads", express.static(baseUploadsDir));
 
 app.get("/api/health", (_req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });

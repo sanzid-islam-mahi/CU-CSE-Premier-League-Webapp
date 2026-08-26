@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 
 interface SmartAvatarProps {
   src?: string | null;
@@ -20,6 +20,10 @@ export const SmartAvatar: React.FC<SmartAvatarProps> = ({
   badge,
 }) => {
   const [hasError, setHasError] = useState(false);
+
+  useEffect(() => {
+    setHasError(false);
+  }, [src]);
 
   const sizeClasses = {
     sm: "w-8 h-8 text-xs",

@@ -8,15 +8,18 @@ import { requireAuth } from "../middleware/auth.js";
 const uploadRouter = Router();
 
 // Ensure uploads directory exists
-const uploadDir = path.join(process.cwd(), "uploads");
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
+const baseUploadsDir = fs.existsSync(path.join(process.cwd(), "server", "uploads"))
+  ? path.join(process.cwd(), "server", "uploads")
+  : path.join(process.cwd(), "uploads");
+
+if (!fs.existsSync(baseUploadsDir)) {
+  fs.mkdirSync(baseUploadsDir, { recursive: true });
 }
 
 // Configure Multer Disk Storage
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => {
-    cb(null, uploadDir);
+    cb(null, baseUploadsDir);
   },
   filename: (_req, file, cb) => {
     const ext = path.extname(file.originalname).toLowerCase() || ".png";
