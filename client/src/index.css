@@ -1,0 +1,150 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "@fontsource-variable/geist";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+    --font-heading: var(--font-sans);
+    --font-sans: 'Geist Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --color-sidebar-ring: var(--sidebar-ring);
+    --color-sidebar-border: var(--sidebar-border);
+    --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+    --color-sidebar-accent: var(--sidebar-accent);
+    --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+    --color-sidebar-primary: var(--sidebar-primary);
+    --color-sidebar-foreground: var(--sidebar-foreground);
+    --color-sidebar: var(--sidebar);
+    --color-chart-5: var(--chart-5);
+    --color-chart-4: var(--chart-4);
+    --color-chart-3: var(--chart-3);
+    --color-chart-2: var(--chart-2);
+    --color-chart-1: var(--chart-1);
+    --color-ring: var(--ring);
+    --color-input: var(--input);
+    --color-border: var(--border);
+    --color-destructive: var(--destructive);
+    --color-accent-foreground: var(--accent-foreground);
+    --color-accent: var(--accent);
+    --color-muted-foreground: var(--muted-foreground);
+    --color-muted: var(--muted);
+    --color-secondary-foreground: var(--secondary-foreground);
+    --color-secondary: var(--secondary);
+    --color-primary-foreground: var(--primary-foreground);
+    --color-primary: var(--primary);
+    --color-popover-foreground: var(--popover-foreground);
+    --color-popover: var(--popover);
+    --color-card-foreground: var(--card-foreground);
+    --color-card: var(--card);
+    --color-foreground: var(--foreground);
+    --color-background: var(--background);
+    --radius-sm: calc(var(--radius) * 0.6);
+    --radius-md: calc(var(--radius) * 0.8);
+    --radius-lg: var(--radius);
+    --radius-xl: calc(var(--radius) * 1.4);
+    --radius-2xl: calc(var(--radius) * 1.8);
+}
+
+:root {
+    /* Warm Beige / Sand Canvas */
+    --background: #FAF7F2;
+    --foreground: #2C221E;
+
+    /* Clean Card & Popovers on Beige */
+    --card: #FFFFFF;
+    --card-foreground: #2C221E;
+    --popover: #FFFFFF;
+    --popover-foreground: #2C221E;
+
+    /* University of Chittagong CSE Brick Red */
+    --primary: #9E2A2B;
+    --primary-foreground: #FFFFFF;
+
+    /* Warm Secondary & Accents */
+    --secondary: #F3ECE2;
+    --secondary-foreground: #6B1C1D;
+    --muted: #EFE8DC;
+    --muted-foreground: #7C6E63;
+    --accent: #FBEFE9;
+    --accent-foreground: #8B2324;
+
+    /* Feedback & Borders */
+    --destructive: #C92A2A;
+    --border: #E5DACB;
+    --input: #DFD2BF;
+    --ring: #9E2A2B;
+
+    /* Charts & Sports Stats */
+    --chart-1: #9E2A2B;
+    --chart-2: #D96B27;
+    --chart-3: #2A7B54;
+    --chart-4: #285E8E;
+    --chart-5: #6B4E71;
+
+    --radius: 0.75rem;
+
+    --sidebar: #F5EFEB;
+    --sidebar-foreground: #2C221E;
+    --sidebar-primary: #9E2A2B;
+    --sidebar-primary-foreground: #FFFFFF;
+    --sidebar-accent: #EFE6D8;
+    --sidebar-accent-foreground: #8B2324;
+    --sidebar-border: #E4D8C7;
+    --sidebar-ring: #9E2A2B;
+}
+
+.dark {
+    --background: #171311;
+    --foreground: #F5EFEB;
+    --card: #201A17;
+    --card-foreground: #F5EFEB;
+    --popover: #201A17;
+    --popover-foreground: #F5EFEB;
+    --primary: #C94A4C;
+    --primary-foreground: #FFFFFF;
+    --secondary: #2C231F;
+    --secondary-foreground: #F5EFEB;
+    --muted: #29211D;
+    --muted-foreground: #AFA295;
+    --accent: #332420;
+    --accent-foreground: #FF8F90;
+    --destructive: #E03131;
+    --border: #3A2F29;
+    --input: #3A2F29;
+    --ring: #C94A4C;
+    --sidebar: #1C1613;
+    --sidebar-foreground: #F5EFEB;
+    --sidebar-primary: #C94A4C;
+    --sidebar-primary-foreground: #FFFFFF;
+    --sidebar-accent: #2C231F;
+    --sidebar-accent-foreground: #FF8F90;
+    --sidebar-border: #3A2F29;
+    --sidebar-ring: #C94A4C;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground antialiased min-h-screen selection:bg-[#9E2A2B]/20 selection:text-[#842021];
+  }
+  html {
+    @apply font-sans scroll-smooth;
+  }
+}
+
+.brick-gradient {
+  background: linear-gradient(135deg, #842021 0%, #9E2A2B 50%, #B73839 100%);
+}
+
+.brick-glass {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.subtle-brick-border {
+  border-color: #E8DCCF;
+}
