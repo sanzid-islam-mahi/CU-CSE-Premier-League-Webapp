@@ -423,20 +423,30 @@ export const LiveScorerPage: React.FC = () => {
   const handleMarkFullTime = async () => {
     if (!confirm("Conclude 2nd Half and mark Full Time?")) return;
     setIsFootballTimerRunning(false);
+
+    const isKnockout = matchData.stage !== "GROUP_STAGE";
+    const isTied = (matchData.footballDetail?.teamAScore || 0) === (matchData.footballDetail?.teamBScore || 0);
+
     try {
-      await api.scoring.updateFootballTimer(matchId, {
-        clockSeconds: footballTimerSeconds,
-        isClockRunning: false,
-        currentHalf: 2,
-        status: "COMPLETED",
-      });
-
-      const isKnockout = matchData.stage !== "GROUP_STAGE";
-      const isTied = (matchData.footballDetail?.teamAScore || 0) === (matchData.footballDetail?.teamBScore || 0);
-
       if (isKnockout && isTied) {
+        // Leave match in LIVE status with currentHalf = 5 (PENALTIES)
+        await api.scoring.updateFootballTimer(matchId, {
+          clockSeconds: footballTimerSeconds,
+          isClockRunning: false,
+          currentHalf: 5,
+          status: "LIVE",
+        });
+        triggerToast("Full Time tied! Advancing to Knockout Penalty Shootout 🥅");
+        fetchMatchData();
         handleOpenPenaltyShootoutModal();
       } else {
+        await api.scoring.updateFootballTimer(matchId, {
+          clockSeconds: footballTimerSeconds,
+          isClockRunning: false,
+          currentHalf: 2,
+          status: "COMPLETED",
+        });
+        fetchMatchData();
         setShowCompleteModal(true);
       }
     } catch (err: any) {

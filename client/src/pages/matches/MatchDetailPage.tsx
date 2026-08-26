@@ -12,7 +12,8 @@ import {
   FileText,
   Activity,
   Users,
-  Sparkles
+  Sparkles,
+  BarChart3
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
@@ -30,11 +31,33 @@ export const MatchDetailPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<"commentary" | "analytics" | "scorecard" | "lineups" | "info">("commentary");
   const [showStoryModal, setShowStoryModal] = useState(false);
 
+  // Football Live Ticking Stopwatch for Viewer
+  const [footballTimerSeconds, setFootballTimerSeconds] = useState(0);
+
   useEffect(() => {
     fetchMatchDetails();
     const interval = setInterval(fetchMatchDetails, 5000); // 5-second live polling
     return () => clearInterval(interval);
   }, [matchId]);
+
+  // Sync and tick football timer locally
+  useEffect(() => {
+    if (matchData?.footballDetail) {
+      setFootballTimerSeconds(matchData.footballDetail.clockSeconds || 0);
+    }
+  }, [matchData?.footballDetail?.clockSeconds]);
+
+  useEffect(() => {
+    let timer: any = null;
+    if (matchData?.footballDetail?.isClockRunning) {
+      timer = setInterval(() => {
+        setFootballTimerSeconds(prev => prev + 1);
+      }, 1000);
+    }
+    return () => {
+      if (timer) clearInterval(timer);
+    };
+  }, [matchData?.footballDetail?.isClockRunning]);
 
   const fetchMatchDetails = async () => {
     try {
@@ -231,6 +254,103 @@ export const MatchDetailPage: React.FC = () => {
   const teamASquad = getTeamMatchSquad(matchData.teamAId);
   const teamBSquad = getTeamMatchSquad(matchData.teamBId);
 
+  // Football Helpers: Live Phase Badge & Ticking Clock
+  const formatFootballClock = (totalSec: number) => {
+    const mins = Math.floor(totalSec / 60);
+    const secs = totalSec % 60;
+    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+  };
+
+  const getFootballPhaseBadge = () => {
+    if (!matchData?.footballDetail) return null;
+    const { currentHalf, isClockRunning } = matchData.footballDetail;
+    const status = matchData.status;
+
+    if (status === "SCHEDULED") {
+      return { text: "Upcoming", color: "bg-[#FAF0E6] text-[#842021] border-[#E8D6C3]" };
+    }
+
+    if (currentHalf === 5 && status === "LIVE") {
+      return {
+        text: "🔴 LIVE: PENALTY SHOOTOUT 🥅",
+        color: "bg-[#FFF5F5] text-[#C92A2A] animate-pulse border-[#FF8787] font-black"
+      };
+    }
+
+    if (status === "COMPLETED") {
+      if (matchData.footballDetail.teamAPenaltyScore !== null && matchData.footballDetail.teamAPenaltyScore !== undefined) {
+        return { text: "Full Time (FT-PEN) 🏆", color: "bg-[#E6FCF5] text-[#0CA678] border-[#20C997] font-black" };
+      }
+      return { text: "Full Time (FT)", color: "bg-[#E6FCF5] text-[#0CA678] border-[#20C997] font-bold" };
+    }
+
+    if (currentHalf === 1) {
+      return {
+        text: isClockRunning ? `1st Half · ${formatFootballClock(footballTimerSeconds)}` : "1st Half (Paused)",
+        color: isClockRunning ? "bg-[#EBFBEE] text-[#2B8A3E] border-[#B2F2BB] animate-pulse font-bold" : "bg-[#FFF9DB] text-[#F59F00] border-[#FFE066] font-bold"
+      };
+    }
+
+    if (currentHalf === 2) {
+      return {
+        text: isClockRunning ? `2nd Half · ${formatFootballClock(footballTimerSeconds)}` : "2nd Half (Paused)",
+        color: isClockRunning ? "bg-[#EBFBEE] text-[#2B8A3E] border-[#B2F2BB] animate-pulse font-bold" : "bg-[#FFF9DB] text-[#F59F00] border-[#FFE066] font-bold"
+      };
+    }
+
+    return { text: "LIVE", color: "bg-[#FFF5F5] text-[#C92A2A] border-[#FF8787]" };
+  };
+
+  const getTeamGoalscorers = (teamId: number) => {
+    if (!matchData?.footballEvents) return [];
+    return matchData.footballEvents
+      .filter((ev: any) => ev.teamId === teamId && ev.eventType === "GOAL")
+      .map((ev: any) => ({
+        id: ev.id,
+        minute: ev.minute,
+        playerName: ev.primaryPlayer?.name || "Player",
+        assistName: ev.secondaryPlayer?.name
+      }));
+  };
+
+  const teamAGoalscorers = !isCricket ? getTeamGoalscorers(matchData.teamAId) : [];
+  const teamBGoalscorers = !isCricket ? getTeamGoalscorers(matchData.teamBId) : [];
+
+  const getFootballStats = () => {
+    if (!matchData?.footballDetail) return [];
+    const events = matchData.footballEvents || [];
+
+    const goalsA = matchData.footballDetail.teamAScore || 0;
+    const goalsB = matchData.footballDetail.teamBScore || 0;
+
+    const cornersA = matchData.footballDetail.teamACorners || 0;
+    const cornersB = matchData.footballDetail.teamBCorners || 0;
+
+    const foulsA = matchData.footballDetail.teamAFouls || 0;
+    const foulsB = matchData.footballDetail.teamBFouls || 0;
+
+    const yellowA = events.filter((ev: any) => ev.teamId === matchData.teamAId && ev.eventType === "YELLOW_CARD").length;
+    const yellowB = events.filter((ev: any) => ev.teamId === matchData.teamBId && ev.eventType === "YELLOW_CARD").length;
+
+    const redA = events.filter((ev: any) => ev.teamId === matchData.teamAId && ev.eventType === "RED_CARD").length;
+    const redB = events.filter((ev: any) => ev.teamId === matchData.teamBId && ev.eventType === "RED_CARD").length;
+
+    const subsA = events.filter((ev: any) => ev.teamId === matchData.teamAId && ev.eventType === "SUBSTITUTION").length;
+    const subsB = events.filter((ev: any) => ev.teamId === matchData.teamBId && ev.eventType === "SUBSTITUTION").length;
+
+    return [
+      { label: "Goals Scored", valA: goalsA, valB: goalsB },
+      { label: "Corner Kicks", valA: cornersA, valB: cornersB },
+      { label: "Fouls Committed", valA: foulsA, valB: foulsB },
+      { label: "Yellow Cards", valA: yellowA, valB: yellowB },
+      { label: "Red Cards", valA: redA, valB: redB },
+      { label: "Substitutions", valA: subsA, valB: subsB },
+    ];
+  };
+
+  const footballStats = !isCricket ? getFootballStats() : [];
+  const footballPhase = !isCricket ? getFootballPhaseBadge() : null;
+
   return (
     <div className="min-h-screen bg-[#FAF7F2] text-[#2C221E] pb-20">
       
@@ -304,114 +424,176 @@ export const MatchDetailPage: React.FC = () => {
                 </span>
               )}
 
-              <span className={`font-black text-xs px-3 py-1 rounded-full uppercase ${
-                matchData.status === "LIVE" ? "bg-[#FFF5F5] text-[#C92A2A] animate-pulse border border-[#FF8787]" :
-                matchData.status === "COMPLETED" ? "bg-[#E6FCF5] text-[#0CA678] border border-[#20C997]" :
-                "bg-[#FAF0E6] text-[#842021]"
-              }`}>
-                {matchData.status === "LIVE" ? "🔴 LIVE NOW" : matchData.status}
-              </span>
+              {/* Dynamic Phase Status Badge */}
+              {!isCricket && footballPhase ? (
+                <span className={`font-black text-xs px-3 py-1 rounded-full uppercase border ${footballPhase.color}`}>
+                  {footballPhase.text}
+                </span>
+              ) : (
+                <span className={`font-black text-xs px-3 py-1 rounded-full uppercase ${
+                  matchData.status === "LIVE" ? "bg-[#FFF5F5] text-[#C92A2A] animate-pulse border border-[#FF8787]" :
+                  matchData.status === "COMPLETED" ? "bg-[#E6FCF5] text-[#0CA678] border border-[#20C997]" :
+                  "bg-[#FAF0E6] text-[#842021]"
+                }`}>
+                  {matchData.status === "LIVE" ? "🔴 LIVE NOW" : matchData.status}
+                </span>
+              )}
             </div>
           </div>
 
           {/* Big Match Teams Scoreboard */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center py-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch py-2">
             
-            {/* Team A */}
-            <div className={`p-5 rounded-3xl border-2 flex items-center justify-between transition-all ${
+            {/* Team A Card */}
+            <div className={`p-5 rounded-3xl border-2 flex flex-col justify-between gap-3 transition-all ${
               matchData.winnerTeamId === matchData.teamAId
                 ? "bg-[#E6FCF5] border-[#20C997]"
                 : "bg-[#FAF7F2] border-[#E8DCCF]"
             }`}>
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-2xl brick-gradient text-white flex items-center justify-center font-black text-base shadow-xs">
-                  {matchData.teamA.shortName || matchData.teamA.name.slice(0, 2)}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-2xl brick-gradient text-white flex items-center justify-center font-black text-base shadow-xs">
+                    {matchData.teamA.shortName || matchData.teamA.name.slice(0, 2)}
+                  </div>
+                  <div>
+                    <h2 className="font-black text-base sm:text-lg text-[#2C221E] flex items-center gap-1.5">
+                      <span>{matchData.teamA.name}</span>
+                      {matchData.winnerTeamId === matchData.teamAId && <span className="text-sm">👑</span>}
+                    </h2>
+                    <p className="text-xs text-[#7C6E63]">{matchData.teamA.batch ? matchData.teamA.batch.name : "CU CSE"}</p>
+                  </div>
                 </div>
-                <div>
-                  <h2 className="font-black text-base sm:text-lg text-[#2C221E] flex items-center gap-1.5">
-                    <span>{matchData.teamA.name}</span>
-                    {matchData.winnerTeamId === matchData.teamAId && <span className="text-sm">👑</span>}
-                  </h2>
-                  <p className="text-xs text-[#7C6E63]">{matchData.teamA.batch ? matchData.teamA.batch.name : "CU CSE"}</p>
+
+                {/* Score summary */}
+                <div className="text-right">
+                  {isCricket ? (
+                    <div>
+                      <span className="font-mono text-2xl sm:text-3xl font-black text-[#2C221E]">
+                        {innings1?.battingTeamId === matchData.teamAId ? `${innings1.totalRuns}/${innings1.totalWickets}` :
+                         innings2?.battingTeamId === matchData.teamAId ? `${innings2.totalRuns}/${innings2.totalWickets}` : "-"}
+                      </span>
+                      <p className="text-[11px] text-[#7C6E63] font-bold">
+                        {innings1?.battingTeamId === matchData.teamAId ? `(${innings1.totalOvers} ov)` :
+                         innings2?.battingTeamId === matchData.teamAId ? `(${innings2.totalOvers} ov)` : ""}
+                      </p>
+                    </div>
+                  ) : (
+                    <div>
+                      <span className="font-mono text-3xl sm:text-4xl font-black text-[#9E2A2B]">
+                        {matchData.footballDetail?.teamAScore || 0}
+                      </span>
+                      {matchData.footballDetail?.teamAPenaltyScore !== null && matchData.footballDetail?.teamAPenaltyScore !== undefined && (
+                        <span className="block font-mono text-xs font-black text-[#2A7B54]">
+                          ({matchData.footballDetail.teamAPenaltyScore} pens)
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
 
-              {/* Score summary */}
-              <div className="text-right">
-                {isCricket ? (
-                  <div>
-                    <span className="font-mono text-2xl sm:text-3xl font-black text-[#2C221E]">
-                      {innings1?.battingTeamId === matchData.teamAId ? `${innings1.totalRuns}/${innings1.totalWickets}` :
-                       innings2?.battingTeamId === matchData.teamAId ? `${innings2.totalRuns}/${innings2.totalWickets}` : "-"}
+              {/* Football Goalscorers (Team A) */}
+              {!isCricket && teamAGoalscorers.length > 0 && (
+                <div className="pt-2 border-t border-[#EFE8DC]/90 flex flex-wrap items-center gap-1.5 text-[11px] text-[#2C221E]">
+                  {teamAGoalscorers.map((g: any) => (
+                    <span key={g.id} className="font-semibold bg-white/90 px-2 py-0.5 rounded-lg border border-[#E8DCCF]/60 flex items-center gap-1">
+                      <span>⚽</span>
+                      <span className="font-bold">{g.playerName}</span>
+                      <span className="text-[#7C6E63] font-mono">{g.minute}'</span>
                     </span>
-                    <p className="text-[11px] text-[#7C6E63] font-bold">
-                      {innings1?.battingTeamId === matchData.teamAId ? `(${innings1.totalOvers} ov)` :
-                       innings2?.battingTeamId === matchData.teamAId ? `(${innings2.totalOvers} ov)` : ""}
-                    </p>
-                  </div>
-                ) : (
-                  <div>
-                    <span className="font-mono text-3xl sm:text-4xl font-black text-[#9E2A2B]">
-                      {matchData.footballDetail?.teamAScore || 0}
-                    </span>
-                    {matchData.footballDetail?.teamAPenaltyScore !== null && matchData.footballDetail?.teamAPenaltyScore !== undefined && (
-                      <span className="block font-mono text-xs font-black text-[#2A7B54]">
-                        ({matchData.footballDetail.teamAPenaltyScore} pens)
-                      </span>
-                    )}
-                  </div>
-                )}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
 
-            {/* Team B */}
-            <div className={`p-5 rounded-3xl border-2 flex items-center justify-between transition-all ${
+            {/* Team B Card */}
+            <div className={`p-5 rounded-3xl border-2 flex flex-col justify-between gap-3 transition-all ${
               matchData.winnerTeamId === matchData.teamBId
                 ? "bg-[#E6FCF5] border-[#20C997]"
                 : "bg-[#FAF7F2] border-[#E8DCCF]"
             }`}>
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-2xl brick-gradient text-white flex items-center justify-center font-black text-base shadow-xs">
-                  {matchData.teamB.shortName || matchData.teamB.name.slice(0, 2)}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-2xl brick-gradient text-white flex items-center justify-center font-black text-base shadow-xs">
+                    {matchData.teamB.shortName || matchData.teamB.name.slice(0, 2)}
+                  </div>
+                  <div>
+                    <h2 className="font-black text-base sm:text-lg text-[#2C221E] flex items-center gap-1.5">
+                      <span>{matchData.teamB.name}</span>
+                      {matchData.winnerTeamId === matchData.teamBId && <span className="text-sm">👑</span>}
+                    </h2>
+                    <p className="text-xs text-[#7C6E63]">{matchData.teamB.batch ? matchData.teamB.batch.name : "CU CSE"}</p>
+                  </div>
                 </div>
-                <div>
-                  <h2 className="font-black text-base sm:text-lg text-[#2C221E] flex items-center gap-1.5">
-                    <span>{matchData.teamB.name}</span>
-                    {matchData.winnerTeamId === matchData.teamBId && <span className="text-sm">👑</span>}
-                  </h2>
-                  <p className="text-xs text-[#7C6E63]">{matchData.teamB.batch ? matchData.teamB.batch.name : "CU CSE"}</p>
+
+                {/* Score summary */}
+                <div className="text-right">
+                  {isCricket ? (
+                    <div>
+                      <span className="font-mono text-2xl sm:text-3xl font-black text-[#2C221E]">
+                        {innings1?.battingTeamId === matchData.teamBId ? `${innings1.totalRuns}/${innings1.totalWickets}` :
+                         innings2?.battingTeamId === matchData.teamBId ? `${innings2.totalRuns}/${innings2.totalWickets}` : "-"}
+                      </span>
+                      <p className="text-[11px] text-[#7C6E63] font-bold">
+                        {innings1?.battingTeamId === matchData.teamBId ? `(${innings1.totalOvers} ov)` :
+                         innings2?.battingTeamId === matchData.teamBId ? `(${innings2.totalOvers} ov)` : ""}
+                      </p>
+                    </div>
+                  ) : (
+                    <div>
+                      <span className="font-mono text-3xl sm:text-4xl font-black text-[#9E2A2B]">
+                        {matchData.footballDetail?.teamBScore || 0}
+                      </span>
+                      {matchData.footballDetail?.teamBPenaltyScore !== null && matchData.footballDetail?.teamBPenaltyScore !== undefined && (
+                        <span className="block font-mono text-xs font-black text-[#2A7B54]">
+                          ({matchData.footballDetail.teamBPenaltyScore} pens)
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
 
-              {/* Score summary */}
-              <div className="text-right">
-                {isCricket ? (
-                  <div>
-                    <span className="font-mono text-2xl sm:text-3xl font-black text-[#2C221E]">
-                      {innings1?.battingTeamId === matchData.teamBId ? `${innings1.totalRuns}/${innings1.totalWickets}` :
-                       innings2?.battingTeamId === matchData.teamBId ? `${innings2.totalRuns}/${innings2.totalWickets}` : "-"}
+              {/* Football Goalscorers (Team B) */}
+              {!isCricket && teamBGoalscorers.length > 0 && (
+                <div className="pt-2 border-t border-[#EFE8DC]/90 flex flex-wrap items-center gap-1.5 text-[11px] text-[#2C221E]">
+                  {teamBGoalscorers.map((g: any) => (
+                    <span key={g.id} className="font-semibold bg-white/90 px-2 py-0.5 rounded-lg border border-[#E8DCCF]/60 flex items-center gap-1">
+                      <span>⚽</span>
+                      <span className="font-bold">{g.playerName}</span>
+                      <span className="text-[#7C6E63] font-mono">{g.minute}'</span>
                     </span>
-                    <p className="text-[11px] text-[#7C6E63] font-bold">
-                      {innings1?.battingTeamId === matchData.teamBId ? `(${innings1.totalOvers} ov)` :
-                       innings2?.battingTeamId === matchData.teamBId ? `(${innings2.totalOvers} ov)` : ""}
-                    </p>
-                  </div>
-                ) : (
-                  <div>
-                    <span className="font-mono text-3xl sm:text-4xl font-black text-[#9E2A2B]">
-                      {matchData.footballDetail?.teamBScore || 0}
-                    </span>
-                    {matchData.footballDetail?.teamBPenaltyScore !== null && matchData.footballDetail?.teamBPenaltyScore !== undefined && (
-                      <span className="block font-mono text-xs font-black text-[#2A7B54]">
-                        ({matchData.footballDetail.teamBPenaltyScore} pens)
-                      </span>
-                    )}
-                  </div>
-                )}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
 
           </div>
+
+          {/* DEDICATED PENALTY SHOOTOUT ARENA CARD */}
+          {!isCricket && (matchData.footballDetail?.currentHalf === 5 || matchData.footballDetail?.teamAPenaltyScore !== null) && (
+            <div className="bg-linear-to-r from-[#FAF0E6] via-[#FFF5F5] to-[#FAF0E6] rounded-2xl border-2 border-[#9E2A2B]/30 p-4 space-y-2">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div className="flex items-center gap-2.5">
+                  <span className="text-2xl">🥅⚽</span>
+                  <div>
+                    <h3 className="font-black text-xs sm:text-sm text-[#2C221E]">
+                      {matchData.status === "LIVE" ? "🔴 Live Knockout Penalty Shootout" : "Championship Penalty Shootout Result"}
+                    </h3>
+                    <p className="text-[11px] text-[#7C6E63]">
+                      {matchData.status === "LIVE" ? "Full Time ended in a draw · Kicks in progress" : "Official tiebreaker penalty scoreline"}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <div className="font-mono text-xl sm:text-2xl font-black text-[#9E2A2B] bg-white px-4 py-1 rounded-xl border border-[#E8D6C3] shadow-xs">
+                    {matchData.footballDetail?.teamAPenaltyScore || 0} - {matchData.footballDetail?.teamBPenaltyScore || 0}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Result Note or Toss Outcome */}
           <div className="pt-3 border-t border-[#EFE8DC] flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
@@ -451,19 +633,17 @@ export const MatchDetailPage: React.FC = () => {
             <span>Commentary & Timeline</span>
           </button>
 
-          {isCricket && (
-            <button
-              onClick={() => setActiveTab("analytics")}
-              className={`flex items-center gap-2 px-5 py-2.5 rounded-2xl text-xs font-black transition-all ${
-                activeTab === "analytics"
-                  ? "bg-[#9E2A2B] text-white shadow-md shadow-[#9E2A2B]/20"
-                  : "bg-white text-[#7C6E63] hover:bg-[#FAF0E6] hover:text-[#9E2A2B] border border-[#E5DACB]"
-              }`}
-            >
-              <Sparkles className="w-4 h-4" />
-              <span>📊 Live Analytics & Graphs</span>
-            </button>
-          )}
+          <button
+            onClick={() => setActiveTab("analytics")}
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-2xl text-xs font-black transition-all ${
+              activeTab === "analytics"
+                ? "bg-[#9E2A2B] text-white shadow-md shadow-[#9E2A2B]/20"
+                : "bg-white text-[#7C6E63] hover:bg-[#FAF0E6] hover:text-[#9E2A2B] border border-[#E5DACB]"
+            }`}
+          >
+            {isCricket ? <Sparkles className="w-4 h-4" /> : <BarChart3 className="w-4 h-4" />}
+            <span>{isCricket ? "📊 Live Analytics & Graphs" : "📊 Match Stats & Numbers"}</span>
+          </button>
 
           <button
             onClick={() => setActiveTab("scorecard")}
@@ -557,40 +737,123 @@ export const MatchDetailPage: React.FC = () => {
             ) : (
               /* Football Event Timeline */
               <div className="bg-white rounded-3xl border-2 border-[#E5DACB] p-6 shadow-xs space-y-4">
-                <h3 className="font-extrabold text-sm text-[#9E2A2B]">Match Event Stream</h3>
-                <div className="max-h-[460px] overflow-y-auto pr-1.5 space-y-2 custom-scrollbar">
+                <div className="flex items-center justify-between pb-2 border-b border-[#EFE8DC]">
+                  <h3 className="font-extrabold text-sm text-[#9E2A2B]">Match Timeline & Key Events</h3>
+                  <span className="text-xs text-[#7C6E63] font-mono">{matchData.footballEvents?.length || 0} Events Logged</span>
+                </div>
+
+                <div className="max-h-[500px] overflow-y-auto pr-1.5 space-y-2.5 custom-scrollbar">
                   {matchData.footballEvents?.map((ev: any) => (
-                    <div key={ev.id} className="p-3 bg-[#FAF7F2] rounded-2xl border border-[#E8DCCF] flex items-center justify-between text-xs">
+                    <div
+                      key={ev.id}
+                      className={`p-3.5 rounded-2xl border flex items-center justify-between text-xs transition-all ${
+                        ev.eventType === "GOAL"
+                          ? "bg-[#E6FCF5] border-[#20C997]/60 shadow-xs"
+                          : ev.eventType === "RED_CARD"
+                          ? "bg-[#FFF5F5] border-[#FF8787]/60 shadow-xs"
+                          : ev.eventType === "YELLOW_CARD"
+                          ? "bg-[#FFF9DB] border-[#FFE066]/60"
+                          : "bg-[#FAF7F2] border-[#E8DCCF]"
+                      }`}
+                    >
                       <div className="flex items-center gap-3">
-                        <span className="font-mono font-bold text-xs bg-[#FAF0E6] px-2.5 py-1 rounded-xl text-[#842021] border border-[#E8D6C3]">
+                        <span className={`font-mono font-black text-xs px-2.5 py-1 rounded-xl border ${
+                          ev.eventType === "GOAL"
+                            ? "bg-[#20C997] text-white border-[#0CA678]"
+                            : ev.eventType === "RED_CARD"
+                            ? "bg-[#FA5252] text-white border-[#E03131]"
+                            : ev.eventType === "YELLOW_CARD"
+                            ? "bg-[#FCC419] text-[#2C221E] border-[#FAB005]"
+                            : "bg-[#FAF0E6] text-[#842021] border-[#E8D6C3]"
+                        }`}>
                           {ev.minute}'
                         </span>
+
                         {ev.eventType === "SUBSTITUTION" ? (
-                          <div>
-                            <p className="font-bold text-[#2C221E]">
-                              🔄 Sub: <span className="text-[#2A7B54] font-black">{ev.primaryPlayer?.name} (IN)</span>
-                              {ev.secondaryPlayer && <span className="text-[#C92A2A] font-semibold"> for {ev.secondaryPlayer.name} (OUT)</span>}
+                          <div className="space-y-0.5">
+                            <p className="font-bold text-[#2C221E] flex items-center gap-1.5 flex-wrap">
+                              <span>🔄 Substitution:</span>
+                              <span className="text-[#2A7B54] font-black">{ev.primaryPlayer?.name} (IN)</span>
+                              {ev.secondaryPlayer && <span className="text-[#C92A2A] font-semibold">for {ev.secondaryPlayer.name} (OUT)</span>}
                             </p>
-                            <p className="text-[11px] text-[#7C6E63]">{ev.teamId === matchData.teamAId ? matchData.teamA.name : matchData.teamB.name}</p>
+                            <p className="text-[11px] font-semibold text-[#7C6E63]">{ev.teamId === matchData.teamAId ? matchData.teamA.name : matchData.teamB.name}</p>
                           </div>
                         ) : (
-                          <div>
-                            <p className="font-bold text-[#2C221E]">
-                              {ev.eventType === "GOAL" ? "⚽ Goal!" : ev.eventType === "YELLOW_CARD" ? "🟨 Yellow Card" : "🟥 Red Card"}
-                              {" "}· <span className="text-[#9E2A2B]">{ev.primaryPlayer?.name}</span>
+                          <div className="space-y-0.5">
+                            <p className="font-bold text-[#2C221E] flex items-center gap-1.5">
+                              <span>
+                                {ev.eventType === "GOAL" ? "⚽ GOAL!" : ev.eventType === "YELLOW_CARD" ? "🟨 Yellow Card" : "🟥 Red Card (Sent Off)"}
+                              </span>
+                              <span className="font-black text-[#2C221E]">{ev.primaryPlayer?.name}</span>
                             </p>
-                            {ev.secondaryPlayer && (
-                              <p className="text-[11px] text-[#7C6E63]">Assist by {ev.secondaryPlayer.name}</p>
-                            )}
+                            <div className="flex items-center gap-2 text-[11px] text-[#7C6E63]">
+                              <span className="font-semibold">{ev.teamId === matchData.teamAId ? matchData.teamA.name : matchData.teamB.name}</span>
+                              {ev.secondaryPlayer && <span>· Assist by <strong className="text-[#4A3E35]">{ev.secondaryPlayer.name}</strong></span>}
+                            </div>
                           </div>
                         )}
                       </div>
+
+                      <span className="text-[10px] font-black uppercase tracking-wider text-[#7C6E63] hidden sm:inline">
+                        {ev.teamId === matchData.teamAId ? matchData.teamA.shortName : matchData.teamB.shortName}
+                      </span>
                     </div>
                   ))}
 
                   {(!matchData.footballEvents || matchData.footballEvents.length === 0) && (
-                    <p className="text-xs text-[#A89A8D] italic text-center py-6">No match events logged yet.</p>
+                    <p className="text-xs text-[#A89A8D] italic text-center py-8">No match events logged yet.</p>
                   )}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* TAB 2: ANALYTICS (Cricket) & MATCH STATS (Football) */}
+        {activeTab === "analytics" && (
+          <div>
+            {isCricket ? (
+              <CricketLiveAnalytics match={matchData} />
+            ) : (
+              /* Football Head-to-Head Comparison Statistics */
+              <div className="bg-white rounded-3xl border-2 border-[#E5DACB] p-6 sm:p-8 shadow-xs space-y-6">
+                <div className="flex items-center justify-between pb-4 border-b border-[#EFE8DC]">
+                  <div className="flex items-center gap-2.5">
+                    <BarChart3 className="w-5 h-5 text-[#9E2A2B]" />
+                    <h3 className="font-black text-sm sm:text-base text-[#2C221E]">
+                      Match Statistics & Head-to-Head
+                    </h3>
+                  </div>
+                  <div className="flex items-center gap-3 text-xs font-black">
+                    <span className="text-[#9E2A2B] bg-[#FAF0E6] px-2.5 py-1 rounded-xl border border-[#E8D6C3]">
+                      {matchData.teamA.shortName || matchData.teamA.name}
+                    </span>
+                    <span className="text-[#7C6E63]">vs</span>
+                    <span className="text-[#2C221E] bg-[#F1F3F5] px-2.5 py-1 rounded-xl border border-[#CED4DA]">
+                      {matchData.teamB.shortName || matchData.teamB.name}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="space-y-5">
+                  {footballStats.map((st: any, idx: number) => {
+                    const total = st.valA + st.valB;
+                    const pctA = total === 0 ? 50 : Math.round((st.valA / total) * 100);
+                    const pctB = total === 0 ? 50 : 100 - pctA;
+                    return (
+                      <div key={idx} className="space-y-1.5 p-3 rounded-2xl bg-[#FAF7F2] border border-[#E8DCCF]/70">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="font-mono font-black text-sm sm:text-base text-[#9E2A2B]">{st.valA}</span>
+                          <span className="text-[#4A3E35] font-black text-xs uppercase tracking-wider">{st.label}</span>
+                          <span className="font-mono font-black text-sm sm:text-base text-[#2C221E]">{st.valB}</span>
+                        </div>
+                        <div className="h-2.5 w-full bg-[#E5DACB]/50 rounded-full overflow-hidden flex shadow-inner">
+                          <div style={{ width: `${pctA}%` }} className="bg-[#9E2A2B] h-full transition-all duration-700" />
+                          <div style={{ width: `${pctB}%` }} className="bg-[#495057] h-full transition-all duration-700" />
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}
