@@ -149,7 +149,7 @@ export const api = {
     create: async (user: {
       studentId: string;
       name: string;
-      email: string;
+      email?: string;
       batchId?: number | null;
       cricketRole?: string;
       footballPosition?: string;

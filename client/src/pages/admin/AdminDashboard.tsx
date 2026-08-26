@@ -50,8 +50,6 @@ export const AdminDashboard: React.FC = () => {
   const [newPlayerName, setNewPlayerName] = useState("");
   const [newPlayerEmail, setNewPlayerEmail] = useState("");
   const [newPlayerBatchId, setNewPlayerBatchId] = useState<number | null>(null);
-  const [newPlayerRole, setNewPlayerRole] = useState("🏏 Top-Order Bat");
-  const [newPlayerPosition, setNewPlayerPosition] = useState("⚽ Forward");
 
   // 3. Tournaments State & Search
   const [tournaments, setTournaments] = useState<TournamentItem[]>([]);
@@ -156,14 +154,12 @@ export const AdminDashboard: React.FC = () => {
     e.preventDefault();
     if (!newPlayerRoll || !newPlayerName) return;
     try {
-      const email = newPlayerEmail || `${newPlayerRoll}@cse.cu.ac.bd`;
+      const email = newPlayerEmail && newPlayerEmail.trim() ? newPlayerEmail.trim() : undefined;
       const created = await api.users.create({
         studentId: newPlayerRoll,
         name: newPlayerName,
         email: email,
         batchId: newPlayerBatchId,
-        cricketRole: newPlayerRole,
-        footballPosition: newPlayerPosition,
       });
       setPlayers(prev => [created, ...prev]);
       setShowAddPlayerModal(false);
@@ -732,8 +728,16 @@ export const AdminDashboard: React.FC = () => {
                             {player.batch}
                           </td>
                           <td className="py-3.5 px-4 text-[#6B5E53]">
-                            <span>{player.cricketRole || "🏏 Player"}</span>
-                            {player.footballPosition && <span className="ml-1 text-[11px]">/ {player.footballPosition}</span>}
+                            {player.cricketRole ? (
+                              <>
+                                <span>{player.cricketRole}</span>
+                                {player.footballPosition && <span className="ml-1 text-[11px]">/ {player.footballPosition}</span>}
+                              </>
+                            ) : (
+                              <span className="text-[11px] font-semibold text-[#842021] bg-[#FAF0E6] px-2 py-0.5 rounded border border-[#E8D6C3]">
+                                ⚡ Profile Pending
+                              </span>
+                            )}
                           </td>
                           <td className="py-3.5 px-4">
                             {player.isTemporaryPassword ? (
@@ -1028,12 +1032,14 @@ export const AdminDashboard: React.FC = () => {
             <button onClick={() => setShowAddPlayerModal(false)} className="absolute top-4 right-4 text-[#7C6E63] hover:text-[#2C221E]">
               <X className="w-5 h-5" />
             </button>
-            <h3 className="text-lg font-black text-[#2C221E] mb-2">Register Player / Student</h3>
+            <h3 className="text-lg font-black text-[#2C221E] mb-1">Register Player / Student</h3>
             <p className="text-xs text-[#7C6E63] mb-4">A temporary password will be auto-generated for the student's initial sign-in.</p>
             
             <form onSubmit={handleAddPlayer} className="space-y-3.5 text-xs">
               <div>
-                <label className="block font-bold text-[#4A3E35] mb-1">Student ID / Roll</label>
+                <label className="block font-bold text-[#4A3E35] mb-1">
+                  Student ID / Roll <span className="text-[#9E2A2B]">*</span>
+                </label>
                 <input
                   type="text"
                   required
@@ -1045,7 +1051,9 @@ export const AdminDashboard: React.FC = () => {
               </div>
 
               <div>
-                <label className="block font-bold text-[#4A3E35] mb-1">Full Name</label>
+                <label className="block font-bold text-[#4A3E35] mb-1">
+                  Full Name <span className="text-[#9E2A2B]">*</span>
+                </label>
                 <input
                   type="text"
                   required
@@ -1057,18 +1065,9 @@ export const AdminDashboard: React.FC = () => {
               </div>
 
               <div>
-                <label className="block font-bold text-[#4A3E35] mb-1">Email Address</label>
-                <input
-                  type="email"
-                  placeholder="e.g. 20701055@cse.cu.ac.bd"
-                  value={newPlayerEmail}
-                  onChange={(e) => setNewPlayerEmail(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-[#D8C7B3] bg-[#FAF7F2] text-[#2C221E] focus:outline-none focus:ring-2 focus:ring-[#9E2A2B]"
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-[#4A3E35] mb-1">Batch Assignment</label>
+                <label className="block font-bold text-[#4A3E35] mb-1">
+                  Batch Assignment <span className="text-[#9E2A2B]">*</span>
+                </label>
                 <select
                   value={newPlayerBatchId || ""}
                   onChange={(e) => setNewPlayerBatchId(Number(e.target.value))}
@@ -1080,34 +1079,23 @@ export const AdminDashboard: React.FC = () => {
                 </select>
               </div>
 
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="block font-bold text-[#4A3E35] mb-1">Cricket Role</label>
-                  <select
-                    value={newPlayerRole}
-                    onChange={(e) => setNewPlayerRole(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-[#D8C7B3] bg-[#FAF7F2] text-[#2C221E]"
-                  >
-                    <option value="🏏 Top-Order Bat">🏏 Top-Order Bat</option>
-                    <option value="🏏 All-Rounder">🏏 All-Rounder</option>
-                    <option value="🏏 Fast Bowler">🏏 Fast Bowler</option>
-                    <option value="🏏 Spin Bowler">🏏 Spin Bowler</option>
-                    <option value="🏏 Wicketkeeper">🏏 Wicketkeeper</option>
-                  </select>
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block font-bold text-[#4A3E35]">Email Address</label>
+                  <span className="text-[10px] text-[#7C6E63] font-semibold">Optional</span>
                 </div>
-                <div>
-                  <label className="block font-bold text-[#4A3E35] mb-1">Football Role</label>
-                  <select
-                    value={newPlayerPosition}
-                    onChange={(e) => setNewPlayerPosition(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-[#D8C7B3] bg-[#FAF7F2] text-[#2C221E]"
-                  >
-                    <option value="⚽ Forward">⚽ Forward</option>
-                    <option value="⚽ Midfielder">⚽ Midfielder</option>
-                    <option value="⚽ Defender">⚽ Defender</option>
-                    <option value="⚽ Goalkeeper">⚽ Goalkeeper</option>
-                  </select>
-                </div>
+                <input
+                  type="email"
+                  placeholder={newPlayerRoll ? `${newPlayerRoll}@cse.cu.ac.bd (Default)` : "e.g. 20701055@cse.cu.ac.bd"}
+                  value={newPlayerEmail}
+                  onChange={(e) => setNewPlayerEmail(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-[#D8C7B3] bg-[#FAF7F2] text-[#2C221E] focus:outline-none focus:ring-2 focus:ring-[#9E2A2B]"
+                />
+              </div>
+
+              {/* Note on Player Profile Setup */}
+              <div className="p-3 bg-[#FAF7F2] rounded-xl border border-[#E8DCCF] text-[11px] text-[#6B5E53] leading-relaxed">
+                <span className="font-bold text-[#2C221E]">ℹ️ Player Profile:</span> Sports roles (Cricket style, Football position, Jersey number) will be set directly by the student upon logging in.
               </div>
 
               <div className="p-2.5 bg-[#FAF0E6] rounded-xl border border-[#E8D6C3] text-[11px] text-[#842021]">

@@ -9,7 +9,7 @@ const usersRouter = Router();
 const createUserSchema = z.object({
   studentId: z.string().min(1, "Student ID / Roll is required"),
   name: z.string().min(1, "Name is required"),
-  email: z.string().email("Valid email is required"),
+  email: z.string().optional(),
   batchId: z.number().int().positive().optional().nullable(),
   role: z.enum(["ADMIN", "USER"]).optional(),
   cricketRole: z.string().optional(),
@@ -21,7 +21,7 @@ const bulkImportSchema = z.array(
   z.object({
     roll: z.string().min(1),
     name: z.string().min(1),
-    email: z.string().email(),
+    email: z.string().optional(),
     batch: z.string().optional(), // e.g. "20th Batch" or "20"
     role: z.string().optional(),
   })
@@ -155,19 +155,20 @@ usersRouter.post("/", requireAuth, requireAdmin, async (req, res) => {
     }
 
     const { studentId, name, email, batchId, role, cricketRole, footballPosition, temporaryPassword } = parsed.data;
+    const resolvedEmail = (email && email.trim()) ? email.toLowerCase().trim() : `${studentId}@cse.cu.ac.bd`;
 
     // Check duplicate studentId or email
     const duplicate = await prisma.user.findFirst({
       where: {
         OR: [
           { studentId },
-          { email: email.toLowerCase() }
+          { email: resolvedEmail }
         ]
       }
     });
 
     if (duplicate) {
-      res.status(400).json({ error: `User with Roll ${studentId} or Email ${email} already exists.` });
+      res.status(400).json({ error: `User with Roll ${studentId} or Email ${resolvedEmail} already exists.` });
       return;
     }
 
@@ -178,7 +179,7 @@ usersRouter.post("/", requireAuth, requireAdmin, async (req, res) => {
       data: {
         studentId,
         name,
-        email: email.toLowerCase(),
+        email: resolvedEmail,
         password: hashedPassword,
         isTemporaryPassword: true,
         batchId: batchId || null,
@@ -233,9 +234,11 @@ usersRouter.post("/bulk", requireAuth, requireAdmin, async (req, res) => {
 
     for (const row of rows) {
       try {
+        const rowEmail = (row.email && row.email.trim()) ? row.email.toLowerCase().trim() : `${row.roll}@cse.cu.ac.bd`;
+
         const existing = await prisma.user.findFirst({
           where: {
-            OR: [{ studentId: row.roll }, { email: row.email.toLowerCase() }]
+            OR: [{ studentId: row.roll }, { email: rowEmail }]
           }
         });
 
@@ -256,12 +259,12 @@ usersRouter.post("/bulk", requireAuth, requireAdmin, async (req, res) => {
           data: {
             studentId: row.roll,
             name: row.name,
-            email: row.email.toLowerCase(),
+            email: rowEmail,
             password: hashed,
             isTemporaryPassword: true,
             batchId: resolvedBatchId,
             role: "USER",
-            cricketRole: row.role || "🏏 All-Rounder",
+            cricketRole: row.role || null,
           }
         });
 
