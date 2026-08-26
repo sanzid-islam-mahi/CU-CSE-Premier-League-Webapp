@@ -74,14 +74,28 @@ export const TournamentBracketView: React.FC<TournamentBracketViewProps> = ({
   const groupA = tournament.groups?.[0];
   const groupB = tournament.groups?.[1];
 
-  // Team names for SF1 & SF2
+  // Semi-Final team names (Group A 1st vs Group B 2nd, Group B 1st vs Group A 2nd)
   const sf1TeamA = semiFinals[0]?.teamA?.name || (groupA ? `🥇 1st Place ${groupA.name}` : "Winner Group A");
   const sf1TeamB = semiFinals[0]?.teamB?.name || (groupB ? `🥈 2nd Place ${groupB.name}` : "Runner-Up Group B");
   const sf2TeamA = semiFinals[1]?.teamA?.name || (groupB ? `🥇 1st Place ${groupB.name}` : "Winner Group B");
   const sf2TeamB = semiFinals[1]?.teamB?.name || (groupA ? `🥈 2nd Place ${groupA.name}` : "Runner-Up Group A");
 
-  const finalTeamA = finalMatch?.teamA?.name || (semiFinals[0]?.winnerTeam?.name || "Winner Semi-Final 1");
-  const finalTeamB = finalMatch?.teamB?.name || (semiFinals[1]?.winnerTeam?.name || "Winner Semi-Final 2");
+  // Grand Finalists (STRICT: only populated when semi-finals are completed with verified winners)
+  const isSf1Completed = semiFinals[0]?.status === "COMPLETED" && Boolean(semiFinals[0]?.winnerTeamId);
+  const isSf2Completed = semiFinals[1]?.status === "COMPLETED" && Boolean(semiFinals[1]?.winnerTeamId);
+
+  const sf1Winner = isSf1Completed 
+    ? (semiFinals[0].winnerTeam || tournament.teams?.find((t: any) => t.id === semiFinals[0].winnerTeamId))
+    : null;
+  const sf2Winner = isSf2Completed
+    ? (semiFinals[1].winnerTeam || tournament.teams?.find((t: any) => t.id === semiFinals[1].winnerTeamId))
+    : null;
+
+  const finalTeamA = sf1Winner ? sf1Winner.name : "Winner Semi-Final 1";
+  const finalTeamAShort = sf1Winner ? sf1Winner.shortName : "SF1";
+
+  const finalTeamB = sf2Winner ? sf2Winner.name : "Winner Semi-Final 2";
+  const finalTeamBShort = sf2Winner ? sf2Winner.shortName : "SF2";
 
   return (
     <div className="space-y-6 animate-in fade-in">
@@ -340,19 +354,19 @@ export const TournamentBracketView: React.FC<TournamentBracketViewProps> = ({
 
               {/* Team A (Winner SF1) */}
               <div className={`p-3 rounded-2xl border flex items-center justify-between text-xs font-black ${
-                finalMatch?.winnerTeamId === finalMatch?.teamAId
+                finalMatch?.winnerTeamId && finalMatch?.winnerTeamId === sf1Winner?.id
                   ? "bg-[#E6FCF5] border-[#20C997] text-[#0CA678]"
                   : "bg-[#FAF7F2] border-[#E8DCCF] text-[#2C221E]"
               }`}>
                 <div className="flex items-center gap-2 truncate">
                   <span className="w-6 h-6 rounded-lg brick-gradient text-white flex items-center justify-center text-[10px] font-mono shrink-0">
-                    {finalMatch?.teamA?.shortName || "SF1"}
+                    {finalTeamAShort}
                   </span>
                   <span className="truncate">
                     {finalTeamA}
                   </span>
                 </div>
-                {finalMatch?.winnerTeamId === finalMatch?.teamAId && <span className="text-sm">👑</span>}
+                {finalMatch?.winnerTeamId && finalMatch?.winnerTeamId === sf1Winner?.id && <span className="text-sm">👑</span>}
               </div>
 
               <div className="text-center font-mono text-[10px] font-extrabold text-[#9E2A2B]">
@@ -361,19 +375,19 @@ export const TournamentBracketView: React.FC<TournamentBracketViewProps> = ({
 
               {/* Team B (Winner SF2) */}
               <div className={`p-3 rounded-2xl border flex items-center justify-between text-xs font-black ${
-                finalMatch?.winnerTeamId === finalMatch?.teamBId
+                finalMatch?.winnerTeamId && finalMatch?.winnerTeamId === sf2Winner?.id
                   ? "bg-[#E6FCF5] border-[#20C997] text-[#0CA678]"
                   : "bg-[#FAF7F2] border-[#E8DCCF] text-[#2C221E]"
               }`}>
                 <div className="flex items-center gap-2 truncate">
                   <span className="w-6 h-6 rounded-lg brick-gradient text-white flex items-center justify-center text-[10px] font-mono shrink-0">
-                    {finalMatch?.teamB?.shortName || "SF2"}
+                    {finalTeamBShort}
                   </span>
                   <span className="truncate">
                     {finalTeamB}
                   </span>
                 </div>
-                {finalMatch?.winnerTeamId === finalMatch?.teamBId && <span className="text-sm">👑</span>}
+                {finalMatch?.winnerTeamId && finalMatch?.winnerTeamId === sf2Winner?.id && <span className="text-sm">👑</span>}
               </div>
 
               {/* Venue / Timing */}

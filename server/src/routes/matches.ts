@@ -372,123 +372,22 @@ matchesRouter.post("/tournament/:idOrSlug/generate-knockouts", requireAuth, asyn
       return;
     }
 
-    const getRankedTeams = (teamList: any[]) => {
-      const statsMap = new Map<number, { team: any; points: number; won: number; lost: number }>();
-      for (const t of teamList) {
-        statsMap.set(t.id, { team: t, points: 0, won: 0, lost: 0 });
-      }
-      for (const m of tournament.matches) {
-        if (m.status !== "COMPLETED") continue;
-        const sA = statsMap.get(m.teamAId);
-        const sB = statsMap.get(m.teamBId);
-        if (sA && sB) {
-          if (m.winnerTeamId === m.teamAId) {
-            sA.won++;
-            sA.points += (tournament.sport === "FOOTBALL" ? 3 : 2);
-            sB.lost++;
-          } else if (m.winnerTeamId === m.teamBId) {
-            sB.won++;
-            sB.points += (tournament.sport === "FOOTBALL" ? 3 : 2);
-            sA.lost++;
-          } else if (m.isTied || m.isNoResult) {
-            sA.points += 1;
-            sB.points += 1;
-          }
-        }
-      }
-      const sorted = Array.from(statsMap.values()).sort((a, b) => b.points - a.points || b.won - a.won);
-      return sorted.map(s => s.team);
-    };
-
-    let sf1_teamAId: number;
-    let sf1_teamBId: number;
-    let sf2_teamAId: number;
-    let sf2_teamBId: number;
-
-    if (tournament.groups && tournament.groups.length >= 2) {
-      const rankedA = getRankedTeams(tournament.groups[0].teams);
-      const rankedB = getRankedTeams(tournament.groups[1].teams);
-      if (rankedA.length < 2 || rankedB.length < 2) {
-        res.status(400).json({ error: "Each group must have at least 2 teams to generate semi-finals." });
-        return;
-      }
-      sf1_teamAId = rankedA[0].id;
-      sf1_teamBId = rankedB[1].id;
-      sf2_teamAId = rankedB[0].id;
-      sf2_teamBId = rankedA[1].id;
-    } else if (tournament.teams.length >= 4) {
-      const rankedAll = getRankedTeams(tournament.teams);
-      sf1_teamAId = rankedAll[0].id;
-      sf1_teamBId = rankedAll[3].id;
-      sf2_teamAId = rankedAll[1].id;
-      sf2_teamBId = rankedAll[2].id;
-    } else {
-      res.status(400).json({ error: "At least 4 participating teams are required for a knockout bracket." });
-      return;
+    if (groupMatches.length > 0) {
+      // Trigger the official unified knockout progression engine
+      await advanceTournamentKnockouts(prisma, groupMatches[0].id);
     }
 
-    let nextMatchNum = tournament.matches.length > 0 ? (tournament.matches[0].matchNumber + 1) : 1;
-    const defaultVenue = tournament.sport === "CRICKET" ? "CU CSE Ground" : "CU Central Field";
-
-    // Delete any existing scheduled knockout matches
-    await prisma.match.deleteMany({
+    const knockoutMatches = await prisma.match.findMany({
       where: {
         tournamentId: tournament.id,
-        stage: { in: ["SEMI_FINAL", "FINAL", "THIRD_PLACE"] },
-        status: "SCHEDULED"
-      }
-    });
-
-    const m1 = await prisma.match.create({
-      data: {
-        tournamentId: tournament.id,
-        stage: "SEMI_FINAL",
-        matchNumber: nextMatchNum++,
-        teamAId: sf1_teamAId,
-        teamBId: sf1_teamBId,
-        venue: defaultVenue,
-        status: "SCHEDULED"
+        stage: { in: ["SEMI_FINAL", "FINAL", "THIRD_PLACE"] }
       },
       include: { teamA: true, teamB: true }
     });
-
-    const m2 = await prisma.match.create({
-      data: {
-        tournamentId: tournament.id,
-        stage: "SEMI_FINAL",
-        matchNumber: nextMatchNum++,
-        teamAId: sf2_teamAId,
-        teamBId: sf2_teamBId,
-        venue: defaultVenue,
-        status: "SCHEDULED"
-      },
-      include: { teamA: true, teamB: true }
-    });
-
-    const mFinal = await prisma.match.create({
-      data: {
-        tournamentId: tournament.id,
-        stage: "FINAL",
-        matchNumber: nextMatchNum++,
-        teamAId: sf1_teamAId,
-        teamBId: sf2_teamAId,
-        venue: defaultVenue,
-        status: "SCHEDULED"
-      },
-      include: { teamA: true, teamB: true }
-    });
-
-    if (tournament.sport === "FOOTBALL") {
-      await Promise.all([
-        prisma.footballMatchDetail.create({ data: { matchId: m1.id, halfDurationMinutes: 20 } }),
-        prisma.footballMatchDetail.create({ data: { matchId: m2.id, halfDurationMinutes: 20 } }),
-        prisma.footballMatchDetail.create({ data: { matchId: mFinal.id, halfDurationMinutes: 20 } }),
-      ]);
-    }
 
     res.status(201).json({
-      message: "Successfully generated Knockout Bracket fixtures (Semi-Finals & Grand Final)!",
-      matches: [m1, m2, mFinal]
+      message: "Successfully synchronized Knockout Bracket fixtures from official standings!",
+      matches: knockoutMatches
     });
   } catch (err: any) {
     res.status(500).json({ error: err.message || "Failed to generate knockout bracket" });
