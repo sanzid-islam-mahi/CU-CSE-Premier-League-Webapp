@@ -546,4 +546,160 @@ export const api = {
       return data;
     },
   },
+
+  scoring: {
+    getLive: async (matchId: number) => {
+      const res = await fetch(`${API_BASE}/scoring/${matchId}/live`, {
+        headers: getAuthHeaders(),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to load live match data");
+      return data;
+    },
+
+    setupMatch: async (matchId: number, payload: {
+      tossWinnerTeamId?: number | null;
+      tossDecision?: string | null;
+      teamAPlayerIds?: number[];
+      teamBPlayerIds?: number[];
+    }) => {
+      const res = await fetch(`${API_BASE}/scoring/${matchId}/setup`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to setup match");
+      return data;
+    },
+
+    // Cricket APIs
+    startInnings: async (matchId: number, payload: {
+      inningsNumber: number;
+      battingTeamId: number;
+      bowlingTeamId: number;
+      strikerId?: number | null;
+      nonStrikerId?: number | null;
+      bowlerId?: number | null;
+    }) => {
+      const res = await fetch(`${API_BASE}/scoring/${matchId}/cricket/start-innings`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to start innings");
+      return data;
+    },
+
+    recordBall: async (matchId: number, payload: {
+      inningsId: number;
+      strikerId: number;
+      nonStrikerId: number;
+      bowlerId: number;
+      runsBat: number;
+      extraType?: string;
+      extraRuns?: number;
+      isWicket?: boolean;
+      wicketType?: string | null;
+      playerOutId?: number | null;
+      fielderId?: number | null;
+      newBatterId?: number | null;
+      commentary?: string | null;
+    }) => {
+      const res = await fetch(`${API_BASE}/scoring/${matchId}/cricket/ball`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to record ball delivery");
+      return data;
+    },
+
+    undoBall: async (matchId: number, inningsId: number) => {
+      const res = await fetch(`${API_BASE}/scoring/${matchId}/cricket/undo`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ inningsId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to undo ball");
+      return data;
+    },
+
+    // Football APIs
+    updateFootballTimer: async (matchId: number, payload: {
+      clockSeconds?: number;
+      isClockRunning?: boolean;
+      currentHalf?: number;
+      status?: string;
+    }) => {
+      const res = await fetch(`${API_BASE}/scoring/${matchId}/football/timer`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to update timer");
+      return data;
+    },
+
+    logFootballEvent: async (matchId: number, payload: {
+      teamId: number;
+      minute: number;
+      stoppageMinute?: number | null;
+      eventType: string;
+      primaryPlayerId: number;
+      secondaryPlayerId?: number | null;
+      description?: string | null;
+    }) => {
+      const res = await fetch(`${API_BASE}/scoring/${matchId}/football/events`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to log event");
+      return data;
+    },
+
+    deleteFootballEvent: async (matchId: number, eventId: number) => {
+      const res = await fetch(`${API_BASE}/scoring/${matchId}/football/events/${eventId}`, {
+        method: "DELETE",
+        headers: getAuthHeaders(),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to delete event");
+      return data;
+    },
+
+    // Complete Match
+    completeMatch: async (matchId: number, payload: {
+      winnerTeamId?: number | null;
+      resultSummary?: string | null;
+      isTied?: boolean;
+      isNoResult?: boolean;
+      playerOfTheMatchId?: number | null;
+    }) => {
+      const res = await fetch(`${API_BASE}/scoring/${matchId}/complete`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to complete match");
+      return data;
+    },
+
+    // Stats & Leaderboards
+    getTournamentStats: async (tournamentIdOrSlug: string | number) => {
+      const res = await fetch(`${API_BASE}/scoring/tournament/${tournamentIdOrSlug}/stats`, {
+        headers: getAuthHeaders(),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to fetch tournament stats");
+      return data;
+    },
+  },
 };

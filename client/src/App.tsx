@@ -7,6 +7,8 @@ import { PublicPlayerProfilePage } from "@/pages/players/PublicPlayerProfilePage
 import { TournamentListPage } from "@/pages/tournaments/TournamentListPage";
 import { TournamentDetailPage } from "@/pages/tournaments/TournamentDetailPage";
 import { TeamDetailPage } from "@/pages/teams/TeamDetailPage";
+import { MatchDetailPage } from "@/pages/matches/MatchDetailPage";
+import { LiveScorerPage } from "@/pages/matches/LiveScorerPage";
 
 export function App() {
   return (
@@ -18,6 +20,10 @@ export function App() {
         {/* Tournaments Hub & Public Detail Page */}
         <Route path="/tournaments" element={<TournamentListPage />} />
         <Route path="/tournaments/:slug" element={<TournamentDetailPage />} />
+
+        {/* Live Match Arena & Scorer Console */}
+        <Route path="/matches/:id" element={<MatchDetailPage />} />
+        <Route path="/matches/:id/score" element={<LiveScorerPage />} />
 
         {/* Team Detail Page & Squad View */}
         <Route path="/teams/:id" element={<TeamDetailPage />} />
