@@ -115,6 +115,22 @@ export const MatchDetailPage: React.FC = () => {
       (ev: any) => ev.eventType === "SUBSTITUTION" && ev.teamId === teamId
     ) || [];
 
+    // Red Carded / Sent Off players
+    const redCardMap = new Map<number, { minute: number }>();
+    const yellowCounts = new Map<number, number>();
+    (matchData.footballEvents || []).forEach((ev: any) => {
+      if (ev.teamId !== teamId) return;
+      if (ev.eventType === "RED_CARD") {
+        redCardMap.set(ev.primaryPlayerId, { minute: ev.minute });
+      } else if (ev.eventType === "YELLOW_CARD") {
+        const count = (yellowCounts.get(ev.primaryPlayerId) || 0) + 1;
+        yellowCounts.set(ev.primaryPlayerId, count);
+        if (count >= 2) {
+          redCardMap.set(ev.primaryPlayerId, { minute: ev.minute });
+        }
+      }
+    });
+
     const subbedOutMap = new Map<number, { minute: number; subbedInName?: string }>();
     subEvents.forEach((ev: any) => {
       if (ev.secondaryPlayerId) {
@@ -137,7 +153,7 @@ export const MatchDetailPage: React.FC = () => {
 
     if (squadEntries.length > 0) {
       const onPitchSquad = squadEntries
-        .filter((s: any) => s.isPlayingXI)
+        .filter((s: any) => s.isPlayingXI && !redCardMap.has(s.userId))
         .map((s: any) => ({
           userId: s.userId,
           user: s.user || team.members?.find((m: any) => m.userId === s.userId)?.user,
@@ -145,7 +161,7 @@ export const MatchDetailPage: React.FC = () => {
         }));
 
       const subbedOutSquad: any[] = squadEntries
-        .filter((s: any) => !s.isPlayingXI && subbedOutMap.has(s.userId))
+        .filter((s: any) => !s.isPlayingXI && subbedOutMap.has(s.userId) && !redCardMap.has(s.userId))
         .map((s: any) => ({
           userId: s.userId,
           user: s.user || team.members?.find((m: any) => m.userId === s.userId)?.user,
@@ -154,7 +170,7 @@ export const MatchDetailPage: React.FC = () => {
 
       // In case an event has a secondaryPlayerId not explicitly in squadEntries
       subEvents.forEach((ev: any) => {
-        if (ev.secondaryPlayerId && !subbedOutSquad.some((p: any) => p.userId === ev.secondaryPlayerId)) {
+        if (ev.secondaryPlayerId && !subbedOutSquad.some((p: any) => p.userId === ev.secondaryPlayerId) && !redCardMap.has(ev.secondaryPlayerId)) {
           const userObj = ev.secondaryPlayer || team.members?.find((m: any) => m.userId === ev.secondaryPlayerId)?.user;
           if (userObj) {
             subbedOutSquad.push({
@@ -166,23 +182,49 @@ export const MatchDetailPage: React.FC = () => {
         }
       });
 
+      const sentOffSquad: any[] = [];
+      redCardMap.forEach((val, userId) => {
+        const userObj = team.members?.find((m: any) => m.userId === userId)?.user || squadEntries.find((s: any) => s.userId === userId)?.user;
+        if (userObj) {
+          sentOffSquad.push({
+            userId,
+            user: userObj,
+            minute: val.minute
+          });
+        }
+      });
+
       return {
         onPitch: onPitchSquad,
         subbedOut: subbedOutSquad,
-        totalInMatch: onPitchSquad.length + subbedOutSquad.length
+        sentOff: sentOffSquad,
+        totalInMatch: onPitchSquad.length + subbedOutSquad.length + sentOffSquad.length
       };
     }
 
-    const fallbackOnPitch = (team.members || []).slice(0, 11).map((m: any) => ({
+    const fallbackOnPitch = (team.members || []).slice(0, 11).filter((m: any) => !redCardMap.has(m.userId)).map((m: any) => ({
       userId: m.userId,
       user: m.user,
       subbedIn: undefined
     }));
 
+    const sentOffFallback: any[] = [];
+    redCardMap.forEach((val, userId) => {
+      const userObj = team.members?.find((m: any) => m.userId === userId)?.user;
+      if (userObj) {
+        sentOffFallback.push({
+          userId,
+          user: userObj,
+          minute: val.minute
+        });
+      }
+    });
+
     return {
       onPitch: fallbackOnPitch,
       subbedOut: [],
-      totalInMatch: fallbackOnPitch.length
+      sentOff: sentOffFallback,
+      totalInMatch: fallbackOnPitch.length + sentOffFallback.length
     };
   };
 
@@ -726,6 +768,28 @@ export const MatchDetailPage: React.FC = () => {
                   ))}
                 </div>
               )}
+
+              {/* Sent Off / Red Card (Football) */}
+              {teamASquad.sentOff && teamASquad.sentOff.length > 0 && (
+                <div className="space-y-1.5 pt-3 border-t border-[#EFE8DC]">
+                  <div className="flex items-center justify-between text-[11px] font-black text-[#C92A2A] uppercase tracking-wide px-1">
+                    <span>🟥 Sent Off (Red Card)</span>
+                    <span>{teamASquad.sentOff.length} Dismissed</span>
+                  </div>
+
+                  {teamASquad.sentOff.map((p: any) => (
+                    <div key={p.userId} className="p-2.5 bg-[#FFE3E3] rounded-xl flex items-center justify-between text-xs border border-[#FF8787]">
+                      <div className="flex items-center gap-2">
+                        <span className="font-black text-[#C92A2A]">{p.user?.name}</span>
+                        <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-[#C92A2A] text-white">
+                          🟥 Red Card ({p.minute}')
+                        </span>
+                      </div>
+                      <span className="font-mono text-[10px] text-[#C92A2A] font-bold">{p.user?.studentId}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Team B Squad */}
@@ -736,6 +800,7 @@ export const MatchDetailPage: React.FC = () => {
                   <p className="text-[11px] text-[#7C6E63]">
                     {matchData.teamB.batch ? matchData.teamB.batch.name : "CU CSE"} · {teamBSquad.onPitch.length} on Pitch
                     {teamBSquad.subbedOut.length > 0 && ` · ${teamBSquad.subbedOut.length} Subbed`}
+                    {teamBSquad.sentOff && teamBSquad.sentOff.length > 0 && ` · ${teamBSquad.sentOff.length} Red Card`}
                   </p>
                 </div>
                 <span className="font-mono text-xs font-black px-2.5 py-1 rounded-full bg-[#FAF0E6] text-[#842021] border border-[#E8D6C3]">
@@ -782,6 +847,28 @@ export const MatchDetailPage: React.FC = () => {
                         </span>
                       </div>
                       <span className="font-mono text-[10px] text-[#868E96]">{p.user?.studentId}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Sent Off / Red Card (Football) */}
+              {teamBSquad.sentOff && teamBSquad.sentOff.length > 0 && (
+                <div className="space-y-1.5 pt-3 border-t border-[#EFE8DC]">
+                  <div className="flex items-center justify-between text-[11px] font-black text-[#C92A2A] uppercase tracking-wide px-1">
+                    <span>🟥 Sent Off (Red Card)</span>
+                    <span>{teamBSquad.sentOff.length} Dismissed</span>
+                  </div>
+
+                  {teamBSquad.sentOff.map((p: any) => (
+                    <div key={p.userId} className="p-2.5 bg-[#FFE3E3] rounded-xl flex items-center justify-between text-xs border border-[#FF8787]">
+                      <div className="flex items-center gap-2">
+                        <span className="font-black text-[#C92A2A]">{p.user?.name}</span>
+                        <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-[#C92A2A] text-white">
+                          🟥 Red Card ({p.minute}')
+                        </span>
+                      </div>
+                      <span className="font-mono text-[10px] text-[#C92A2A] font-bold">{p.user?.studentId}</span>
                     </div>
                   ))}
                 </div>

@@ -431,21 +431,43 @@ export const LiveScorerPage: React.FC = () => {
     }
   };
 
-  // Football Helpers: Get players currently on the field vs bench
+  // Football Helpers: Identify players who have received a RED CARD (or 2 Yellow Cards)
+  const getRedCardedPlayerIds = (teamId?: number) => {
+    if (!matchData?.footballEvents) return new Set<number>();
+    const redCarded = new Set<number>();
+    const yellowCounts = new Map<number, number>();
+
+    for (const ev of matchData.footballEvents) {
+      if (teamId && ev.teamId !== teamId) continue;
+      if (ev.eventType === "RED_CARD") {
+        redCarded.add(ev.primaryPlayerId);
+      } else if (ev.eventType === "YELLOW_CARD") {
+        const count = (yellowCounts.get(ev.primaryPlayerId) || 0) + 1;
+        yellowCounts.set(ev.primaryPlayerId, count);
+        if (count >= 2) {
+          redCarded.add(ev.primaryPlayerId);
+        }
+      }
+    }
+    return redCarded;
+  };
+
+  // Football Helpers: Get players currently on the field vs bench (excluding sent-off/red-carded players)
   const getOnFieldPlayers = (teamId: number) => {
     if (!matchData) return [];
     const team = teamId === matchData.teamAId ? matchData.teamA : matchData.teamB;
     if (!team || !team.members) return [];
 
+    const redCardedIds = getRedCardedPlayerIds(teamId);
     const squadForTeam = matchData.matchSquads?.filter((s: any) => s.teamId === teamId) || [];
     if (squadForTeam.length > 0) {
       const onFieldUserIds = new Set(
         squadForTeam.filter((s: any) => s.isPlayingXI).map((s: any) => s.userId)
       );
-      return team.members.filter((m: any) => onFieldUserIds.has(m.userId));
+      return team.members.filter((m: any) => onFieldUserIds.has(m.userId) && !redCardedIds.has(m.userId));
     }
     // Default fallback if lineup wasn't explicitly saved before starting: first 11
-    return team.members.slice(0, 11);
+    return team.members.slice(0, 11).filter((m: any) => !redCardedIds.has(m.userId));
   };
 
   const getBenchPlayers = (teamId: number) => {
@@ -453,15 +475,16 @@ export const LiveScorerPage: React.FC = () => {
     const team = teamId === matchData.teamAId ? matchData.teamA : matchData.teamB;
     if (!team || !team.members) return [];
 
+    const redCardedIds = getRedCardedPlayerIds(teamId);
     const squadForTeam = matchData.matchSquads?.filter((s: any) => s.teamId === teamId) || [];
     if (squadForTeam.length > 0) {
       const onFieldUserIds = new Set(
         squadForTeam.filter((s: any) => s.isPlayingXI).map((s: any) => s.userId)
       );
-      return team.members.filter((m: any) => !onFieldUserIds.has(m.userId));
+      return team.members.filter((m: any) => !onFieldUserIds.has(m.userId) && !redCardedIds.has(m.userId));
     }
     // Default fallback if lineup wasn't explicitly saved: members beyond first 11
-    return team.members.slice(11);
+    return team.members.slice(11).filter((m: any) => !redCardedIds.has(m.userId));
   };
 
   // 8. Football: Open Event Modal (Auto-captures current match minute)

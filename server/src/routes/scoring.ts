@@ -710,6 +710,28 @@ scoringRouter.post("/:id/football/events", requireAuth, async (req: Authenticate
     // Auto-generate description for substitutions if not supplied
     let finalDescription = description || null;
     if (eventType === "SUBSTITUTION" && primaryPlayerId && secondaryPlayerId) {
+      // Validate that neither player has been sent off with a red card
+      const existingEvents = await prisma.footballMatchEvent.findMany({ where: { matchId } });
+      const redCarded = new Set<number>();
+      const yellowCount = new Map<number, number>();
+      existingEvents.forEach(ev => {
+        if (ev.eventType === "RED_CARD") redCarded.add(ev.primaryPlayerId);
+        else if (ev.eventType === "YELLOW_CARD") {
+          const c = (yellowCount.get(ev.primaryPlayerId) || 0) + 1;
+          yellowCount.set(ev.primaryPlayerId, c);
+          if (c >= 2) redCarded.add(ev.primaryPlayerId);
+        }
+      });
+
+      if (redCarded.has(Number(secondaryPlayerId))) {
+        res.status(400).json({ error: "Cannot substitute a player who has received a red card (sent off)." });
+        return;
+      }
+      if (redCarded.has(Number(primaryPlayerId))) {
+        res.status(400).json({ error: "Cannot substitute in a player who has already been sent off." });
+        return;
+      }
+
       const pIn = await prisma.user.findUnique({ where: { id: Number(primaryPlayerId) }, select: { name: true } });
       const pOut = await prisma.user.findUnique({ where: { id: Number(secondaryPlayerId) }, select: { name: true } });
       finalDescription = finalDescription || `Sub: ${pIn?.name || "Player In"} ON, ${pOut?.name || "Player Out"} OFF`;
@@ -741,6 +763,12 @@ scoringRouter.post("/:id/football/events", requireAuth, async (req: Authenticate
           }
         });
       }
+    } else if (eventType === "RED_CARD" && primaryPlayerId) {
+      // Player sent off -> mark isPlayingXI = false
+      await prisma.matchSquad.updateMany({
+        where: { matchId, userId: Number(primaryPlayerId) },
+        data: { isPlayingXI: false }
+      });
     }
 
     const createdEvent = await prisma.footballMatchEvent.create({
