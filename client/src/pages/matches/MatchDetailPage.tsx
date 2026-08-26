@@ -78,6 +78,117 @@ export const MatchDetailPage: React.FC = () => {
   const innings1 = matchData.cricketInnings?.find((x: any) => x.inningsNumber === 1);
   const innings2 = matchData.cricketInnings?.find((x: any) => x.inningsNumber === 2);
 
+  // Helper: Get match day squad (On Pitch + Subbed Out only, not entire batch roster)
+  const getTeamMatchSquad = (teamId: number) => {
+    const team = teamId === matchData.teamAId ? matchData.teamA : matchData.teamB;
+    if (!team) return { onPitch: [], subbedOut: [], totalInMatch: 0 };
+
+    const squadEntries = matchData.matchSquads?.filter((s: any) => s.teamId === teamId) || [];
+    
+    if (isCricket) {
+      if (squadEntries.length > 0) {
+        const playingXI = squadEntries.filter((s: any) => s.isPlayingXI);
+        return {
+          onPitch: playingXI.map((s: any) => ({
+            userId: s.userId,
+            user: s.user || team.members?.find((m: any) => m.userId === s.userId)?.user,
+            battingOrder: s.battingOrder,
+          })),
+          subbedOut: [],
+          totalInMatch: playingXI.length
+        };
+      }
+      const fallbackXI = (team.members || []).slice(0, 11).map((m: any, idx: number) => ({
+        userId: m.userId,
+        user: m.user,
+        battingOrder: idx + 1,
+      }));
+      return {
+        onPitch: fallbackXI,
+        subbedOut: [],
+        totalInMatch: fallbackXI.length
+      };
+    }
+
+    // Football
+    const subEvents = matchData.footballEvents?.filter(
+      (ev: any) => ev.eventType === "SUBSTITUTION" && ev.teamId === teamId
+    ) || [];
+
+    const subbedOutMap = new Map<number, { minute: number; subbedInName?: string }>();
+    subEvents.forEach((ev: any) => {
+      if (ev.secondaryPlayerId) {
+        subbedOutMap.set(ev.secondaryPlayerId, {
+          minute: ev.minute,
+          subbedInName: ev.primaryPlayer?.name
+        });
+      }
+    });
+
+    const subbedInMap = new Map<number, { minute: number; subbedOutName?: string }>();
+    subEvents.forEach((ev: any) => {
+      if (ev.primaryPlayerId) {
+        subbedInMap.set(ev.primaryPlayerId, {
+          minute: ev.minute,
+          subbedOutName: ev.secondaryPlayer?.name
+        });
+      }
+    });
+
+    if (squadEntries.length > 0) {
+      const onPitchSquad = squadEntries
+        .filter((s: any) => s.isPlayingXI)
+        .map((s: any) => ({
+          userId: s.userId,
+          user: s.user || team.members?.find((m: any) => m.userId === s.userId)?.user,
+          subbedIn: subbedInMap.get(s.userId),
+        }));
+
+      const subbedOutSquad: any[] = squadEntries
+        .filter((s: any) => !s.isPlayingXI && subbedOutMap.has(s.userId))
+        .map((s: any) => ({
+          userId: s.userId,
+          user: s.user || team.members?.find((m: any) => m.userId === s.userId)?.user,
+          subbedOut: subbedOutMap.get(s.userId),
+        }));
+
+      // In case an event has a secondaryPlayerId not explicitly in squadEntries
+      subEvents.forEach((ev: any) => {
+        if (ev.secondaryPlayerId && !subbedOutSquad.some((p: any) => p.userId === ev.secondaryPlayerId)) {
+          const userObj = ev.secondaryPlayer || team.members?.find((m: any) => m.userId === ev.secondaryPlayerId)?.user;
+          if (userObj) {
+            subbedOutSquad.push({
+              userId: ev.secondaryPlayerId,
+              user: userObj,
+              subbedOut: { minute: ev.minute, subbedInName: ev.primaryPlayer?.name }
+            });
+          }
+        }
+      });
+
+      return {
+        onPitch: onPitchSquad,
+        subbedOut: subbedOutSquad,
+        totalInMatch: onPitchSquad.length + subbedOutSquad.length
+      };
+    }
+
+    const fallbackOnPitch = (team.members || []).slice(0, 11).map((m: any) => ({
+      userId: m.userId,
+      user: m.user,
+      subbedIn: undefined
+    }));
+
+    return {
+      onPitch: fallbackOnPitch,
+      subbedOut: [],
+      totalInMatch: fallbackOnPitch.length
+    };
+  };
+
+  const teamASquad = getTeamMatchSquad(matchData.teamAId);
+  const teamBSquad = getTeamMatchSquad(matchData.teamBId);
+
   return (
     <div className="min-h-screen bg-[#FAF7F2] text-[#2C221E] pb-20">
       
@@ -553,68 +664,130 @@ export const MatchDetailPage: React.FC = () => {
           </div>
         )}
 
-        {/* TAB 3: SQUADS & PLAYING XI */}
+        {/* TAB 3: SQUADS & PLAYING XI (On-Pitch XI & Subbed Players Only) */}
         {activeTab === "lineups" && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            
             {/* Team A Squad */}
-            <div className="bg-white rounded-3xl border-2 border-[#E5DACB] p-6 shadow-xs space-y-3">
-              <h3 className="font-black text-sm text-[#9E2A2B] pb-2 border-b border-[#EFE8DC]">
-                {matchData.teamA.name} ({matchData.teamA.members?.length || 0} Players)
-              </h3>
-              <div className="space-y-1.5">
-                {matchData.teamA.members?.map((m: any) => {
-                  const squadEntry = matchData.matchSquads?.find((s: any) => s.userId === m.userId && s.teamId === matchData.teamAId);
-                  const isOnPitch = squadEntry ? squadEntry.isPlayingXI : true;
-                  return (
-                    <div key={m.userId} className="p-2.5 bg-[#FAF7F2] rounded-xl flex items-center justify-between text-xs">
-                      <span className="font-bold text-[#2C221E]">{m.user.name}</span>
-                      <div className="flex items-center gap-2">
-                        {isOnPitch ? (
-                          <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-[#E6FCF5] text-[#0CA678] border border-[#20C997]/30">
-                            🟢 On Pitch
-                          </span>
-                        ) : (
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#F1F3F5] text-[#868E96]">
-                            Bench
-                          </span>
-                        )}
-                        <span className="font-mono text-[10px] text-[#7C6E63]">{m.user.studentId}</span>
-                      </div>
-                    </div>
-                  );
-                })}
+            <div className="bg-white rounded-3xl border-2 border-[#E5DACB] p-6 shadow-xs space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-[#EFE8DC]">
+                <div>
+                  <h3 className="font-black text-sm text-[#9E2A2B]">{matchData.teamA.name}</h3>
+                  <p className="text-[11px] text-[#7C6E63]">
+                    {matchData.teamA.batch ? matchData.teamA.batch.name : "CU CSE"} · {teamASquad.onPitch.length} on Pitch
+                    {teamASquad.subbedOut.length > 0 && ` · ${teamASquad.subbedOut.length} Subbed`}
+                  </p>
+                </div>
+                <span className="font-mono text-xs font-black px-2.5 py-1 rounded-full bg-[#FAF0E6] text-[#842021] border border-[#E8D6C3]">
+                  {isCricket ? `${teamASquad.onPitch.length} Playing XI` : `${teamASquad.totalInMatch} in Match`}
+                </span>
               </div>
+
+              {/* Active On Pitch */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between text-[11px] font-black text-[#2A7B54] uppercase tracking-wide px-1">
+                  <span>🟢 {isCricket ? "Playing XI" : "Active Starting XI (On Pitch)"}</span>
+                  <span>{teamASquad.onPitch.length} Players</span>
+                </div>
+
+                {teamASquad.onPitch.map((p: any) => (
+                  <div key={p.userId} className="p-2.5 bg-[#FAF7F2] rounded-xl flex items-center justify-between text-xs border border-[#E8DCCF]/60">
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-[#2C221E]">{p.user?.name}</span>
+                      {p.subbedIn && (
+                        <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-[#E7F5FF] text-[#1864AB] border border-[#339AF0]/30">
+                          🔄 Sub IN ({p.subbedIn.minute}')
+                        </span>
+                      )}
+                    </div>
+                    <span className="font-mono text-[10px] text-[#7C6E63]">{p.user?.studentId}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Substituted Off (Football) */}
+              {teamASquad.subbedOut.length > 0 && (
+                <div className="space-y-1.5 pt-3 border-t border-[#EFE8DC]">
+                  <div className="flex items-center justify-between text-[11px] font-black text-[#C92A2A] uppercase tracking-wide px-1">
+                    <span>🔄 Substituted Off</span>
+                    <span>{teamASquad.subbedOut.length} Players</span>
+                  </div>
+
+                  {teamASquad.subbedOut.map((p: any) => (
+                    <div key={p.userId} className="p-2.5 bg-[#FFF5F5] rounded-xl flex items-center justify-between text-xs border border-[#FFC9C9]">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-[#495057] line-through">{p.user?.name}</span>
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#FFE3E3] text-[#C92A2A] border border-[#FFA8A8]">
+                          Sub OUT ({p.subbedOut?.minute}')
+                        </span>
+                      </div>
+                      <span className="font-mono text-[10px] text-[#868E96]">{p.user?.studentId}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Team B Squad */}
-            <div className="bg-white rounded-3xl border-2 border-[#E5DACB] p-6 shadow-xs space-y-3">
-              <h3 className="font-black text-sm text-[#9E2A2B] pb-2 border-b border-[#EFE8DC]">
-                {matchData.teamB.name} ({matchData.teamB.members?.length || 0} Players)
-              </h3>
-              <div className="space-y-1.5">
-                {matchData.teamB.members?.map((m: any) => {
-                  const squadEntry = matchData.matchSquads?.find((s: any) => s.userId === m.userId && s.teamId === matchData.teamBId);
-                  const isOnPitch = squadEntry ? squadEntry.isPlayingXI : true;
-                  return (
-                    <div key={m.userId} className="p-2.5 bg-[#FAF7F2] rounded-xl flex items-center justify-between text-xs">
-                      <span className="font-bold text-[#2C221E]">{m.user.name}</span>
-                      <div className="flex items-center gap-2">
-                        {isOnPitch ? (
-                          <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-[#E6FCF5] text-[#0CA678] border border-[#20C997]/30">
-                            🟢 On Pitch
-                          </span>
-                        ) : (
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#F1F3F5] text-[#868E96]">
-                            Bench
-                          </span>
-                        )}
-                        <span className="font-mono text-[10px] text-[#7C6E63]">{m.user.studentId}</span>
-                      </div>
-                    </div>
-                  );
-                })}
+            <div className="bg-white rounded-3xl border-2 border-[#E5DACB] p-6 shadow-xs space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-[#EFE8DC]">
+                <div>
+                  <h3 className="font-black text-sm text-[#9E2A2B]">{matchData.teamB.name}</h3>
+                  <p className="text-[11px] text-[#7C6E63]">
+                    {matchData.teamB.batch ? matchData.teamB.batch.name : "CU CSE"} · {teamBSquad.onPitch.length} on Pitch
+                    {teamBSquad.subbedOut.length > 0 && ` · ${teamBSquad.subbedOut.length} Subbed`}
+                  </p>
+                </div>
+                <span className="font-mono text-xs font-black px-2.5 py-1 rounded-full bg-[#FAF0E6] text-[#842021] border border-[#E8D6C3]">
+                  {isCricket ? `${teamBSquad.onPitch.length} Playing XI` : `${teamBSquad.totalInMatch} in Match`}
+                </span>
               </div>
+
+              {/* Active On Pitch */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between text-[11px] font-black text-[#2A7B54] uppercase tracking-wide px-1">
+                  <span>🟢 {isCricket ? "Playing XI" : "Active Starting XI (On Pitch)"}</span>
+                  <span>{teamBSquad.onPitch.length} Players</span>
+                </div>
+
+                {teamBSquad.onPitch.map((p: any) => (
+                  <div key={p.userId} className="p-2.5 bg-[#FAF7F2] rounded-xl flex items-center justify-between text-xs border border-[#E8DCCF]/60">
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-[#2C221E]">{p.user?.name}</span>
+                      {p.subbedIn && (
+                        <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-[#E7F5FF] text-[#1864AB] border border-[#339AF0]/30">
+                          🔄 Sub IN ({p.subbedIn.minute}')
+                        </span>
+                      )}
+                    </div>
+                    <span className="font-mono text-[10px] text-[#7C6E63]">{p.user?.studentId}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Substituted Off (Football) */}
+              {teamBSquad.subbedOut.length > 0 && (
+                <div className="space-y-1.5 pt-3 border-t border-[#EFE8DC]">
+                  <div className="flex items-center justify-between text-[11px] font-black text-[#C92A2A] uppercase tracking-wide px-1">
+                    <span>🔄 Substituted Off</span>
+                    <span>{teamBSquad.subbedOut.length} Players</span>
+                  </div>
+
+                  {teamBSquad.subbedOut.map((p: any) => (
+                    <div key={p.userId} className="p-2.5 bg-[#FFF5F5] rounded-xl flex items-center justify-between text-xs border border-[#FFC9C9]">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-[#495057] line-through">{p.user?.name}</span>
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#FFE3E3] text-[#C92A2A] border border-[#FFA8A8]">
+                          Sub OUT ({p.subbedOut?.minute}')
+                        </span>
+                      </div>
+                      <span className="font-mono text-[10px] text-[#868E96]">{p.user?.studentId}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
+
           </div>
         )}
 
