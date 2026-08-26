@@ -15,7 +15,9 @@ import {
   Settings, 
   Sparkles, 
   UserCheck,
-  GitFork
+  GitFork,
+  Flame,
+  Activity
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
@@ -26,11 +28,12 @@ export const TournamentDetailPage: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
   const [tournament, setTournament] = useState<any>(null);
   const [standingsData, setStandingsData] = useState<any>(null);
+  const [statsData, setStatsData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<any>(null);
   
   // UI Tabs & Expansion
-  const [activeTab, setActiveTab] = useState<"overview" | "teams" | "fixtures" | "standings" | "bracket">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "teams" | "fixtures" | "standings" | "bracket" | "stats">("overview");
   const [expandedTeamId, setExpandedTeamId] = useState<number | null>(null);
   const [showWorkspaceModal, setShowWorkspaceModal] = useState(false);
 
@@ -40,12 +43,14 @@ export const TournamentDetailPage: React.FC = () => {
       if (isInitial) {
         setLoading(true);
       }
-      const [tournData, standingsRes] = await Promise.all([
+      const [tournData, standingsRes, statsRes] = await Promise.all([
         api.tournaments.getDetail(slug),
         api.tournaments.getStandings(slug).catch(() => null),
+        api.scoring.getTournamentStats(slug).catch(() => null),
       ]);
       setTournament(tournData);
       setStandingsData(standingsRes);
+      setStatsData(statsRes);
     } catch (err: any) {
       console.error("Failed to load tournament", err);
     } finally {
@@ -273,6 +278,18 @@ export const TournamentDetailPage: React.FC = () => {
             <GitFork className="w-4 h-4" />
             <span>🏆 Knockout Bracket</span>
           </button>
+
+          <button
+            onClick={() => setActiveTab("stats")}
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-2xl text-xs font-black transition-all ${
+              activeTab === "stats"
+                ? "bg-[#9E2A2B] text-white shadow-md shadow-[#9E2A2B]/20"
+                : "bg-white text-[#7C6E63] hover:bg-[#FAF0E6] hover:text-[#9E2A2B] border border-[#E5DACB]"
+            }`}
+          >
+            <Flame className="w-4 h-4" />
+            <span>📊 Leaderboards & Stats</span>
+          </button>
         </div>
 
         {/* TAB 1: OVERVIEW */}
@@ -484,6 +501,26 @@ export const TournamentDetailPage: React.FC = () => {
                       <span>Scorer: {m.scorers?.length > 0 ? m.scorers[0].user.name : "Unassigned"}</span>
                     </span>
                   </div>
+
+                  {/* Match Center & Scorer Links */}
+                  <div className="pt-2 border-t border-[#EFE8DC] flex items-center justify-between gap-2">
+                    <Link
+                      to={`/matches/${m.id}`}
+                      className="px-3 py-1.5 rounded-xl bg-[#FAF7F2] hover:bg-[#FAF0E6] text-[#2C221E] font-bold text-[11px] border border-[#E8DCCF] flex items-center gap-1.5 transition-colors"
+                    >
+                      <Activity className="w-3.5 h-3.5 text-[#9E2A2B]" />
+                      <span>{m.status === "LIVE" ? "🔴 Live Match Arena" : "Match Center"}</span>
+                    </Link>
+
+                    {isOrganizer && (
+                      <Link
+                        to={`/matches/${m.id}/score`}
+                        className="px-3 py-1.5 rounded-xl bg-[#9E2A2B] hover:bg-[#842021] text-white font-bold text-[11px] flex items-center gap-1 shadow-xs transition-colors"
+                      >
+                        <span>⚙️ Score Match</span>
+                      </Link>
+                    )}
+                  </div>
                 </div>
               ))}
 
@@ -580,6 +617,160 @@ export const TournamentDetailPage: React.FC = () => {
             onRefresh={() => fetchTournamentData()}
             onEditMatch={() => setShowWorkspaceModal(true)}
           />
+        )}
+
+        {/* TAB 6: LEADERBOARDS & STATS */}
+        {activeTab === "stats" && (
+          <div className="space-y-6">
+            {tournament.sport === "CRICKET" ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                
+                {/* Orange Cap: Top Run Scorers */}
+                <div className="bg-white rounded-3xl border-2 border-[#E5DACB] p-6 shadow-xs space-y-4">
+                  <div className="flex items-center justify-between pb-3 border-b border-[#EFE8DC]">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xl">🟠</span>
+                      <h3 className="font-black text-sm text-[#2C221E]">Orange Cap: Top Run Scorers</h3>
+                    </div>
+                  </div>
+
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs border-collapse">
+                      <thead>
+                        <tr className="border-b border-[#EFE8DC] text-[#7C6E63] uppercase text-[10px] font-extrabold">
+                          <th className="py-2 px-2">#</th>
+                          <th className="py-2 px-3">Player</th>
+                          <th className="py-2 px-2 text-right font-black text-[#9E2A2B]">Runs</th>
+                          <th className="py-2 px-2 text-right">Inn</th>
+                          <th className="py-2 px-2 text-right">Avg</th>
+                          <th className="py-2 px-2 text-right">SR</th>
+                          <th className="py-2 px-2 text-right">6s</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[#FAF0E6]">
+                        {statsData?.orangeCap?.map((row: any, idx: number) => (
+                          <tr key={row.player.id} className="hover:bg-[#FAF7F2]">
+                            <td className="py-2.5 px-2 font-bold text-[#7C6E63]">{idx + 1}</td>
+                            <td className="py-2.5 px-3">
+                              <p className="font-extrabold text-[#2C221E]">{row.player.name}</p>
+                              <p className="text-[10px] text-[#7C6E63]">{row.player.batch?.name || row.player.studentId}</p>
+                            </td>
+                            <td className="py-2.5 px-2 text-right font-black text-[#9E2A2B] bg-[#FAF0E6]/50">{row.runs}</td>
+                            <td className="py-2.5 px-2 text-right font-bold">{row.innings}</td>
+                            <td className="py-2.5 px-2 text-right font-mono">{row.average}</td>
+                            <td className="py-2.5 px-2 text-right font-mono">{row.strikeRate}</td>
+                            <td className="py-2.5 px-2 text-right font-bold text-[#2A7B54]">{row.sixes}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    {(!statsData?.orangeCap || statsData.orangeCap.length === 0) && (
+                      <p className="text-xs text-[#A89A8D] italic text-center py-6">No batting records logged yet.</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Purple Cap: Top Wicket Takers */}
+                <div className="bg-white rounded-3xl border-2 border-[#E5DACB] p-6 shadow-xs space-y-4">
+                  <div className="flex items-center justify-between pb-3 border-b border-[#EFE8DC]">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xl">🟣</span>
+                      <h3 className="font-black text-sm text-[#2C221E]">Purple Cap: Top Wicket Takers</h3>
+                    </div>
+                  </div>
+
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs border-collapse">
+                      <thead>
+                        <tr className="border-b border-[#EFE8DC] text-[#7C6E63] uppercase text-[10px] font-extrabold">
+                          <th className="py-2 px-2">#</th>
+                          <th className="py-2 px-3">Bowler</th>
+                          <th className="py-2 px-2 text-right font-black text-[#9E2A2B]">Wkts</th>
+                          <th className="py-2 px-2 text-right">Overs</th>
+                          <th className="py-2 px-2 text-right">Runs</th>
+                          <th className="py-2 px-2 text-right">Econ</th>
+                          <th className="py-2 px-2 text-right">BBI</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[#FAF0E6]">
+                        {statsData?.purpleCap?.map((row: any, idx: number) => (
+                          <tr key={row.player.id} className="hover:bg-[#FAF7F2]">
+                            <td className="py-2.5 px-2 font-bold text-[#7C6E63]">{idx + 1}</td>
+                            <td className="py-2.5 px-3">
+                              <p className="font-extrabold text-[#2C221E]">{row.player.name}</p>
+                              <p className="text-[10px] text-[#7C6E63]">{row.player.batch?.name || row.player.studentId}</p>
+                            </td>
+                            <td className="py-2.5 px-2 text-right font-black text-[#9E2A2B] bg-[#FAF0E6]/50">{row.wickets}</td>
+                            <td className="py-2.5 px-2 text-right font-bold">{row.overs}</td>
+                            <td className="py-2.5 px-2 text-right font-mono">{row.runs}</td>
+                            <td className="py-2.5 px-2 text-right font-mono">{row.economy}</td>
+                            <td className="py-2.5 px-2 text-right font-mono font-bold text-[#2A7B54]">{row.bestFigures}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    {(!statsData?.purpleCap || statsData.purpleCap.length === 0) && (
+                      <p className="text-xs text-[#A89A8D] italic text-center py-6">No bowling records logged yet.</p>
+                    )}
+                  </div>
+                </div>
+
+              </div>
+            ) : (
+              /* Football Leaderboards */
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Golden Boot */}
+                <div className="bg-white rounded-3xl border-2 border-[#E5DACB] p-6 shadow-xs space-y-4">
+                  <h3 className="font-black text-sm text-[#2C221E] flex items-center gap-2">
+                    <span>⚽</span>
+                    <span>Golden Boot: Top Goal Scorers</span>
+                  </h3>
+                  <div className="space-y-2">
+                    {statsData?.goldenBoot?.map((row: any, idx: number) => (
+                      <div key={row.player.id} className="p-3 bg-[#FAF7F2] rounded-xl flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-3">
+                          <span className="font-black text-[#7C6E63]">#{idx + 1}</span>
+                          <div>
+                            <p className="font-extrabold text-[#2C221E]">{row.player.name}</p>
+                            <p className="text-[10px] text-[#7C6E63]">{row.player.batch?.name}</p>
+                          </div>
+                        </div>
+                        <span className="font-mono text-base font-black text-[#9E2A2B]">{row.goals} Goals</span>
+                      </div>
+                    ))}
+                    {(!statsData?.goldenBoot || statsData.goldenBoot.length === 0) && (
+                      <p className="text-xs text-[#A89A8D] italic text-center py-6">No goals logged yet.</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Top Playmakers */}
+                <div className="bg-white rounded-3xl border-2 border-[#E5DACB] p-6 shadow-xs space-y-4">
+                  <h3 className="font-black text-sm text-[#2C221E] flex items-center gap-2">
+                    <span>🎯</span>
+                    <span>Top Playmakers: Most Assists</span>
+                  </h3>
+                  <div className="space-y-2">
+                    {statsData?.topPlaymakers?.map((row: any, idx: number) => (
+                      <div key={row.player.id} className="p-3 bg-[#FAF7F2] rounded-xl flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-3">
+                          <span className="font-black text-[#7C6E63]">#{idx + 1}</span>
+                          <div>
+                            <p className="font-extrabold text-[#2C221E]">{row.player.name}</p>
+                            <p className="text-[10px] text-[#7C6E63]">{row.player.batch?.name}</p>
+                          </div>
+                        </div>
+                        <span className="font-mono text-base font-black text-[#2A7B54]">{row.assists} Assists</span>
+                      </div>
+                    ))}
+                    {(!statsData?.topPlaymakers || statsData.topPlaymakers.length === 0) && (
+                      <p className="text-xs text-[#A89A8D] italic text-center py-6">No assists logged yet.</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
         )}
 
       </main>
