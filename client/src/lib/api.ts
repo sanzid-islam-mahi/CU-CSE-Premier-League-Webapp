@@ -484,6 +484,16 @@ export const api = {
       return data;
     },
 
+    generateKnockouts: async (tournamentIdOrSlug: string | number) => {
+      const res = await fetch(`${API_BASE}/matches/tournament/${tournamentIdOrSlug}/generate-knockouts`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to generate knockout bracket");
+      return data;
+    },
+
     clearScheduled: async (tournamentIdOrSlug: string | number) => {
       const res = await fetch(`${API_BASE}/matches/tournament/${tournamentIdOrSlug}/matches/scheduled`, {
         method: "DELETE",

@@ -332,6 +332,126 @@ matchesRouter.delete("/tournament/:idOrSlug/matches/scheduled", requireAuth, asy
   }
 });
 
+// GENERATE KNOCKOUT BRACKET FIXTURES (Semi-Finals & Final)
+matchesRouter.post("/tournament/:idOrSlug/generate-knockouts", requireAuth, async (req: AuthenticatedRequest, res) => {
+  try {
+    const { idOrSlug } = req.params;
+    const isNum = !isNaN(Number(idOrSlug));
+    const slugStr = String(idOrSlug);
+    const tournament: any = await prisma.tournament.findFirst({
+      where: isNum ? { id: Number(idOrSlug) } : { slug: slugStr },
+      include: {
+        groups: { include: { teams: true } },
+        teams: true,
+        matches: { orderBy: { matchNumber: "desc" } }
+      }
+    });
+
+    if (!tournament) {
+      res.status(404).json({ error: "Tournament not found" });
+      return;
+    }
+
+    const allowed = await isOrganizerOrAdmin(req.user!.id, req.user!.role, tournament.id);
+    if (!allowed) {
+      res.status(403).json({ error: "Access denied. Only Tournament Organizers can generate knockout fixtures." });
+      return;
+    }
+
+    let sf1_teamAId: number;
+    let sf1_teamBId: number;
+    let sf2_teamAId: number;
+    let sf2_teamBId: number;
+
+    if (tournament.groups && tournament.groups.length >= 2) {
+      const gA = tournament.groups[0];
+      const gB = tournament.groups[1];
+      if (gA.teams.length < 2 || gB.teams.length < 2) {
+        res.status(400).json({ error: "Each group must have at least 2 teams to generate semi-finals." });
+        return;
+      }
+      sf1_teamAId = gA.teams[0].id;
+      sf1_teamBId = gB.teams[1].id;
+      sf2_teamAId = gB.teams[0].id;
+      sf2_teamBId = gA.teams[1].id;
+    } else if (tournament.teams.length >= 4) {
+      sf1_teamAId = tournament.teams[0].id;
+      sf1_teamBId = tournament.teams[3].id;
+      sf2_teamAId = tournament.teams[1].id;
+      sf2_teamBId = tournament.teams[2].id;
+    } else {
+      res.status(400).json({ error: "At least 4 participating teams are required for a knockout bracket." });
+      return;
+    }
+
+    let nextMatchNum = tournament.matches.length > 0 ? (tournament.matches[0].matchNumber + 1) : 1;
+    const defaultVenue = tournament.sport === "CRICKET" ? "CU CSE Ground" : "CU Central Field";
+
+    // Delete any existing scheduled knockout matches
+    await prisma.match.deleteMany({
+      where: {
+        tournamentId: tournament.id,
+        stage: { in: ["SEMI_FINAL", "FINAL", "THIRD_PLACE"] },
+        status: "SCHEDULED"
+      }
+    });
+
+    const m1 = await prisma.match.create({
+      data: {
+        tournamentId: tournament.id,
+        stage: "SEMI_FINAL",
+        matchNumber: nextMatchNum++,
+        teamAId: sf1_teamAId,
+        teamBId: sf1_teamBId,
+        venue: defaultVenue,
+        status: "SCHEDULED"
+      },
+      include: { teamA: true, teamB: true }
+    });
+
+    const m2 = await prisma.match.create({
+      data: {
+        tournamentId: tournament.id,
+        stage: "SEMI_FINAL",
+        matchNumber: nextMatchNum++,
+        teamAId: sf2_teamAId,
+        teamBId: sf2_teamBId,
+        venue: defaultVenue,
+        status: "SCHEDULED"
+      },
+      include: { teamA: true, teamB: true }
+    });
+
+    const mFinal = await prisma.match.create({
+      data: {
+        tournamentId: tournament.id,
+        stage: "FINAL",
+        matchNumber: nextMatchNum++,
+        teamAId: sf1_teamAId,
+        teamBId: sf2_teamAId,
+        venue: defaultVenue,
+        status: "SCHEDULED"
+      },
+      include: { teamA: true, teamB: true }
+    });
+
+    if (tournament.sport === "FOOTBALL") {
+      await Promise.all([
+        prisma.footballMatchDetail.create({ data: { matchId: m1.id, halfDurationMinutes: 20 } }),
+        prisma.footballMatchDetail.create({ data: { matchId: m2.id, halfDurationMinutes: 20 } }),
+        prisma.footballMatchDetail.create({ data: { matchId: mFinal.id, halfDurationMinutes: 20 } }),
+      ]);
+    }
+
+    res.status(201).json({
+      message: "Successfully generated Knockout Bracket fixtures (Semi-Finals & Grand Final)!",
+      matches: [m1, m2, mFinal]
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || "Failed to generate knockout bracket" });
+  }
+});
+
 // UPDATE Match Details (Organizer or Admin)
 matchesRouter.put("/:id", requireAuth, async (req: AuthenticatedRequest, res) => {
   try {

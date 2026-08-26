@@ -14,11 +14,13 @@ import {
   Loader2, 
   Settings, 
   Sparkles, 
-  UserCheck 
+  UserCheck,
+  GitFork
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
 import { OrganizerWorkspaceModal } from "@/components/tournaments/OrganizerWorkspaceModal";
+import { TournamentBracketView } from "@/components/tournaments/TournamentBracketView";
 
 export const TournamentDetailPage: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
@@ -28,7 +30,7 @@ export const TournamentDetailPage: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<any>(null);
   
   // UI Tabs & Expansion
-  const [activeTab, setActiveTab] = useState<"overview" | "teams" | "fixtures" | "standings">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "teams" | "fixtures" | "standings" | "bracket">("overview");
   const [expandedTeamId, setExpandedTeamId] = useState<number | null>(null);
   const [showWorkspaceModal, setShowWorkspaceModal] = useState(false);
 
@@ -257,7 +259,19 @@ export const TournamentDetailPage: React.FC = () => {
             }`}
           >
             <BarChart3 className="w-4 h-4" />
-            <span>Points Table & Standings</span>
+            <span>Points Table</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab("bracket")}
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-2xl text-xs font-black transition-all ${
+              activeTab === "bracket"
+                ? "bg-[#9E2A2B] text-white shadow-md shadow-[#9E2A2B]/20"
+                : "bg-white text-[#7C6E63] hover:bg-[#FAF0E6] hover:text-[#9E2A2B] border border-[#E5DACB]"
+            }`}
+          >
+            <GitFork className="w-4 h-4" />
+            <span>🏆 Knockout Bracket</span>
           </button>
         </div>
 
@@ -556,6 +570,16 @@ export const TournamentDetailPage: React.FC = () => {
               </div>
             ))}
           </div>
+        )}
+
+        {/* TAB 5: KNOCKOUT BRACKET */}
+        {activeTab === "bracket" && (
+          <TournamentBracketView
+            tournament={tournament}
+            isOrganizer={isOrganizer}
+            onRefresh={() => fetchTournamentData()}
+            onEditMatch={() => setShowWorkspaceModal(true)}
+          />
         )}
 
       </main>
