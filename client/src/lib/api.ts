@@ -107,6 +107,7 @@ export const api = {
 
     updateProfile: async (profileData: {
       name?: string;
+      email?: string;
       phone?: string | null;
       bio?: string | null;
       avatarUrl?: string | null;

@@ -22,6 +22,7 @@ export const ProfilePage: React.FC = () => {
 
   // Profile Form State
   const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [bio, setBio] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
@@ -54,6 +55,7 @@ export const ProfilePage: React.FC = () => {
       const data = await api.auth.getMe();
       setUser(data);
       setName(data.name || "");
+      setEmail(data.email || "");
       setPhone(data.phone || "");
       setBio(data.bio || "");
       setAvatarUrl(data.avatarUrl || "");
@@ -80,6 +82,7 @@ export const ProfilePage: React.FC = () => {
     try {
       const res = await api.auth.updateProfile({
         name,
+        email: email.trim(),
         phone: phone || null,
         bio: bio || null,
         avatarUrl: avatarUrl || null,
@@ -374,6 +377,17 @@ export const ProfilePage: React.FC = () => {
                 </div>
 
                 <div>
+                  <label className="block font-bold text-[#4A3E35] mb-1">Email Address</label>
+                  <input
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-[#D8C7B3] bg-[#FAF7F2] text-[#2C221E] focus:outline-none focus:ring-2 focus:ring-[#9E2A2B]"
+                  />
+                </div>
+
+                <div>
                   <label className="block font-bold text-[#4A3E35] mb-1">Phone Number (Optional)</label>
                   <input
                     type="text"
@@ -381,6 +395,16 @@ export const ProfilePage: React.FC = () => {
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     className="w-full px-3.5 py-2.5 rounded-xl border border-[#D8C7B3] bg-[#FAF7F2] text-[#2C221E] focus:outline-none focus:ring-2 focus:ring-[#9E2A2B]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-[#4A3E35] mb-1">Student Roll Number</label>
+                  <input
+                    type="text"
+                    disabled
+                    value={user?.studentId || ""}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-[#E5DACB] bg-[#EFE8DC]/50 text-[#7C6E63] font-mono cursor-not-allowed"
                   />
                 </div>
 

@@ -191,6 +191,7 @@ authRouter.get("/me", requireAuth, async (req: AuthenticatedRequest, res) => {
 
 const updateProfileSchema = z.object({
   name: z.string().min(1, "Name is required").optional(),
+  email: z.string().email("Please provide a valid email").optional(),
   phone: z.string().optional().nullable(),
   bio: z.string().optional().nullable(),
   avatarUrl: z.string().optional().nullable(),
@@ -212,6 +213,7 @@ authRouter.put("/profile", requireAuth, async (req: AuthenticatedRequest, res) =
 
     const {
       name,
+      email,
       phone,
       bio,
       avatarUrl,
@@ -222,10 +224,26 @@ authRouter.put("/profile", requireAuth, async (req: AuthenticatedRequest, res) =
       preferredJerseyNo,
     } = parsed.data;
 
+    // Validate email uniqueness if changing email
+    if (email && email.toLowerCase().trim() !== req.user!.email.toLowerCase()) {
+      const targetEmail = email.toLowerCase().trim();
+      const existingEmail = await prisma.user.findFirst({
+        where: {
+          email: targetEmail,
+          NOT: { id: req.user!.id }
+        }
+      });
+      if (existingEmail) {
+        res.status(400).json({ error: `The email ${email} is already registered by another student or admin.` });
+        return;
+      }
+    }
+
     const updated = await prisma.user.update({
       where: { id: req.user!.id },
       data: {
         name: name !== undefined ? name : undefined,
+        email: email !== undefined ? email.toLowerCase().trim() : undefined,
         phone: phone !== undefined ? phone : undefined,
         bio: bio !== undefined ? bio : undefined,
         avatarUrl: avatarUrl !== undefined ? avatarUrl : undefined,
