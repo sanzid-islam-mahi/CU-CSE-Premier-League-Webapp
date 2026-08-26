@@ -170,6 +170,15 @@ export const LiveScorerPage: React.FC = () => {
   // 1. Setup / Toss Handler
   const handleSaveSetup = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!tossWinnerTeamId) {
+      alert("Please select the toss winner team.");
+      return;
+    }
+    if (selectedTeamAPlayers.length === 0 || selectedTeamBPlayers.length === 0) {
+      alert("Please select playing lineup members for both teams.");
+      return;
+    }
+
     setActionLoading(true);
     try {
       await api.scoring.setupMatch(matchId, {
@@ -178,8 +187,23 @@ export const LiveScorerPage: React.FC = () => {
         teamAPlayerIds: selectedTeamAPlayers,
         teamBPlayerIds: selectedTeamBPlayers,
       });
-      triggerToast("Toss and Playing XI saved!");
+      triggerToast("Toss and Playing Lineups saved!");
       setShowSetupModal(false);
+
+      // If Football and match was scheduled, automatically start 1st half
+      if (!isCricket && matchData.status === "SCHEDULED") {
+        await api.scoring.updateFootballTimer(matchId, {
+          clockSeconds: 0,
+          isClockRunning: true,
+          currentHalf: 1,
+          status: "LIVE",
+        });
+        setIsFootballTimerRunning(true);
+        setFootballCurrentHalf(1);
+        setFootballTimerSeconds(0);
+        triggerToast("Match Started! 1st Half LIVE ▶");
+      }
+
       fetchMatchData();
     } catch (err: any) {
       alert(err.message || "Failed to save match setup.");
@@ -342,6 +366,12 @@ export const LiveScorerPage: React.FC = () => {
 
   // 7. Football: Lifecycle - Start 1st Half
   const handleStartFootballFirstHalf = async () => {
+    // If toss has not happened or lineups not saved, popup the setup modal first
+    if (!matchData.tossWinnerTeamId || (matchData.matchSquads?.length || 0) === 0) {
+      setShowSetupModal(true);
+      return;
+    }
+
     setIsFootballTimerRunning(true);
     setFootballCurrentHalf(1);
     setFootballTimerSeconds(0);
@@ -908,24 +938,34 @@ export const LiveScorerPage: React.FC = () => {
           </div>
         )}
 
-        {/* Toss & Match Setup Banner if not set */}
+        {/* Pre-Match Toss & Squad Setup Required Hero Card */}
         {!matchData.tossWinnerTeamId && (
-          <div className="p-5 bg-[#FAF0E6] rounded-3xl border-2 border-[#E8D6C3] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="space-y-1">
-              <h3 className="text-sm font-black text-[#842021] flex items-center gap-2">
-                <Flame className="w-5 h-5 text-[#9E2A2B]" />
-                <span>Pre-Match Setup Required</span>
-              </h3>
-              <p className="text-xs text-[#6B5E53]">
-                Please select the Toss Winner, Decision (Bat/Bowl), and Playing XI squads to begin scoring.
-              </p>
+          <div className="p-6 bg-white rounded-3xl border-2 border-[#E5DACB] shadow-sm space-y-4 text-center sm:text-left flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+            <div className="flex flex-col sm:flex-row items-center gap-4">
+              <div className="w-14 h-14 rounded-2xl bg-[#FAF0E6] text-[#9E2A2B] flex items-center justify-center text-3xl shrink-0 border border-[#E8D6C3]">
+                {isCricket ? "🏏" : "⚽"}
+              </div>
+              <div className="space-y-1">
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#FAF0E6] text-[#842021] text-[11px] font-black uppercase">
+                  <span>🪙</span>
+                  <span>Match Setup Required</span>
+                </div>
+                <h3 className="text-base sm:text-lg font-black text-[#2C221E]">
+                  Record Coin Toss & Select Starting Lineups
+                </h3>
+                <p className="text-xs text-[#7C6E63]">
+                  Select the toss winner, batting/bowling decision, and starting squad players to begin live scoring.
+                </p>
+              </div>
             </div>
+
             <Button
               type="button"
               onClick={() => setShowSetupModal(true)}
-              className="bg-[#9E2A2B] hover:bg-[#842021] text-white text-xs font-bold h-10 px-5 rounded-2xl shadow-md shadow-[#9E2A2B]/20"
+              className="bg-[#9E2A2B] hover:bg-[#842021] text-white text-xs font-black h-11 px-6 rounded-2xl shadow-md shadow-[#9E2A2B]/20 shrink-0 flex items-center gap-2 animate-pulse"
             >
-              Configure Toss & Lineups
+              <Flame className="w-4 h-4 text-[#F59F00]" />
+              <span>Start Match & Configure Toss ▶</span>
             </Button>
           </div>
         )}
