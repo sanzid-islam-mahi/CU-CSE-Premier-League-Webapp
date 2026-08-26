@@ -32,10 +32,12 @@ export const TournamentDetailPage: React.FC = () => {
   const [expandedTeamId, setExpandedTeamId] = useState<number | null>(null);
   const [showWorkspaceModal, setShowWorkspaceModal] = useState(false);
 
-  const fetchTournamentData = async () => {
+  const fetchTournamentData = async (isInitial = false) => {
     if (!slug) return;
     try {
-      setLoading(true);
+      if (isInitial) {
+        setLoading(true);
+      }
       const [tournData, standingsRes] = await Promise.all([
         api.tournaments.getDetail(slug),
         api.tournaments.getStandings(slug).catch(() => null),
@@ -45,17 +47,19 @@ export const TournamentDetailPage: React.FC = () => {
     } catch (err: any) {
       console.error("Failed to load tournament", err);
     } finally {
-      setLoading(false);
+      if (isInitial) {
+        setLoading(false);
+      }
     }
   };
 
   useEffect(() => {
     const user = api.auth.getCurrentUser();
     setCurrentUser(user);
-    fetchTournamentData();
+    fetchTournamentData(true);
   }, [slug]);
 
-  if (loading) {
+  if (loading && !tournament) {
     return (
       <div className="min-h-screen bg-[#FAF7F2] flex items-center justify-center">
         <div className="flex items-center gap-3 text-sm font-bold text-[#6B5E53]">
