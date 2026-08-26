@@ -32,7 +32,7 @@ export const Footer: React.FC = () => {
 
             <div className="flex items-center gap-2 text-xs text-[#7C6E63]">
               <Building2 className="w-4 h-4 text-[#9E2A2B] shrink-0" />
-              <span>Iconic Red Brick Academic Building, Faculty of Science, CU</span>
+              <span>IT Building, Faculty of Engineering, CU</span>
             </div>
             
             <div className="flex items-center gap-2 text-xs text-[#7C6E63]">
