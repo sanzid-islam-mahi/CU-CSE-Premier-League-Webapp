@@ -8,7 +8,6 @@ import {
   Calendar,
   Layers,
   Award,
-  BarChart3,
   LogOut,
   Shield,
   ChevronDown
@@ -60,11 +59,10 @@ export const Navbar: React.FC<NavbarProps> = ({ activeSport, onSelectSport }) =>
   };
 
   const navItems = [
-    { label: "Matches", icon: Calendar },
-    { label: "Tournaments", icon: Trophy },
-    { label: "Batches", icon: Layers },
-    { label: "Hall of Fame", icon: Award },
-    { label: "Stats", icon: BarChart3 },
+    { label: "Matches", icon: Calendar, href: "/tournaments" },
+    { label: "Tournaments", icon: Trophy, href: "/tournaments" },
+    { label: "Batches", icon: Layers, href: "/" },
+    { label: "Hall of Fame", icon: Award, href: "/" },
   ];
 
   return (
@@ -124,13 +122,14 @@ export const Navbar: React.FC<NavbarProps> = ({ activeSport, onSelectSport }) =>
             {/* Public Navigation Menu Items */}
             <nav className="hidden lg:flex items-center gap-1">
               {navItems.map((item) => (
-                <span
+                <Link
                   key={item.label}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-2 text-sm font-semibold text-[#66584C] hover:text-[#9E2A2B] transition-colors cursor-default rounded-lg hover:bg-[#F1E8DC]"
+                  to={item.href}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 text-sm font-semibold text-[#66584C] hover:text-[#9E2A2B] transition-colors rounded-lg hover:bg-[#F1E8DC]"
                 >
                   <item.icon className="w-4 h-4 opacity-70 text-[#9E2A2B]" />
-                  {item.label}
-                </span>
+                  <span>{item.label}</span>
+                </Link>
               ))}
             </nav>
 

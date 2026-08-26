@@ -301,5 +301,229 @@ export const api = {
       if (!res.ok) throw new Error(data.error || "Failed to remove organizer");
       return data;
     },
+
+    getDetail: async (idOrSlug: string | number) => {
+      const res = await fetch(`${API_BASE}/tournaments/${idOrSlug}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to fetch tournament detail");
+      return data;
+    },
+
+    importBatch: async (idOrSlug: string | number, payload: {
+      batchId: number;
+      teamName?: string;
+      shortName?: string;
+      groupId?: number;
+    }) => {
+      const res = await fetch(`${API_BASE}/tournaments/${idOrSlug}/teams/import-batch`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to import batch as team");
+      return data;
+    },
+
+    createGroup: async (idOrSlug: string | number, name: string) => {
+      const res = await fetch(`${API_BASE}/tournaments/${idOrSlug}/groups`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ name }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to create group");
+      return data;
+    },
+
+    assignTeamsToGroup: async (idOrSlug: string | number, groupId: number, teamIds: number[]) => {
+      const res = await fetch(`${API_BASE}/tournaments/${idOrSlug}/groups/${groupId}/teams`, {
+        method: "PUT",
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ teamIds }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to assign teams to group");
+      return data;
+    },
+
+    deleteGroup: async (idOrSlug: string | number, groupId: number) => {
+      const res = await fetch(`${API_BASE}/tournaments/${idOrSlug}/groups/${groupId}`, {
+        method: "DELETE",
+        headers: getAuthHeaders(),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to delete group");
+      return data;
+    },
+
+    getStandings: async (idOrSlug: string | number) => {
+      const res = await fetch(`${API_BASE}/tournaments/${idOrSlug}/standings`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to compute standings");
+      return data;
+    },
+  },
+
+  teams: {
+    get: async (id: number) => {
+      const res = await fetch(`${API_BASE}/teams/${id}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to fetch team");
+      return data;
+    },
+
+    create: async (payload: {
+      tournamentId: number;
+      name: string;
+      shortName?: string;
+      batchId?: number | null;
+      groupId?: number | null;
+      logoUrl?: string | null;
+      captainId?: number | null;
+    }) => {
+      const res = await fetch(`${API_BASE}/teams`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to create team");
+      return data;
+    },
+
+    update: async (id: number, payload: {
+      name?: string;
+      shortName?: string;
+      groupId?: number | null;
+      logoUrl?: string | null;
+      captainId?: number | null;
+      viceCaptainId?: number | null;
+    }) => {
+      const res = await fetch(`${API_BASE}/teams/${id}`, {
+        method: "PUT",
+        headers: getAuthHeaders(),
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to update team");
+      return data;
+    },
+
+    delete: async (id: number) => {
+      const res = await fetch(`${API_BASE}/teams/${id}`, {
+        method: "DELETE",
+        headers: getAuthHeaders(),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to delete team");
+      return data;
+    },
+
+    addMember: async (teamId: number, payload: {
+      userId: number;
+      jerseyNumber?: number | null;
+      isCaptain?: boolean;
+      isViceCaptain?: boolean;
+    }) => {
+      const res = await fetch(`${API_BASE}/teams/${teamId}/members`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to add member to team");
+      return data;
+    },
+
+    removeMember: async (teamId: number, userId: number) => {
+      const res = await fetch(`${API_BASE}/teams/${teamId}/members/${userId}`, {
+        method: "DELETE",
+        headers: getAuthHeaders(),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to remove member from team");
+      return data;
+    },
+  },
+
+  matches: {
+    get: async (id: number) => {
+      const res = await fetch(`${API_BASE}/matches/${id}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to fetch match");
+      return data;
+    },
+
+    schedule: async (tournamentIdOrSlug: string | number, payload: {
+      teamAId: number;
+      teamBId: number;
+      groupId?: number | null;
+      stage?: string;
+      startTime?: string | null;
+      venue?: string | null;
+      matchNumber?: number;
+    }) => {
+      const res = await fetch(`${API_BASE}/matches/tournament/${tournamentIdOrSlug}`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to schedule match");
+      return data;
+    },
+
+    generateRoundRobin: async (tournamentIdOrSlug: string | number) => {
+      const res = await fetch(`${API_BASE}/matches/tournament/${tournamentIdOrSlug}/generate-round-robin`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to generate fixtures");
+      return data;
+    },
+
+    update: async (id: number, payload: any) => {
+      const res = await fetch(`${API_BASE}/matches/${id}`, {
+        method: "PUT",
+        headers: getAuthHeaders(),
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to update match");
+      return data;
+    },
+
+    delete: async (id: number) => {
+      const res = await fetch(`${API_BASE}/matches/${id}`, {
+        method: "DELETE",
+        headers: getAuthHeaders(),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to delete match");
+      return data;
+    },
+
+    assignScorer: async (matchId: number, userId: number) => {
+      const res = await fetch(`${API_BASE}/matches/${matchId}/scorers`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ userId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to assign scorer");
+      return data;
+    },
+
+    removeScorer: async (matchId: number, userId: number) => {
+      const res = await fetch(`${API_BASE}/matches/${matchId}/scorers/${userId}`, {
+        method: "DELETE",
+        headers: getAuthHeaders(),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to remove scorer");
+      return data;
+    },
   },
 };

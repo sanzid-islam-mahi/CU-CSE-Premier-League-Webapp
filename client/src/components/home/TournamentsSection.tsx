@@ -1,38 +1,42 @@
 import React from "react";
+import { Link } from "react-router-dom";
 import { Trophy, ArrowUpRight } from "lucide-react";
 
 export const TournamentsSection: React.FC = () => {
   const tournaments = [
     {
       id: 1,
+      slug: "cpl-2026-cricket-t10",
       name: "CSE Premier League 2026",
       sport: "Cricket (T10)",
       season: "Spring 2026",
       status: "ONGOING",
-      teamsCount: 8,
+      teamsCount: 6,
       matchesTotal: 15,
       matchesPlayed: 7,
-      description: "The marquee annual cricket extravaganza of CU CSE. 8 batches battling in a tape-tennis 10-over powerplay format.",
+      description: "The marquee annual cricket extravaganza of CU CSE. Batches battling in a tape-tennis 10-over powerplay format.",
       icon: "🏏",
       accent: "from-[#9E2A2B] to-[#731D1E]",
-      organizers: ["Sanzid (20th)", "Tanvir (21st)"],
+      organizers: ["Sanzid (Anabil 21)", "Tanvir (Anabil 21)"],
     },
     {
       id: 2,
+      slug: "cse-futsal-champions-cup-2026",
       name: "CSE Futsal Champions Cup 2026",
       sport: "Football (7-a-side)",
       season: "Summer 2026",
       status: "ONGOING",
-      teamsCount: 8,
+      teamsCount: 6,
       matchesTotal: 12,
       matchesPlayed: 5,
       description: "High-octane 7-a-side futsal tournament with group stages and knockout matches under the floodlights.",
       icon: "⚽",
       accent: "from-[#8B2324] to-[#601415]",
-      organizers: ["Rafid (21st)", "Nahid (22nd)"],
+      organizers: ["Rafid (Dwimik 22)", "Nahid (Dwimik 22)"],
     },
     {
       id: 3,
+      slug: "cpl-2026-cricket-t10",
       name: "CSE Super Sixes 2025",
       sport: "Cricket (6 Overs)",
       season: "Fall 2025",
@@ -40,11 +44,11 @@ export const TournamentsSection: React.FC = () => {
       teamsCount: 6,
       matchesTotal: 10,
       matchesPlayed: 10,
-      description: "Championship concluded! Batch 20 emerged victorious after a thrilling final against Batch 19.",
+      description: "Championship concluded! Anabil 21 emerged victorious after a thrilling final against Batch 20.",
       icon: "🏆",
       accent: "from-[#2C221E] to-[#1C1613]",
       organizers: ["CSE Dept Sports Committee"],
-      champion: "Batch 20 Titans",
+      champion: "Anabil 21 Titans",
     }
   ];
 
@@ -64,17 +68,22 @@ export const TournamentsSection: React.FC = () => {
             </h2>
           </div>
 
-          <span className="text-xs text-[#7C6E63] font-semibold hidden sm:inline-block">
-            Organized by CSE Sports Committee & Batch Organizers
-          </span>
+          <Link 
+            to="/tournaments" 
+            className="text-xs font-bold text-[#9E2A2B] hover:underline flex items-center gap-1"
+          >
+            <span>Explore All Tournaments</span>
+            <ArrowUpRight className="w-4 h-4" />
+          </Link>
         </div>
 
         {/* Tournaments Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {tournaments.map((t) => (
-            <div
+            <Link
               key={t.id}
-              className="bg-white rounded-3xl border border-[#E5DACB] p-6 shadow-xs hover:shadow-md hover:border-[#9E2A2B]/40 transition-all flex flex-col justify-between group"
+              to={`/tournaments/${t.slug}`}
+              className="bg-white rounded-3xl border border-[#E5DACB] hover:border-[#9E2A2B] p-6 shadow-xs hover:shadow-lg transition-all flex flex-col justify-between group"
             >
               <div>
                 {/* Header Badge */}
@@ -129,13 +138,13 @@ export const TournamentsSection: React.FC = () => {
 
                 <div className="flex items-center justify-between pt-1 text-[11px] text-[#7C6E63]">
                   <span className="truncate">Organizers: {t.organizers.join(", ")}</span>
-                  <span className="text-[#9E2A2B] font-bold shrink-0 flex items-center">
-                    View Hub <ArrowUpRight className="w-3.5 h-3.5 ml-0.5" />
+                  <span className="text-[#9E2A2B] font-bold shrink-0 flex items-center group-hover:translate-x-0.5 transition-transform">
+                    View Arena <ArrowUpRight className="w-3.5 h-3.5 ml-0.5" />
                   </span>
                 </div>
               </div>
 
-            </div>
+            </Link>
           ))}
         </div>
 

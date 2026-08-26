@@ -4,6 +4,9 @@ import { AdminLoginPage } from "@/pages/admin/AdminLoginPage";
 import { AdminDashboard } from "@/pages/admin/AdminDashboard";
 import { ProfilePage } from "@/pages/profile/ProfilePage";
 import { PublicPlayerProfilePage } from "@/pages/players/PublicPlayerProfilePage";
+import { TournamentListPage } from "@/pages/tournaments/TournamentListPage";
+import { TournamentDetailPage } from "@/pages/tournaments/TournamentDetailPage";
+import { TeamDetailPage } from "@/pages/teams/TeamDetailPage";
 
 export function App() {
   return (
@@ -11,6 +14,13 @@ export function App() {
       <Routes>
         {/* Public Homepage with Red-Brick & Beige Theme */}
         <Route path="/" element={<HomePage />} />
+
+        {/* Tournaments Hub & Public Detail Page */}
+        <Route path="/tournaments" element={<TournamentListPage />} />
+        <Route path="/tournaments/:slug" element={<TournamentDetailPage />} />
+
+        {/* Team Detail Page & Squad View */}
+        <Route path="/teams/:id" element={<TeamDetailPage />} />
 
         {/* Player Profile & Sports Preferences Setup */}
         <Route path="/profile" element={<ProfilePage />} />
