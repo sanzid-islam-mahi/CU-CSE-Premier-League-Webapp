@@ -214,7 +214,7 @@ export const ProfilePage: React.FC = () => {
         <div className="bg-white rounded-3xl border-2 border-[#E5DACB] shadow-sm overflow-hidden relative">
           
           {/* Top Banner Cover Photo */}
-          <div className="relative h-40 sm:h-52 w-full bg-[#FAF0E6] overflow-hidden group">
+          <div className="relative h-44 sm:h-60 w-full bg-[#FAF0E6] overflow-hidden group">
             {coverUrl || user?.coverUrl ? (
               <img
                 src={coverUrl || user?.coverUrl}
@@ -230,68 +230,44 @@ export const ProfilePage: React.FC = () => {
             
             <button
               onClick={() => setShowCoverModal(true)}
-              className="absolute top-4 right-4 bg-black/60 hover:bg-black/80 text-white text-xs font-black px-3 py-1.5 rounded-xl backdrop-blur-xs border border-white/20 shadow-md flex items-center gap-1.5 transition-all"
+              className="absolute top-4 right-4 bg-black/60 hover:bg-black/80 text-white text-xs font-black px-3.5 py-2 rounded-xl backdrop-blur-xs border border-white/20 shadow-md flex items-center gap-1.5 transition-all"
             >
               <Camera className="w-3.5 h-3.5 text-[#F59F00]" />
               <span>Change Cover Photo</span>
             </button>
           </div>
           
-          <div className="p-6 sm:p-8 relative">
-            <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 -mt-16 sm:-mt-20">
+          {/* Profile Header Card Body */}
+          <div className="px-6 sm:px-8 pb-6 sm:pb-8 pt-0 relative">
+            
+            {/* Top Row: Avatar & Action Buttons */}
+            <div className="flex flex-col sm:flex-row items-center sm:items-end justify-between gap-4 -mt-14 sm:-mt-16">
               
-              <div className="flex flex-col sm:flex-row items-center sm:items-end gap-5 text-center sm:text-left">
-                {/* Avatar with Upload Action */}
-                <div className="relative group/avatar shrink-0">
-                  <SmartAvatar
-                    src={avatarUrl || user?.avatarUrl}
-                    alt={name || user?.name || "Player"}
-                    size="2xl"
-                    shape="rounded"
-                    className="ring-4 ring-white shadow-xl"
-                  />
-                  <button
-                    onClick={() => setShowAvatarModal(true)}
-                    className="absolute inset-0 bg-black/60 rounded-2xl flex flex-col items-center justify-center text-white opacity-0 group-hover/avatar:opacity-100 transition-opacity"
-                    title="Change Profile Photo"
-                  >
-                    <Upload className="w-5 h-5 text-white mb-1" />
-                    <span className="text-[10px] font-black uppercase tracking-wider">Upload</span>
-                  </button>
-                </div>
-
-                <div className="space-y-1.5 pb-2">
-                  <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
-                    <h1 className="text-2xl sm:text-3xl font-black text-[#2C221E] tracking-tight">
-                      {user?.name}
-                    </h1>
-                    <span className="font-mono text-xs font-black bg-[#FAF0E6] text-[#842021] px-2.5 py-0.5 rounded-lg border border-[#E8D6C3]">
-                      Roll: {user?.studentId}
-                    </span>
-                  </div>
-
-                  <p className="text-xs text-[#7C6E63] font-medium flex items-center justify-center sm:justify-start gap-3">
-                    {user?.batch && (
-                      <Link to={`/batches/${user.batch.slug || `batch-${user.batch.id}`}`} className="hover:underline font-bold text-[#9E2A2B]">
-                        🏛️ {user.batch.name} ({user.batch.session})
-                      </Link>
-                    )}
-                    <span>•</span>
-                    <span>📧 {user?.email}</span>
-                  </p>
-
-                  <p className="text-xs text-[#4A3E35] font-medium italic pt-1 max-w-xl">
-                    "{user?.bio || "CSE Chittagong University Premier League Athlete"}"
-                  </p>
-                </div>
+              {/* Avatar with Upload Action */}
+              <div className="relative group/avatar shrink-0">
+                <SmartAvatar
+                  src={avatarUrl || user?.avatarUrl}
+                  alt={name || user?.name || "Player"}
+                  size="2xl"
+                  shape="rounded"
+                  className="ring-4 ring-white shadow-xl"
+                />
+                <button
+                  onClick={() => setShowAvatarModal(true)}
+                  className="absolute inset-0 bg-black/60 rounded-2xl flex flex-col items-center justify-center text-white opacity-0 group-hover/avatar:opacity-100 transition-opacity"
+                  title="Change Profile Photo"
+                >
+                  <Upload className="w-5 h-5 text-white mb-1" />
+                  <span className="text-[10px] font-black uppercase tracking-wider">Upload</span>
+                </button>
               </div>
 
-              {/* Edit / View Toggle */}
-              <div className="flex flex-col sm:flex-row gap-2 self-center sm:self-end">
+              {/* Edit / View Buttons */}
+              <div className="flex flex-wrap items-center justify-center sm:justify-end gap-2 pt-2 sm:pt-0">
                 <Button
                   onClick={() => setIsEditing(!isEditing)}
                   variant={isEditing ? "outline" : "default"}
-                  className={`font-bold text-xs h-10 px-4 rounded-xl shadow-sm flex items-center gap-1.5 ${
+                  className={`font-bold text-xs h-10 px-4 rounded-xl shadow-xs flex items-center gap-1.5 ${
                     isEditing 
                       ? "border-[#D8C7B3] text-[#6B5E53] hover:bg-[#FAF7F2]" 
                       : "bg-[#9E2A2B] hover:bg-[#842021] text-white"
@@ -313,27 +289,77 @@ export const ProfilePage: React.FC = () => {
 
             </div>
 
-          {/* RESPONSIBILITIES / BADGES BAR */}
-          {user?.organizerTournaments?.length > 0 && (
-            <div className="mt-6 pt-6 border-t border-[#EFE8DC]">
-              <div className="p-4 bg-[#FAF0E6] rounded-2xl border border-[#E8D6C3] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-[#9E2A2B] text-white flex items-center justify-center shrink-0">
-                    <Shield className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <p className="text-xs font-black text-[#842021] uppercase tracking-wider">Tournament Organizing Committee</p>
-                    <p className="text-xs text-[#2C221E] font-bold">
-                      You are a designated Organizer for: {user.organizerTournaments.map((t: any) => t.name).join(", ")}
-                    </p>
-                  </div>
-                </div>
-                <span className="text-[11px] font-extrabold text-[#9E2A2B] bg-white px-3 py-1.5 rounded-xl border border-[#E8D6C3] self-start sm:self-auto">
-                  Organizing Rights Active ⚡
+            {/* Profile Info Details - Cleanly situated below cover */}
+            <div className="mt-5 space-y-2 text-center sm:text-left">
+              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2.5">
+                <h1 className="text-2xl sm:text-3xl font-black text-[#2C221E] tracking-tight">
+                  {user?.name}
+                </h1>
+                <span className="font-mono text-xs font-black bg-[#FAF0E6] text-[#842021] px-2.5 py-0.5 rounded-lg border border-[#E8D6C3]">
+                  Roll: {user?.studentId}
                 </span>
+                {user?.preferredJerseyNo && (
+                  <span className="font-mono text-xs font-black bg-[#9E2A2B] text-white px-2.5 py-0.5 rounded-lg shadow-xs">
+                    #{user.preferredJerseyNo}
+                  </span>
+                )}
               </div>
+
+              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2.5 text-xs text-[#7C6E63] font-semibold pt-0.5">
+                {user?.batch && (
+                  <Link
+                    to={`/batches/${user.batch.slug || `batch-${user.batch.id}`}`}
+                    className="hover:underline font-bold text-[#842021] bg-[#FAF0E6] px-2.5 py-1 rounded-lg border border-[#E8D6C3] transition-colors"
+                  >
+                    🏛️ {user.batch.name} ({user.batch.session})
+                  </Link>
+                )}
+                <span>•</span>
+                <span className="flex items-center gap-1 bg-white px-2.5 py-1 rounded-lg border border-[#E8DCCF]">
+                  <span>📧</span>
+                  <span className="font-mono">{user?.email}</span>
+                </span>
+                {user?.phone && (
+                  <>
+                    <span>•</span>
+                    <span className="flex items-center gap-1 bg-white px-2.5 py-1 rounded-lg border border-[#E8DCCF]">
+                      <span>📞</span>
+                      <span className="font-mono">{user.phone}</span>
+                    </span>
+                  </>
+                )}
+              </div>
+
+              {user?.bio && (
+                <div className="pt-2">
+                  <p className="text-xs text-[#4A3E35] font-medium italic bg-[#FAF7F2] p-3.5 rounded-2xl border border-[#E8DCCF] max-w-2xl">
+                    "{user.bio}"
+                  </p>
+                </div>
+              )}
             </div>
-          )}
+
+            {/* RESPONSIBILITIES / BADGES BAR */}
+            {user?.organizerTournaments?.length > 0 && (
+              <div className="mt-6 pt-5 border-t border-[#EFE8DC]">
+                <div className="p-4 bg-[#FAF0E6] rounded-2xl border border-[#E8D6C3] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-[#9E2A2B] text-white flex items-center justify-center shrink-0">
+                      <Shield className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-black text-[#842021] uppercase tracking-wider">Tournament Organizing Committee</p>
+                      <p className="text-xs text-[#2C221E] font-bold">
+                        You are a designated Organizer for: {user.organizerTournaments.map((t: any) => t.name).join(", ")}
+                      </p>
+                    </div>
+                  </div>
+                  <span className="text-[11px] font-extrabold text-[#9E2A2B] bg-white px-3 py-1.5 rounded-xl border border-[#E8D6C3] self-start sm:self-auto">
+                    Organizing Rights Active ⚡
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 

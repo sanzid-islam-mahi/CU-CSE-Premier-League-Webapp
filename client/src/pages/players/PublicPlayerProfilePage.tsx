@@ -98,7 +98,7 @@ export const PublicPlayerProfilePage: React.FC = () => {
           
           {/* Cover Photo */}
           {player.coverUrl ? (
-            <div className="relative h-40 sm:h-52 w-full overflow-hidden">
+            <div className="relative h-44 sm:h-60 w-full overflow-hidden">
               <img
                 src={player.coverUrl}
                 alt={`${player.name} Cover`}
@@ -110,58 +110,74 @@ export const PublicPlayerProfilePage: React.FC = () => {
             <div className="h-3 w-full brick-gradient" />
           )}
 
-          <div className="p-6 sm:p-8 relative">
-            <div className={`flex flex-col sm:flex-row items-center sm:items-end justify-between gap-6 ${player.coverUrl ? "-mt-16 sm:-mt-20" : "pt-2"}`}>
-              
-              <div className="flex flex-col sm:flex-row items-center sm:items-end gap-5 text-center sm:text-left">
-                <SmartAvatar
-                  src={player.avatarUrl}
-                  alt={player.name}
-                  size="2xl"
-                  shape="rounded"
-                  className="ring-4 ring-white shadow-xl shrink-0"
-                />
-
-                <div className="space-y-1.5 pb-1">
-                  <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
-                    <h1 className="text-2xl sm:text-3xl font-black text-[#2C221E] tracking-tight">
-                      {player.name}
-                    </h1>
-                    <span className="font-mono text-xs font-black bg-[#FAF0E6] text-[#842021] px-2.5 py-0.5 rounded-lg border border-[#E8D6C3]">
-                      Roll: {player.studentId}
-                    </span>
-                  </div>
-
-                  <p className="text-xs text-[#7C6E63] font-medium flex items-center justify-center sm:justify-start gap-3">
-                    {player.batch && (
-                      <Link
-                        to={`/batches/${player.batch.slug || `batch-${player.batch.id}`}`}
-                        className="hover:underline font-bold text-[#9E2A2B]"
-                      >
-                        🏛️ {player.batch.name} ({player.batch.session})
-                      </Link>
-                    )}
-                    <span>•</span>
-                    <span>📧 {player.email}</span>
-                  </p>
-
-                  <p className="text-xs text-[#4A3E35] font-medium italic pt-1 max-w-xl">
-                    "{player.bio || "CSE Chittagong University Premier League Athlete"}"
-                  </p>
-                </div>
-              </div>
+          {/* Profile Header Body */}
+          <div className="px-6 sm:px-8 pb-6 sm:pb-8 pt-0 relative">
+            
+            {/* Top Row: Avatar & Jersey Pill */}
+            <div className="flex flex-col sm:flex-row items-center sm:items-end justify-between gap-4 -mt-14 sm:-mt-16">
+              <SmartAvatar
+                src={player.avatarUrl}
+                alt={player.name}
+                size="2xl"
+                shape="rounded"
+                className="ring-4 ring-white shadow-xl shrink-0"
+              />
 
               {/* Jersey Pill */}
               {player.preferredJerseyNo && (
                 <div className="p-3 bg-[#FAF0E6] rounded-2xl border border-[#E8D6C3] flex items-center gap-2 self-center sm:self-end">
                   <Shirt className="w-5 h-5 text-[#9E2A2B]" />
                   <div>
-                    <p className="text-[10px] font-bold text-[#7C6E63] uppercase">Jersey</p>
+                    <p className="text-[10px] font-bold text-[#7C6E63] uppercase">Squad Number</p>
                     <p className="font-black text-sm text-[#9E2A2B]">#{player.preferredJerseyNo}</p>
                   </div>
                 </div>
               )}
+            </div>
 
+            {/* Profile Info Details - Cleanly situated below cover */}
+            <div className="mt-5 space-y-2 text-center sm:text-left">
+              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2.5">
+                <h1 className="text-2xl sm:text-3xl font-black text-[#2C221E] tracking-tight">
+                  {player.name}
+                </h1>
+                <span className="font-mono text-xs font-black bg-[#FAF0E6] text-[#842021] px-2.5 py-0.5 rounded-lg border border-[#E8D6C3]">
+                  Roll: {player.studentId}
+                </span>
+              </div>
+
+              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2.5 text-xs text-[#7C6E63] font-semibold pt-0.5">
+                {player.batch && (
+                  <Link
+                    to={`/batches/${player.batch.slug || `batch-${player.batch.id}`}`}
+                    className="hover:underline font-bold text-[#842021] bg-[#FAF0E6] px-2.5 py-1 rounded-lg border border-[#E8D6C3] transition-colors"
+                  >
+                    🏛️ {player.batch.name} ({player.batch.session})
+                  </Link>
+                )}
+                <span>•</span>
+                <span className="flex items-center gap-1 bg-white px-2.5 py-1 rounded-lg border border-[#E8DCCF]">
+                  <span>📧</span>
+                  <span className="font-mono">{player.email}</span>
+                </span>
+                {player.phone && (
+                  <>
+                    <span>•</span>
+                    <span className="flex items-center gap-1 bg-white px-2.5 py-1 rounded-lg border border-[#E8DCCF]">
+                      <span>📞</span>
+                      <span className="font-mono">{player.phone}</span>
+                    </span>
+                  </>
+                )}
+              </div>
+
+              {player.bio && (
+                <div className="pt-2">
+                  <p className="text-xs text-[#4A3E35] font-medium italic bg-[#FAF7F2] p-3.5 rounded-2xl border border-[#E8DCCF] max-w-2xl">
+                    "{player.bio}"
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* Active Tournament Organizers Badge */}
