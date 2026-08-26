@@ -51,12 +51,12 @@ export const TournamentBracketView: React.FC<TournamentBracketViewProps> = ({
 
   // Handle Generate Knockout Fixtures
   const handleGenerateKnockouts = async () => {
-    let confirmMsg = "This will lock in the Semi-Finals and Final fixtures based on current group stage standings. Proceed?";
     if (!isGroupStageFinished) {
-      confirmMsg = `Group Stage is still in progress (${completedGroupMatches} of ${totalGroupMatches} matches played). Standings are not yet final.\n\nDo you want to generate provisional knockout fixtures now based on current rankings, or wait for all group matches to finish?`;
+      alert(`Cannot generate knockout fixtures yet: ${totalGroupMatches - completedGroupMatches} group stage match(es) are still in progress.\n\nKnockout fixtures will unlock once all group matches finish and the points table is finalized.`);
+      return;
     }
 
-    if (!confirm(confirmMsg)) return;
+    if (!confirm("This will lock in the Semi-Finals and Final fixtures based on the final group stage standings. Proceed?")) return;
 
     setLoading(true);
     try {
@@ -74,14 +74,14 @@ export const TournamentBracketView: React.FC<TournamentBracketViewProps> = ({
   const groupA = tournament.groups?.[0];
   const groupB = tournament.groups?.[1];
 
-  // Team names for SF1 & SF2 (or placeholder text if not yet finalized)
-  const sf1TeamA = semiFinals[0]?.teamA?.name || (groupA ? `🥇 1st ${groupA.name}` : "Seed #1");
-  const sf1TeamB = semiFinals[0]?.teamB?.name || (groupB ? `🥈 2nd ${groupB.name}` : "Seed #4");
-  const sf2TeamA = semiFinals[1]?.teamA?.name || (groupB ? `🥇 1st ${groupB.name}` : "Seed #2");
-  const sf2TeamB = semiFinals[1]?.teamB?.name || (groupA ? `🥈 2nd ${groupA.name}` : "Seed #3");
+  // Team names for SF1 & SF2
+  const sf1TeamA = semiFinals[0]?.teamA?.name || (groupA ? `🥇 1st Place ${groupA.name}` : "Winner Group A");
+  const sf1TeamB = semiFinals[0]?.teamB?.name || (groupB ? `🥈 2nd Place ${groupB.name}` : "Runner-Up Group B");
+  const sf2TeamA = semiFinals[1]?.teamA?.name || (groupB ? `🥇 1st Place ${groupB.name}` : "Winner Group B");
+  const sf2TeamB = semiFinals[1]?.teamB?.name || (groupA ? `🥈 2nd Place ${groupA.name}` : "Runner-Up Group A");
 
-  const finalTeamA = finalMatch?.teamA?.name || (semiFinals[0] ? `Winner Semi-Final 1` : "Winner SF 1");
-  const finalTeamB = finalMatch?.teamB?.name || (semiFinals[1] ? `Winner Semi-Final 2` : "Winner SF 2");
+  const finalTeamA = finalMatch?.teamA?.name || (semiFinals[0]?.winnerTeam?.name || "Winner Semi-Final 1");
+  const finalTeamB = finalMatch?.teamB?.name || (semiFinals[1]?.winnerTeam?.name || "Winner Semi-Final 2");
 
   return (
     <div className="space-y-6 animate-in fade-in">
@@ -128,12 +128,21 @@ export const TournamentBracketView: React.FC<TournamentBracketViewProps> = ({
               <Button
                 type="button"
                 onClick={handleGenerateKnockouts}
-                disabled={loading}
-                className="bg-[#9E2A2B] hover:bg-[#842021] text-white font-bold text-xs h-10 px-4 rounded-2xl shadow-md shadow-[#9E2A2B]/20 flex items-center gap-1.5 shrink-0"
+                disabled={loading || !isGroupStageFinished}
+                className={`font-bold text-xs h-10 px-4 rounded-2xl shadow-md flex items-center gap-1.5 shrink-0 ${
+                  !isGroupStageFinished
+                    ? "bg-[#FAF0E6] text-[#842021] border border-[#E8D6C3] cursor-not-allowed opacity-75 shadow-none"
+                    : "bg-[#2A7B54] hover:bg-[#206042] text-white shadow-[#2A7B54]/20"
+                }`}
+                title={!isGroupStageFinished ? `Locked: ${totalGroupMatches - completedGroupMatches} group matches remaining` : "Generate Semi-Finals"}
               >
                 <Sparkles className="w-4 h-4" />
                 <span>
-                  {hasKnockoutsGenerated ? "⚡ Re-Seed Knockout Fixtures" : "⚡ Seed & Generate Semi-Finals"}
+                  {!isGroupStageFinished
+                    ? `🔒 Seed Semi-Finals (${completedGroupMatches}/${totalGroupMatches} Played)`
+                    : hasKnockoutsGenerated
+                    ? "⚡ Re-Seed Knockouts from Standings"
+                    : "⚡ Lock Standings & Seed Semi-Finals"}
                 </span>
               </Button>
             </div>

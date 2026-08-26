@@ -358,6 +358,19 @@ matchesRouter.post("/tournament/:idOrSlug/generate-knockouts", requireAuth, asyn
       return;
     }
 
+    // Strict Lifecycle Validation: All group stage matches must be COMPLETED first
+    const groupMatches = await prisma.match.findMany({
+      where: { tournamentId: tournament.id, stage: "GROUP_STAGE" }
+    });
+    const uncompletedGroupMatches = groupMatches.filter(m => m.status !== "COMPLETED");
+
+    if (groupMatches.length > 0 && uncompletedGroupMatches.length > 0) {
+      res.status(400).json({
+        error: `Cannot generate knockout fixtures yet: ${uncompletedGroupMatches.length} of ${groupMatches.length} group stage match(es) are still in progress. Knockout fixtures can only be seeded once all group matches are finished and the points table is finalized.`
+      });
+      return;
+    }
+
     const getRankedTeams = (teamList: any[]) => {
       const statsMap = new Map<number, { team: any; points: number; won: number; lost: number }>();
       for (const t of teamList) {
