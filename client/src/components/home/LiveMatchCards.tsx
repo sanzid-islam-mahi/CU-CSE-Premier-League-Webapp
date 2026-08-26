@@ -1,5 +1,6 @@
 import React from "react";
 import { Radio, Clock, MapPin } from "lucide-react";
+import { DummyBadge } from "@/components/common/DummyBadge";
 
 interface LiveMatchCardsProps {
   activeSport: "cricket" | "football";
@@ -20,6 +21,7 @@ export const LiveMatchCards: React.FC<LiveMatchCardsProps> = ({ activeSport }) =
             <h2 className="text-xl sm:text-2xl font-black text-[#2C221E] tracking-tight">
               {activeSport === "cricket" ? "Cricket Fixtures & Live Score" : "Football Fixtures & Live Match"}
             </h2>
+            <DummyBadge label="SHOWCASE PREVIEW" variant="warning" />
           </div>
           
           <span className="text-xs font-semibold text-[#842021] bg-[#FAF0E6] px-3 py-1 rounded-full border border-[#E5DACB]">
@@ -45,6 +47,7 @@ export const LiveMatchCards: React.FC<LiveMatchCardsProps> = ({ activeSport }) =
                 <span className="text-[#9E2A2B]">Group A · Match 4</span>
                 <span>•</span>
                 <span>T10 (10 Overs)</span>
+                <DummyBadge label="SAMPLE MATCH" />
               </div>
 
               {/* Teams & Scoreboard Grid */}
@@ -129,12 +132,16 @@ export const LiveMatchCards: React.FC<LiveMatchCardsProps> = ({ activeSport }) =
             </div>
 
             {/* Upcoming Cricket Match Card */}
+            {/* Upcoming Cricket Match Box */}
             <div className="bg-white rounded-3xl border border-[#E5DACB] p-6 shadow-xs flex flex-col justify-between">
               <div>
                 <div className="flex items-center justify-between mb-4">
-                  <span className="px-2.5 py-1 rounded-full bg-[#FAF0E6] text-[#842021] text-[11px] font-bold">
-                    UPCOMING TODAY
-                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="px-2.5 py-1 rounded-full bg-[#FAF0E6] text-[#842021] text-[11px] font-bold">
+                      UPCOMING TODAY
+                    </span>
+                    <DummyBadge label="SAMPLE" />
+                  </div>
                   <span className="text-xs text-[#7C6E63] font-semibold flex items-center gap-1">
                     <Clock className="w-3.5 h-3.5 text-[#9E2A2B]" /> 4:30 PM
                   </span>
@@ -199,6 +206,7 @@ export const LiveMatchCards: React.FC<LiveMatchCardsProps> = ({ activeSport }) =
                 <span className="text-[#9E2A2B]">Quarter Final 1</span>
                 <span>•</span>
                 <span>20 Min Halves</span>
+                <DummyBadge label="SAMPLE MATCH" />
               </div>
 
               {/* Football Score Big Display */}
@@ -258,9 +266,12 @@ export const LiveMatchCards: React.FC<LiveMatchCardsProps> = ({ activeSport }) =
             <div className="bg-white rounded-3xl border border-[#E5DACB] p-6 shadow-xs flex flex-col justify-between">
               <div>
                 <div className="flex items-center justify-between mb-4">
-                  <span className="px-2.5 py-1 rounded-full bg-[#FAF0E6] text-[#842021] text-[11px] font-bold">
-                    UPCOMING TOMORROW
-                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="px-2.5 py-1 rounded-full bg-[#FAF0E6] text-[#842021] text-[11px] font-bold">
+                      UPCOMING TOMORROW
+                    </span>
+                    <DummyBadge label="SAMPLE" />
+                  </div>
                   <span className="text-xs text-[#7C6E63] font-semibold flex items-center gap-1">
                     <Clock className="w-3.5 h-3.5 text-[#9E2A2B]" /> 11:00 AM
                   </span>

@@ -1,5 +1,6 @@
 import React from "react";
 import { Zap } from "lucide-react";
+import { DummyBadge } from "@/components/common/DummyBadge";
 
 interface TopPerformersSectionProps {
   activeSport: "cricket" | "football";
@@ -16,13 +17,14 @@ export const TopPerformersSection: React.FC<TopPerformersSectionProps> = ({ acti
             <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#9E2A2B] mb-1">
               <Zap className="w-4 h-4" />
               <span>Department Leaderboard</span>
+              <DummyBadge label="SAMPLE LEADERBOARD DATA" variant="warning" />
             </div>
             <h2 className="text-2xl sm:text-3xl font-black text-[#2C221E] tracking-tight">
               {activeSport === "cricket" ? "Orange & Purple Cap Leaders" : "Golden Boot & Playmaker Leaders"}
             </h2>
           </div>
           <span className="text-xs text-[#7C6E63] font-semibold hidden sm:inline-block">
-            Updated live after every ball & event
+            Will auto-sync from live scored tournament matches
           </span>
         </div>
 

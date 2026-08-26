@@ -1,6 +1,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { Trophy, ArrowUpRight } from "lucide-react";
+import { DummyBadge } from "@/components/common/DummyBadge";
 
 export const TournamentsSection: React.FC = () => {
   const tournaments = [
@@ -91,15 +92,18 @@ export const TournamentsSection: React.FC = () => {
                   <span className="text-2xl p-2.5 rounded-2xl bg-[#FAF0E6] border border-[#E8D6C3]">
                     {t.icon}
                   </span>
-                  <span
-                    className={`text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full ${
-                      t.status === "ONGOING"
-                        ? "bg-[#9E2A2B] text-white animate-pulse"
-                        : "bg-[#EFE8DC] text-[#6B5E53]"
-                    }`}
-                  >
-                    {t.status}
-                  </span>
+                  <div className="flex items-center gap-1.5">
+                    {t.id === 3 && <DummyBadge label="SAMPLE ARCHIVE" variant="subtle" />}
+                    <span
+                      className={`text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full ${
+                        t.status === "ONGOING"
+                          ? "bg-[#9E2A2B] text-white animate-pulse"
+                          : "bg-[#EFE8DC] text-[#6B5E53]"
+                      }`}
+                    >
+                      {t.status}
+                    </span>
+                  </div>
                 </div>
 
                 <h3 className="text-lg font-black text-[#2C221E] group-hover:text-[#9E2A2B] transition-colors leading-snug">
