@@ -2,6 +2,7 @@ import { Router } from "express";
 import { prisma } from "../db.js";
 import { requireAuth, type AuthenticatedRequest } from "../middleware/auth.js";
 import { z } from "zod";
+import { advanceTournamentKnockouts } from "../lib/knockoutProgression.js";
 
 export const scoringRouter = Router();
 
@@ -877,24 +878,8 @@ scoringRouter.post("/:id/football/penalty-shootout", requireAuth, async (req: Au
       }
     });
 
-    // Auto-advance Semi-Final winners to Grand Final
-    if (match.stage === "SEMI_FINAL") {
-      const allSemiFinals = await prisma.match.findMany({
-        where: { tournamentId: match.tournamentId, stage: "SEMI_FINAL" },
-        orderBy: { matchNumber: "asc" }
-      });
-      const finalMatch = await prisma.match.findFirst({
-        where: { tournamentId: match.tournamentId, stage: "FINAL" }
-      });
-
-      if (finalMatch && allSemiFinals.length >= 2) {
-        const isFirstSF = allSemiFinals[0].id === match.id;
-        await prisma.match.update({
-          where: { id: finalMatch.id },
-          data: isFirstSF ? { teamAId: Number(shootoutWinnerTeamId) } : { teamBId: Number(shootoutWinnerTeamId) }
-        });
-      }
-    }
+    // Auto-advance tournament knockouts (Group Stage -> Semi Finals, Semi Finals -> Final, Final -> Crown Victor)
+    await advanceTournamentKnockouts(prisma, matchId);
 
     res.json({ message: "Penalty shootout recorded & match completed.", match: updatedMatch, resultSummary });
   } catch (err: any) {
@@ -978,24 +963,8 @@ scoringRouter.post("/:id/complete", requireAuth, async (req: AuthenticatedReques
       }
     });
 
-    // Auto-advance Semi-Final winners to Grand Final
-    if (match.stage === "SEMI_FINAL" && winnerTeamId) {
-      const allSemiFinals = await prisma.match.findMany({
-        where: { tournamentId: match.tournamentId, stage: "SEMI_FINAL" },
-        orderBy: { matchNumber: "asc" }
-      });
-      const finalMatch = await prisma.match.findFirst({
-        where: { tournamentId: match.tournamentId, stage: "FINAL" }
-      });
-
-      if (finalMatch && allSemiFinals.length >= 2) {
-        const isFirstSF = allSemiFinals[0].id === match.id;
-        await prisma.match.update({
-          where: { id: finalMatch.id },
-          data: isFirstSF ? { teamAId: Number(winnerTeamId) } : { teamBId: Number(winnerTeamId) }
-        });
-      }
-    }
+    // Auto-advance tournament knockouts (Group Stage -> Semi Finals, Semi Finals -> Final, Final -> Crown Victor)
+    await advanceTournamentKnockouts(prisma, matchId);
 
     res.json({ message: "Match completed and result sealed!", match: updated });
   } catch (err: any) {

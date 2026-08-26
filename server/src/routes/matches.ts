@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "../db.js";
 import { requireAuth, type AuthenticatedRequest } from "../middleware/auth.js";
 import { isOrganizerOrAdmin } from "../middleware/organizerAuth.js";
+import { advanceTournamentKnockouts } from "../lib/knockoutProgression.js";
 
 const matchesRouter = Router();
 
@@ -556,23 +557,9 @@ matchesRouter.put("/:id", requireAuth, async (req: AuthenticatedRequest, res) =>
       }
     });
 
-    // Auto-advance Semi-Final winners into the Grand Final
-    if (match.stage === "SEMI_FINAL" && status === "COMPLETED" && winnerTeamId) {
-      const allSemiFinals = await prisma.match.findMany({
-        where: { tournamentId: match.tournamentId, stage: "SEMI_FINAL" },
-        orderBy: { matchNumber: "asc" }
-      });
-      const finalMatch = await prisma.match.findFirst({
-        where: { tournamentId: match.tournamentId, stage: "FINAL" }
-      });
-
-      if (finalMatch && allSemiFinals.length >= 2) {
-        const isFirstSF = allSemiFinals[0].id === match.id;
-        await prisma.match.update({
-          where: { id: finalMatch.id },
-          data: isFirstSF ? { teamAId: winnerTeamId } : { teamBId: winnerTeamId }
-        });
-      }
+    // Auto-advance tournament knockouts (Group Stage -> Semi Finals, Semi Finals -> Final, Final -> Crown Victor)
+    if (status === "COMPLETED" || updated.status === "COMPLETED") {
+      await advanceTournamentKnockouts(prisma, id);
     }
 
     res.json(updated);

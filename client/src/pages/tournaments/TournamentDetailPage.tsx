@@ -99,6 +99,9 @@ export const TournamentDetailPage: React.FC = () => {
   );
 
   const rules = tournament.rules || {};
+  const finalMatch = tournament.matches?.find((m: any) => m.stage === "FINAL");
+  const isFinalCompleted = finalMatch && finalMatch.status === "COMPLETED";
+  const championTeam = isFinalCompleted ? (finalMatch.winnerTeam || tournament.teams?.find((t: any) => t.id === finalMatch.winnerTeamId)) : null;
 
   return (
     <div className="min-h-screen bg-[#FAF7F2] text-[#2C221E] flex flex-col">
@@ -129,6 +132,58 @@ export const TournamentDetailPage: React.FC = () => {
       {/* Main Tournament Arena */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
         
+        {/* CHAMPION TROPHY & VICTOR SHOWCASE BANNER */}
+        {championTeam && (
+          <div className="bg-linear-to-r from-[#FFF9DB] via-[#FFF3BF] to-[#FFE066] border-2 border-[#F59F00] rounded-3xl p-6 sm:p-8 shadow-xl shadow-[#F59F00]/15 relative overflow-hidden animate-in fade-in zoom-in-95">
+            <div className="absolute -right-8 -bottom-8 text-9xl opacity-15 select-none pointer-events-none">
+              🏆
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-6 relative z-10">
+              <div className="flex flex-col sm:flex-row items-center gap-5 text-center sm:text-left">
+                <div className="w-20 h-20 rounded-3xl bg-linear-to-br from-[#FFD43B] to-[#F59F00] text-white flex items-center justify-center text-4xl shadow-lg shadow-[#F59F00]/30 border-2 border-white shrink-0 animate-bounce duration-1000">
+                  🏆
+                </div>
+
+                <div className="space-y-1">
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#E67700] text-white text-[11px] font-black uppercase tracking-wider shadow-xs">
+                    <span>👑</span>
+                    <span>Crowned Tournament Champions</span>
+                  </div>
+                  <h2 className="text-2xl sm:text-3xl font-black text-[#3E2900] tracking-tight">
+                    {championTeam.name}
+                  </h2>
+                  <p className="text-xs font-bold text-[#7E4D00]">
+                    {championTeam.batch ? `🏛️ ${championTeam.batch.name} (${championTeam.batch.session})` : "CU CSE Squad"}
+                    {finalMatch?.resultSummary && ` · ${finalMatch.resultSummary}`}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-col items-center sm:items-end gap-2 shrink-0">
+                <span className="text-[11px] font-black text-[#7E4D00] uppercase tracking-wider">
+                  Season {tournament.season} Champions
+                </span>
+                <div className="flex items-center gap-2">
+                  {finalMatch?.playerOfTheMatch && (
+                    <div className="px-3 py-1.5 rounded-xl bg-white/80 border border-[#F59F00]/40 text-xs font-bold text-[#7E4D00] flex items-center gap-1.5">
+                      <span>⭐ MVP:</span>
+                      <span className="font-extrabold text-[#3E2900]">{finalMatch.playerOfTheMatch.name}</span>
+                    </div>
+                  )}
+                  <Link
+                    to={`/matches/${finalMatch.id}`}
+                    className="px-4 py-1.5 rounded-xl bg-[#E67700] hover:bg-[#D9480F] text-white font-extrabold text-xs shadow-sm transition-colors flex items-center gap-1.5"
+                  >
+                    <span>Match Report</span>
+                    <span>&rarr;</span>
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* HERO BANNER CARD */}
         <div className="bg-white rounded-3xl border-2 border-[#E5DACB] p-6 sm:p-8 shadow-xs relative overflow-hidden">
           <div className="h-3 w-full brick-gradient absolute top-0 left-0 right-0" />

@@ -47,7 +47,7 @@ export const TournamentBracketView: React.FC<TournamentBracketViewProps> = ({
 
   const hasKnockoutsGenerated = semiFinals.length > 0 || !!finalMatch;
   const isFinalCompleted = finalMatch && finalMatch.status === "COMPLETED";
-  const championTeam = isFinalCompleted ? finalMatch.winnerTeam : null;
+  const championTeam = isFinalCompleted ? (finalMatch.winnerTeam || tournament.teams?.find((t: any) => t.id === finalMatch.winnerTeamId)) : null;
 
   // Handle Generate Knockout Fixtures
   const handleGenerateKnockouts = async () => {
