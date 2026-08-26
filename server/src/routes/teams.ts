@@ -13,6 +13,7 @@ const createTeamSchema = z.object({
   batchId: z.number().int().positive().optional().nullable(),
   groupId: z.number().int().positive().optional().nullable(),
   logoUrl: z.string().optional().nullable(),
+  bannerUrl: z.string().optional().nullable(),
   captainId: z.number().int().positive().optional().nullable(),
 });
 
@@ -21,6 +22,7 @@ const updateTeamSchema = z.object({
   shortName: z.string().min(1).max(6).optional(),
   groupId: z.number().int().positive().optional().nullable(),
   logoUrl: z.string().optional().nullable(),
+  bannerUrl: z.string().optional().nullable(),
   captainId: z.number().int().positive().optional().nullable(),
   viceCaptainId: z.number().int().positive().optional().nullable(),
 });
@@ -47,6 +49,9 @@ teamsRouter.get("/:id", async (req, res) => {
         captain: {
           select: { id: true, name: true, studentId: true, email: true, phone: true, avatarUrl: true, cricketRole: true, footballPosition: true }
         },
+        mediaAssets: {
+          orderBy: { createdAt: "desc" }
+        },
         members: {
           include: {
             user: {
@@ -67,7 +72,7 @@ teamsRouter.get("/:id", async (req, res) => {
           orderBy: [
             { isCaptain: "desc" },
             { isViceCaptain: "desc" },
-            { joinedAt: "asc" }
+            { id: "asc" }
           ]
         },
         homeMatches: {
@@ -177,7 +182,7 @@ teamsRouter.put("/:id", requireAuth, async (req: AuthenticatedRequest, res) => {
       return;
     }
 
-    const { name, shortName, groupId, logoUrl, captainId, viceCaptainId } = parsed.data;
+    const { name, shortName, groupId, logoUrl, bannerUrl, captainId, viceCaptainId } = parsed.data;
 
     const updated = await prisma.team.update({
       where: { id },
@@ -186,6 +191,7 @@ teamsRouter.put("/:id", requireAuth, async (req: AuthenticatedRequest, res) => {
         shortName: shortName !== undefined ? shortName : undefined,
         groupId: groupId !== undefined ? groupId : undefined,
         logoUrl: logoUrl !== undefined ? logoUrl : undefined,
+        bannerUrl: bannerUrl !== undefined ? bannerUrl : undefined,
         captainId: captainId !== undefined ? captainId : undefined,
         viceCaptainId: viceCaptainId !== undefined ? viceCaptainId : undefined,
       },

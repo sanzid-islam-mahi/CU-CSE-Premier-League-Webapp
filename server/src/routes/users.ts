@@ -112,6 +112,9 @@ usersRouter.get("/:idOrRoll", async (req, res) => {
           }
         },
         captainTeams: true,
+        mediaAssets: {
+          orderBy: { createdAt: "desc" }
+        }
       }
     });
 
@@ -136,17 +139,75 @@ usersRouter.get("/:idOrRoll", async (req, res) => {
       footballPosition: user.footballPosition,
       preferredJerseyNo: user.preferredJerseyNo,
       avatarUrl: user.avatarUrl,
+      coverUrl: user.coverUrl,
+      mediaAssets: user.mediaAssets,
       teams: user.teamMemberships.map(tm => ({
         id: tm.team.id,
         name: tm.team.name,
+        shortName: tm.team.shortName,
+        logoUrl: tm.team.logoUrl,
         tournament: tm.team.tournament,
         jerseyNumber: tm.jerseyNumber,
         isCaptain: tm.isCaptain,
       })),
-      organizerTournaments: user.organizerTournaments.map(ot => ot.tournament),
+      organizerIn: user.organizerTournaments.map(ot => ot.tournament),
+      captainIn: user.captainTeams.map(ct => ({ id: ct.id, name: ct.name, shortName: ct.shortName, tournamentId: ct.tournamentId })),
+      createdAt: user.createdAt,
     });
   } catch (err: any) {
-    res.status(500).json({ error: err.message || "Failed to fetch user" });
+    res.status(500).json({ error: err.message || "Failed to fetch user profile" });
+  }
+});
+
+// UPDATE User Profile (Owner or Admin)
+usersRouter.put("/:id/profile", requireAuth, async (req: any, res) => {
+  try {
+    const id = Number(req.params.id);
+    const authUser = req.user;
+
+    if (authUser.role !== "ADMIN" && authUser.id !== id) {
+      res.status(403).json({ error: "You can only update your own profile." });
+      return;
+    }
+
+    const {
+      name,
+      bio,
+      phone,
+      avatarUrl,
+      coverUrl,
+      cricketRole,
+      battingStyle,
+      bowlingStyle,
+      footballPosition,
+      preferredJerseyNo,
+    } = req.body;
+
+    const updated = await prisma.user.update({
+      where: { id },
+      data: {
+        name: name || undefined,
+        bio: bio !== undefined ? bio : undefined,
+        phone: phone !== undefined ? phone : undefined,
+        avatarUrl: avatarUrl !== undefined ? avatarUrl : undefined,
+        coverUrl: coverUrl !== undefined ? coverUrl : undefined,
+        cricketRole: cricketRole !== undefined ? cricketRole : undefined,
+        battingStyle: battingStyle !== undefined ? battingStyle : undefined,
+        bowlingStyle: bowlingStyle !== undefined ? bowlingStyle : undefined,
+        footballPosition: footballPosition !== undefined ? footballPosition : undefined,
+        preferredJerseyNo: preferredJerseyNo !== undefined ? (preferredJerseyNo ? Number(preferredJerseyNo) : null) : undefined,
+      },
+      include: {
+        batch: true,
+      }
+    });
+
+    res.json({
+      message: "Profile updated successfully.",
+      user: updated,
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || "Failed to update profile." });
   }
 });
 

@@ -111,6 +111,7 @@ export const api = {
       phone?: string | null;
       bio?: string | null;
       avatarUrl?: string | null;
+      coverUrl?: string | null;
       cricketRole?: string | null;
       battingStyle?: string | null;
       bowlingStyle?: string | null;
@@ -156,7 +157,14 @@ export const api = {
       return data;
     },
 
-    create: async (batch: { name: string; session: string; batchNumber: number; slogan?: string }): Promise<BatchItem> => {
+    getBySlug: async (idOrSlug: string | number) => {
+      const res = await fetch(`${API_BASE}/batches/${idOrSlug}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to fetch batch");
+      return data;
+    },
+
+    create: async (batch: { name: string; session: string; batchNumber: number; slogan?: string; avatarUrl?: string; bannerUrl?: string }): Promise<BatchItem> => {
       const res = await fetch(`${API_BASE}/batches`, {
         method: "POST",
         headers: getAuthHeaders(),
@@ -164,6 +172,17 @@ export const api = {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to create batch");
+      return data;
+    },
+
+    update: async (id: number, payload: { name?: string; session?: string; slogan?: string; avatarUrl?: string; bannerUrl?: string }) => {
+      const res = await fetch(`${API_BASE}/batches/${id}`, {
+        method: "PUT",
+        headers: getAuthHeaders(),
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to update batch");
       return data;
     },
 
@@ -245,6 +264,120 @@ export const api = {
       if (!res.ok) throw new Error(data.error || "Failed to fetch user profile");
       return data;
     },
+
+    updateProfileById: async (id: number, payload: any) => {
+      const res = await fetch(`${API_BASE}/users/${id}/profile`, {
+        method: "PUT",
+        headers: getAuthHeaders(),
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to update user profile");
+      return data;
+    },
+  },
+
+  upload: {
+    image: async (file: File) => {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const token = localStorage.getItem("csepl_token");
+      const headers: HeadersInit = {};
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+
+      const res = await fetch(`${API_BASE}/upload`, {
+        method: "POST",
+        headers,
+        body: formData,
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to upload image");
+      return data as { url: string; filename: string; originalName: string; size: number; mimeType: string };
+    },
+
+    multiple: async (files: File[]) => {
+      const formData = new FormData();
+      files.forEach(f => formData.append("files", f));
+
+      const token = localStorage.getItem("csepl_token");
+      const headers: HeadersInit = {};
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+
+      const res = await fetch(`${API_BASE}/upload/multiple`, {
+        method: "POST",
+        headers,
+        body: formData,
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to upload images");
+      return data as { count: number; files: { url: string; filename: string; originalName: string; size: number }[] };
+    },
+  },
+
+  media: {
+    list: async (params?: {
+      tournamentId?: number;
+      batchId?: number;
+      teamId?: number;
+      matchId?: number;
+      userId?: number;
+      category?: string;
+      isFeatured?: boolean;
+      limit?: number;
+    }) => {
+      const query = new URLSearchParams();
+      if (params?.tournamentId) query.append("tournamentId", params.tournamentId.toString());
+      if (params?.batchId) query.append("batchId", params.batchId.toString());
+      if (params?.teamId) query.append("teamId", params.teamId.toString());
+      if (params?.matchId) query.append("matchId", params.matchId.toString());
+      if (params?.userId) query.append("userId", params.userId.toString());
+      if (params?.category) query.append("category", params.category);
+      if (params?.isFeatured !== undefined) query.append("isFeatured", String(params.isFeatured));
+      if (params?.limit) query.append("limit", params.limit.toString());
+
+      const res = await fetch(`${API_BASE}/media?${query.toString()}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to fetch media assets");
+      return data;
+    },
+
+    create: async (payload: {
+      title?: string;
+      caption?: string;
+      url: string;
+      thumbnailUrl?: string;
+      category?: string;
+      tournamentId?: number | null;
+      matchId?: number | null;
+      batchId?: number | null;
+      teamId?: number | null;
+      userId?: number | null;
+      isFeatured?: boolean;
+    }) => {
+      const res = await fetch(`${API_BASE}/media`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to save media");
+      return data;
+    },
+
+    delete: async (id: number) => {
+      const res = await fetch(`${API_BASE}/media/${id}`, {
+        method: "DELETE",
+        headers: getAuthHeaders(),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to delete media asset");
+      return data;
+    },
   },
 
   tournaments: {
@@ -260,6 +393,8 @@ export const api = {
       sport: "CRICKET" | "FOOTBALL";
       season: string;
       rules?: any;
+      bannerUrl?: string;
+      logoUrl?: string;
     }): Promise<TournamentItem> => {
       const res = await fetch(`${API_BASE}/tournaments`, {
         method: "POST",
@@ -268,6 +403,27 @@ export const api = {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to create tournament");
+      return data;
+    },
+
+    update: async (tournamentId: number, payload: {
+      name?: string;
+      sport?: string;
+      season?: string;
+      status?: string;
+      rules?: any;
+      bannerUrl?: string | null;
+      logoUrl?: string | null;
+      startDate?: string | null;
+      endDate?: string | null;
+    }) => {
+      const res = await fetch(`${API_BASE}/tournaments/${tournamentId}`, {
+        method: "PUT",
+        headers: getAuthHeaders(),
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to update tournament");
       return data;
     },
 
@@ -380,6 +536,7 @@ export const api = {
       batchId?: number | null;
       groupId?: number | null;
       logoUrl?: string | null;
+      bannerUrl?: string | null;
       captainId?: number | null;
     }) => {
       const res = await fetch(`${API_BASE}/teams`, {
@@ -397,6 +554,7 @@ export const api = {
       shortName?: string;
       groupId?: number | null;
       logoUrl?: string | null;
+      bannerUrl?: string | null;
       captainId?: number | null;
       viceCaptainId?: number | null;
     }) => {

@@ -167,6 +167,14 @@ tournamentsRouter.get("/:idOrSlug", async (req, res) => {
             footballDetail: true,
           },
           orderBy: [{ startTime: "asc" }, { matchNumber: "asc" }]
+        },
+        mediaAssets: {
+          orderBy: { createdAt: "desc" },
+          include: {
+            uploadedBy: {
+              select: { id: true, name: true, studentId: true, avatarUrl: true }
+            }
+          }
         }
       }
     });

@@ -11,6 +11,7 @@ const createBatchSchema = z.object({
   batchNumber: z.number().int().positive("Batch number must be positive"),
   slogan: z.string().optional(),
   avatarUrl: z.string().optional(),
+  bannerUrl: z.string().optional(),
 });
 
 // GET all batches
@@ -23,6 +24,7 @@ batchesRouter.get("/", async (_req, res) => {
           select: {
             users: true,
             teams: true,
+            mediaAssets: true,
           }
         }
       }
@@ -36,8 +38,10 @@ batchesRouter.get("/", async (_req, res) => {
       slug: b.slug,
       slogan: b.slogan,
       avatarUrl: b.avatarUrl,
+      bannerUrl: b.bannerUrl,
       studentsCount: b._count.users,
       teamsCount: b._count.teams,
+      photosCount: b._count.mediaAssets,
       createdAt: b.createdAt,
     }));
 
@@ -75,6 +79,14 @@ batchesRouter.get("/:idOrSlug", async (req, res) => {
               select: { id: true, name: true, sport: true, season: true, status: true }
             }
           }
+        },
+        mediaAssets: {
+          orderBy: { createdAt: "desc" },
+          include: {
+            uploadedBy: {
+              select: { id: true, name: true, studentId: true, avatarUrl: true }
+            }
+          }
         }
       }
     });
@@ -99,7 +111,7 @@ batchesRouter.post("/", requireAuth, requireAdmin, async (req, res) => {
       return;
     }
 
-    const { name, session, batchNumber, slogan, avatarUrl } = parsed.data;
+    const { name, session, batchNumber, slogan, avatarUrl, bannerUrl } = parsed.data;
     const slug = `batch-${batchNumber}`;
 
     // Check if slug already exists
@@ -120,6 +132,7 @@ batchesRouter.post("/", requireAuth, requireAdmin, async (req, res) => {
         slug,
         slogan: slogan || null,
         avatarUrl: avatarUrl || null,
+        bannerUrl: bannerUrl || null,
       },
       include: {
         _count: {
@@ -139,6 +152,7 @@ batchesRouter.post("/", requireAuth, requireAdmin, async (req, res) => {
       slug: batch.slug,
       slogan: batch.slogan,
       avatarUrl: batch.avatarUrl,
+      bannerUrl: batch.bannerUrl,
       studentsCount: batch._count.users,
       teamsCount: batch._count.teams,
       createdAt: batch.createdAt,
@@ -152,7 +166,7 @@ batchesRouter.post("/", requireAuth, requireAdmin, async (req, res) => {
 batchesRouter.put("/:id", requireAuth, requireAdmin, async (req, res) => {
   try {
     const id = Number(req.params.id);
-    const { name, session, slogan, avatarUrl } = req.body;
+    const { name, session, slogan, avatarUrl, bannerUrl } = req.body;
 
     const batch = await prisma.batch.update({
       where: { id },
@@ -161,6 +175,7 @@ batchesRouter.put("/:id", requireAuth, requireAdmin, async (req, res) => {
         session: session || undefined,
         slogan: slogan !== undefined ? slogan : undefined,
         avatarUrl: avatarUrl !== undefined ? avatarUrl : undefined,
+        bannerUrl: bannerUrl !== undefined ? bannerUrl : undefined,
       }
     });
 

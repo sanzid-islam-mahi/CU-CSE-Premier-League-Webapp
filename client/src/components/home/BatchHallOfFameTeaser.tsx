@@ -1,4 +1,5 @@
 import React from "react";
+import { Link } from "react-router-dom";
 import { Award, Trophy } from "lucide-react";
 import { DummyBadge } from "@/components/common/DummyBadge";
 
@@ -87,13 +88,14 @@ export const BatchHallOfFameTeaser: React.FC = () => {
         {/* Batches Showcase Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {batches.map((batch) => (
-            <div
+            <Link
               key={batch.id}
-              className="bg-white rounded-3xl border border-[#E5DACB] p-5 shadow-xs hover:shadow-md hover:border-[#9E2A2B]/40 transition-all flex flex-col justify-between"
+              to={`/batches/batch-${batch.id}`}
+              className="bg-white rounded-3xl border border-[#E5DACB] p-5 shadow-xs hover:shadow-md hover:border-[#9E2A2B]/70 transition-all flex flex-col justify-between group cursor-pointer"
             >
               <div>
                 <div className="flex items-center justify-between mb-3">
-                  <div className={`w-12 h-12 rounded-2xl ${batch.avatarColor} text-white flex items-center justify-center font-black text-sm shadow-sm`}>
+                  <div className={`w-12 h-12 rounded-2xl ${batch.avatarColor} text-white flex items-center justify-center font-black text-sm shadow-sm group-hover:scale-105 transition-transform`}>
                     B{batch.id}
                   </div>
                   <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full bg-[#FAF0E6] text-[#842021] border border-[#E8D6C3]">
@@ -101,7 +103,7 @@ export const BatchHallOfFameTeaser: React.FC = () => {
                   </span>
                 </div>
 
-                <h3 className="font-extrabold text-lg text-[#2C221E]">{batch.name}</h3>
+                <h3 className="font-extrabold text-lg text-[#2C221E] group-hover:text-[#9E2A2B] transition-colors">{batch.name}</h3>
                 <p className="text-xs font-semibold text-[#9E2A2B]">{batch.slogan}</p>
                 <p className="text-[11px] text-[#7C6E63] mt-0.5">Session: {batch.session}</p>
 
@@ -128,7 +130,7 @@ export const BatchHallOfFameTeaser: React.FC = () => {
                   <span className="font-black text-[#2A7B54]">{batch.winRate}</span>
                 </div>
               </div>
-            </div>
+            </Link>
           ))}
         </div>
 

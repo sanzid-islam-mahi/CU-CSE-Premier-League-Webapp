@@ -13,12 +13,14 @@ import {
   Activity,
   Users,
   Sparkles,
-  BarChart3
+  BarChart3,
+  Camera
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
 import { CricketLiveAnalytics } from "@/components/matches/CricketLiveAnalytics";
 import { MatchStoryCardModal } from "@/components/matches/MatchStoryCardModal";
+import { MediaGalleryView } from "@/components/common/MediaGalleryView";
 
 export const MatchDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -28,7 +30,7 @@ export const MatchDetailPage: React.FC = () => {
   const [isScorer, setIsScorer] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"commentary" | "analytics" | "scorecard" | "lineups" | "info">("commentary");
+  const [activeTab, setActiveTab] = useState<"commentary" | "analytics" | "scorecard" | "lineups" | "info" | "gallery">("commentary");
   const [showStoryModal, setShowStoryModal] = useState(false);
 
   // Football Live Ticking Stopwatch for Viewer
@@ -680,6 +682,18 @@ export const MatchDetailPage: React.FC = () => {
             <Shield className="w-4 h-4" />
             <span>Match Info</span>
           </button>
+
+          <button
+            onClick={() => setActiveTab("gallery")}
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-2xl text-xs font-black transition-all ${
+              activeTab === "gallery"
+                ? "bg-[#9E2A2B] text-white shadow-md shadow-[#9E2A2B]/20"
+                : "bg-white text-[#7C6E63] hover:bg-[#FAF0E6] hover:text-[#9E2A2B] border border-[#E5DACB]"
+            }`}
+          >
+            <Camera className="w-4 h-4" />
+            <span>📸 Match Photos & Highlights</span>
+          </button>
         </div>
 
         {/* TAB 1: COMMENTARY & TIMELINE */}
@@ -1177,6 +1191,18 @@ export const MatchDetailPage: React.FC = () => {
               </div>
             </div>
           </div>
+        )}
+
+        {/* TAB 6: MATCH PHOTOS & HIGHLIGHTS */}
+        {activeTab === "gallery" && (
+          <MediaGalleryView
+            matchId={matchData.id}
+            tournamentId={matchData.tournamentId}
+            defaultCategory="MATCH_PHOTO"
+            title={`Match #${matchData.matchNumber} Action & Moments`}
+            description="Toss, goals/wickets celebrations, standout saves, and player of the match photos."
+            allowUpload={true}
+          />
         )}
 
       </main>

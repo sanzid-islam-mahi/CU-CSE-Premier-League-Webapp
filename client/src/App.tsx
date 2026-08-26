@@ -7,6 +7,7 @@ import { PublicPlayerProfilePage } from "@/pages/players/PublicPlayerProfilePage
 import { TournamentListPage } from "@/pages/tournaments/TournamentListPage";
 import { TournamentDetailPage } from "@/pages/tournaments/TournamentDetailPage";
 import { TeamDetailPage } from "@/pages/teams/TeamDetailPage";
+import { BatchDetailPage } from "@/pages/batches/BatchDetailPage";
 import { MatchDetailPage } from "@/pages/matches/MatchDetailPage";
 import { LiveScorerPage } from "@/pages/matches/LiveScorerPage";
 
@@ -16,6 +17,9 @@ export function App() {
       <Routes>
         {/* Public Homepage with Red-Brick & Beige Theme */}
         <Route path="/" element={<HomePage />} />
+
+        {/* Batch Showcase & Photo Gallery */}
+        <Route path="/batches/:slug" element={<BatchDetailPage />} />
 
         {/* Tournaments Hub & Public Detail Page */}
         <Route path="/tournaments" element={<TournamentListPage />} />

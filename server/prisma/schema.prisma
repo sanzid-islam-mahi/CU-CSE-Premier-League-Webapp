@@ -89,12 +89,14 @@ model Batch {
   batchNumber Int      // e.g. 20
   slug        String   @unique
   avatarUrl   String?
+  bannerUrl   String?
   slogan      String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   users       User[]
   teams       Team[]
+  mediaAssets MediaAsset[]
 
   @@map("batches")
 }
@@ -110,6 +112,7 @@ model User {
   role                UserRole @default(USER)
   batchId             Int?
   avatarUrl           String?
+  coverUrl            String?
   phone               String?
   bio                 String?
   
@@ -131,6 +134,8 @@ model User {
   teamMemberships      TeamMember[]
   scoredMatches        MatchScorer[]
   matchSquadEntries    MatchSquad[]
+  uploadedMedia        MediaAsset[]         @relation("UploadedMedia")
+  mediaAssets          MediaAsset[]         @relation("UserMedia")
   
   // Cricket Match Stats
   cricketBattingScorecards CricketBattingScorecard[]
@@ -168,6 +173,7 @@ model Tournament {
   groups      TournamentGroup[]
   teams       Team[]
   matches     Match[]
+  mediaAssets MediaAsset[]
 
   @@map("tournaments")
 }
@@ -205,6 +211,7 @@ model Team {
   name          String       // e.g. "Batch 20 Tigers"
   shortName     String       // e.g. "B20"
   logoUrl       String?
+  bannerUrl     String?
   captainId     Int?
   viceCaptainId Int?
   createdAt     DateTime     @default(now())
@@ -220,6 +227,7 @@ model Team {
   awayMatches   Match[]      @relation("AwayTeamMatches")
   wonMatches    Match[]      @relation("WonTeamMatches")
   matchSquads   MatchSquad[]
+  mediaAssets   MediaAsset[]
 
   @@map("teams")
 }
@@ -276,6 +284,7 @@ model Match {
   cricketInnings     CricketInnings[]
   footballDetail     FootballMatchDetail?
   footballEvents     FootballMatchEvent[]
+  mediaAssets        MediaAsset[]
 
   @@map("matches")
 }
@@ -445,4 +454,50 @@ model FootballMatchEvent {
 
   @@map("football_match_events")
 }
+
+// ---------------- MEDIA & GALLERY MODELS ----------------
+
+enum MediaCategory {
+  TOURNAMENT_LOGO
+  TOURNAMENT_BANNER
+  TOURNAMENT_GALLERY
+  MATCH_PHOTO
+  BATCH_AVATAR
+  BATCH_BANNER
+  BATCH_GALLERY
+  TEAM_LOGO
+  TEAM_BANNER
+  PLAYER_AVATAR
+  PLAYER_COVER
+  SPONSOR_LOGO
+  AWARD_CEREMONY
+}
+
+model MediaAsset {
+  id           Int           @id @default(autoincrement())
+  title        String?
+  caption      String?
+  url          String
+  thumbnailUrl String?
+  category     MediaCategory @default(TOURNAMENT_GALLERY)
+  tournamentId Int?
+  matchId      Int?
+  batchId      Int?
+  teamId       Int?
+  userId       Int?
+  uploadedById Int?
+  isFeatured   Boolean       @default(false)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  tournament   Tournament?   @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  match        Match?        @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  batch        Batch?        @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  team         Team?         @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user         User?         @relation("UserMedia", fields: [userId], references: [id], onDelete: Cascade)
+  uploadedBy   User?         @relation("UploadedMedia", fields: [uploadedById], references: [id])
+
+  @@map("media_assets")
+}
+
 

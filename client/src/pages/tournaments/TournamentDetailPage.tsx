@@ -17,12 +17,17 @@ import {
   UserCheck,
   GitFork,
   Flame,
-  Activity
+  Activity,
+  Camera,
+  Upload
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
 import { OrganizerWorkspaceModal } from "@/components/tournaments/OrganizerWorkspaceModal";
 import { TournamentBracketView } from "@/components/tournaments/TournamentBracketView";
+import { SmartAvatar } from "@/components/common/SmartAvatar";
+import { ImageUploadModal } from "@/components/common/ImageUploadModal";
+import { MediaGalleryView } from "@/components/common/MediaGalleryView";
 
 export const TournamentDetailPage: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
@@ -33,9 +38,11 @@ export const TournamentDetailPage: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<any>(null);
   
   // UI Tabs & Expansion
-  const [activeTab, setActiveTab] = useState<"overview" | "teams" | "fixtures" | "standings" | "bracket" | "stats">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "teams" | "fixtures" | "standings" | "bracket" | "stats" | "gallery">("overview");
   const [expandedTeamId, setExpandedTeamId] = useState<number | null>(null);
   const [showWorkspaceModal, setShowWorkspaceModal] = useState(false);
+  const [showBannerModal, setShowBannerModal] = useState(false);
+  const [showLogoModal, setShowLogoModal] = useState(false);
 
   const fetchTournamentData = async (isInitial = false) => {
     if (!slug) return;
@@ -100,6 +107,24 @@ export const TournamentDetailPage: React.FC = () => {
 
   const rules = tournament.rules || {};
   const finalMatch = tournament.matches?.find((m: any) => m.stage === "FINAL");
+
+  const handleUpdateBanner = async (url: string) => {
+    try {
+      await api.tournaments.update(tournament.id, { bannerUrl: url });
+      setTournament((prev: any) => ({ ...prev, bannerUrl: url }));
+    } catch (err: any) {
+      alert(err.message || "Failed to update tournament banner.");
+    }
+  };
+
+  const handleUpdateLogo = async (url: string) => {
+    try {
+      await api.tournaments.update(tournament.id, { logoUrl: url });
+      setTournament((prev: any) => ({ ...prev, logoUrl: url }));
+    } catch (err: any) {
+      alert(err.message || "Failed to update tournament logo.");
+    }
+  };
   const isFinalCompleted = finalMatch && finalMatch.status === "COMPLETED";
   const championTeam = isFinalCompleted ? (finalMatch.winnerTeam || tournament.teams?.find((t: any) => t.id === finalMatch.winnerTeamId)) : null;
 
@@ -185,90 +210,141 @@ export const TournamentDetailPage: React.FC = () => {
         )}
 
         {/* HERO BANNER CARD */}
-        <div className="bg-white rounded-3xl border-2 border-[#E5DACB] p-6 sm:p-8 shadow-xs relative overflow-hidden">
-          <div className="h-3 w-full brick-gradient absolute top-0 left-0 right-0" />
+        <div className="bg-white rounded-3xl border-2 border-[#E5DACB] shadow-sm overflow-hidden relative">
+          
+          {/* Top Banner Image */}
+          {tournament.bannerUrl ? (
+            <div className="relative h-44 sm:h-56 md:h-64 w-full overflow-hidden group">
+              <img
+                src={tournament.bannerUrl}
+                alt={tournament.name}
+                className="w-full h-full object-cover"
+              />
+              <div className="absolute inset-0 bg-linear-to-t from-black/70 via-black/20 to-transparent" />
+              {isOrganizer && (
+                <button
+                  onClick={() => setShowBannerModal(true)}
+                  className="absolute top-4 right-4 bg-black/60 hover:bg-black/80 text-white text-xs font-black px-3 py-1.5 rounded-xl backdrop-blur-xs border border-white/20 shadow-md flex items-center gap-1.5 transition-all"
+                >
+                  <Camera className="w-3.5 h-3.5 text-[#F59F00]" />
+                  <span>Update Banner</span>
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="h-3 w-full brick-gradient" />
+          )}
 
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 pt-2">
-            <div className="flex items-start gap-4">
-              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-3xl brick-gradient text-white flex items-center justify-center text-3xl font-black shadow-lg shadow-[#9E2A2B]/20 border-2 border-[#842021] shrink-0">
-                {tournament.sport === "CRICKET" ? "🏏" : "⚽"}
-              </div>
-
-              <div className="space-y-2">
-                <div className="flex flex-wrap items-center gap-2">
-                  <h1 className="text-2xl sm:text-3xl font-black text-[#2C221E] tracking-tight">
-                    {tournament.name}
-                  </h1>
-                  <span className="text-xs font-black uppercase bg-[#FAF0E6] text-[#842021] px-2.5 py-1 rounded-lg border border-[#E8D6C3]">
-                    Season {tournament.season}
-                  </span>
-                  <span className="text-xs font-extrabold bg-[#2A7B54]/10 text-[#2A7B54] px-2.5 py-1 rounded-lg border border-[#2A7B54]/20">
-                    {tournament.status}
-                  </span>
-                </div>
-
-                {/* Rules Badge Pills */}
-                <div className="flex flex-wrap items-center gap-2 pt-1">
-                  {tournament.sport === "CRICKET" ? (
-                    <>
-                      <span className="text-xs font-bold bg-[#FAF7F2] text-[#842021] px-2.5 py-1 rounded-xl border border-[#E8D6C3]">
-                        🏏 {rules.overs || 10} Overs / Side
-                      </span>
-                      <span className="text-xs font-bold bg-[#FAF7F2] text-[#6B5E53] px-2.5 py-1 rounded-xl border border-[#E8D6C3]">
-                        🎯 Max {rules.maxPerBowler || 2} ov/bowler
-                      </span>
-                      <span className="text-xs font-bold bg-[#FAF7F2] text-[#6B5E53] px-2.5 py-1 rounded-xl border border-[#E8D6C3]">
-                        ⚡ {rules.powerplay || 2} Ov Powerplay
-                      </span>
-                      <span className="text-xs font-bold bg-[#FAF0E6] text-[#9E2A2B] px-2.5 py-1 rounded-xl border border-[#E8D6C3]">
-                        🏆 Win: {rules.pointsWin || 2} pts · Tie: {rules.pointsTie || 1} pt
-                      </span>
-                    </>
-                  ) : (
-                    <>
-                      <span className="text-xs font-bold bg-[#FAF7F2] text-[#842021] px-2.5 py-1 rounded-xl border border-[#E8D6C3]">
-                        ⚽ {rules.halfMinutes || 20} Mins / Half
-                      </span>
-                      <span className="text-xs font-bold bg-[#FAF7F2] text-[#6B5E53] px-2.5 py-1 rounded-xl border border-[#E8D6C3]">
-                        👥 {rules.format || "7-a-side"}
-                      </span>
-                      <span className="text-xs font-bold bg-[#FAF0E6] text-[#9E2A2B] px-2.5 py-1 rounded-xl border border-[#E8D6C3]">
-                        🏆 Win: {rules.pointsWin || 3} pts · Draw: {rules.pointsDraw || 1} pt
-                      </span>
-                    </>
+          <div className="p-6 sm:p-8 space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+              <div className="flex items-start gap-4">
+                <div className="relative group/logo">
+                  <SmartAvatar
+                    src={tournament.logoUrl}
+                    alt={tournament.name}
+                    fallbackText={tournament.name}
+                    size="2xl"
+                    shape="rounded"
+                    className="shadow-md ring-2 ring-[#9E2A2B]/20"
+                  />
+                  {isOrganizer && (
+                    <button
+                      onClick={() => setShowLogoModal(true)}
+                      className="absolute inset-0 bg-black/60 rounded-2xl flex items-center justify-center text-white opacity-0 group-hover/logo:opacity-100 transition-opacity"
+                      title="Update Tournament Logo"
+                    >
+                      <Upload className="w-5 h-5 text-white" />
+                    </button>
                   )}
                 </div>
+
+                <div className="space-y-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h1 className="text-2xl sm:text-3xl font-black text-[#2C221E] tracking-tight">
+                      {tournament.name}
+                    </h1>
+                    <span className="text-xs font-black uppercase bg-[#FAF0E6] text-[#842021] px-2.5 py-1 rounded-lg border border-[#E8D6C3]">
+                      Season {tournament.season}
+                    </span>
+                    <span className="text-xs font-extrabold bg-[#2A7B54]/10 text-[#2A7B54] px-2.5 py-1 rounded-lg border border-[#2A7B54]/20">
+                      {tournament.status}
+                    </span>
+                  </div>
+
+                  {/* Rules Badge Pills */}
+                  <div className="flex flex-wrap items-center gap-2 pt-1">
+                    {tournament.sport === "CRICKET" ? (
+                      <>
+                        <span className="text-xs font-bold bg-[#FAF7F2] text-[#842021] px-2.5 py-1 rounded-xl border border-[#E8D6C3]">
+                          🏏 {rules.overs || 10} Overs / Side
+                        </span>
+                        <span className="text-xs font-bold bg-[#FAF7F2] text-[#6B5E53] px-2.5 py-1 rounded-xl border border-[#E8D6C3]">
+                          🎯 Max {rules.maxPerBowler || 2} ov/bowler
+                        </span>
+                        <span className="text-xs font-bold bg-[#FAF7F2] text-[#6B5E53] px-2.5 py-1 rounded-xl border border-[#E8D6C3]">
+                          ⚡ {rules.powerplay || 2} Ov Powerplay
+                        </span>
+                        <span className="text-xs font-bold bg-[#FAF0E6] text-[#9E2A2B] px-2.5 py-1 rounded-xl border border-[#E8D6C3]">
+                          🏆 Win: {rules.pointsWin || 2} pts · Tie: {rules.pointsTie || 1} pt
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="text-xs font-bold bg-[#FAF7F2] text-[#842021] px-2.5 py-1 rounded-xl border border-[#E8D6C3]">
+                          ⚽ {rules.halfMinutes || 20} Mins / Half
+                        </span>
+                        <span className="text-xs font-bold bg-[#FAF7F2] text-[#6B5E53] px-2.5 py-1 rounded-xl border border-[#E8D6C3]">
+                          👥 {rules.format || "7-a-side"}
+                        </span>
+                        <span className="text-xs font-bold bg-[#FAF0E6] text-[#9E2A2B] px-2.5 py-1 rounded-xl border border-[#E8D6C3]">
+                          🏆 Win: {rules.pointsWin || 3} pts · Draw: {rules.pointsDraw || 1} pt
+                        </span>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Quick Stats & Organizer count */}
+              <div className="flex sm:flex-col gap-3 self-start sm:self-center sm:text-right border-t sm:border-t-0 pt-3 sm:pt-0 border-[#EFE8DC]">
+                <div>
+                  <p className="text-2xl font-black text-[#9E2A2B]">{tournament.teams?.length || 0}</p>
+                  <p className="text-[11px] font-bold text-[#7C6E63] uppercase">Teams Registered</p>
+                </div>
+                <div>
+                  <p className="text-2xl font-black text-[#2C221E]">{tournament.matches?.length || 0}</p>
+                  <p className="text-[11px] font-bold text-[#7C6E63] uppercase">Matches Scheduled</p>
+                </div>
               </div>
             </div>
 
-            {/* Quick Stats & Organizer count */}
-            <div className="flex sm:flex-col gap-3 self-start sm:self-center sm:text-right border-t sm:border-t-0 pt-3 sm:pt-0 border-[#EFE8DC]">
-              <div>
-                <p className="text-2xl font-black text-[#9E2A2B]">{tournament.teams?.length || 0}</p>
-                <p className="text-[11px] font-bold text-[#7C6E63] uppercase">Teams Registered</p>
+            {/* Organizers Ribbon */}
+            <div className="pt-4 border-t border-[#EFE8DC] flex flex-wrap items-center justify-between gap-3 text-xs">
+              <div className="flex items-center gap-2">
+                <Shield className="w-4 h-4 text-[#9E2A2B]" />
+                <span className="font-bold text-[#4A3E35]">Organizing Committee:</span>
+                <span className="text-[#6B5E53]">
+                  {tournament.organizers?.map((o: any) => `${o.user.name} (${o.user.studentId})`).join(", ") || "Department Appointees"}
+                </span>
               </div>
-              <div>
-                <p className="text-2xl font-black text-[#2C221E]">{tournament.matches?.length || 0}</p>
-                <p className="text-[11px] font-bold text-[#7C6E63] uppercase">Matches Scheduled</p>
+
+              <div className="flex items-center gap-2">
+                {isOrganizer && (
+                  <button
+                    onClick={() => setShowBannerModal(true)}
+                    className="text-xs font-bold text-[#9E2A2B] hover:underline flex items-center gap-1"
+                  >
+                    <Camera className="w-3.5 h-3.5" />
+                    <span>Change Cover</span>
+                  </button>
+                )}
+                {isOrganizer && (
+                  <span className="text-[11px] font-extrabold text-[#9E2A2B] bg-[#FAF0E6] px-3 py-1 rounded-xl border border-[#E8D6C3]">
+                    Organizer Mode ⚡
+                  </span>
+                )}
               </div>
             </div>
-          </div>
-
-          {/* Organizers Ribbon */}
-          <div className="mt-6 pt-5 border-t border-[#EFE8DC] flex flex-wrap items-center justify-between gap-3 text-xs">
-            <div className="flex items-center gap-2">
-              <Shield className="w-4 h-4 text-[#9E2A2B]" />
-              <span className="font-bold text-[#4A3E35]">Organizing Committee:</span>
-              <span className="text-[#6B5E53]">
-                {tournament.organizers?.map((o: any) => `${o.user.name} (${o.user.studentId})`).join(", ") || "Department Appointees"}
-              </span>
-            </div>
-
-            {isOrganizer && (
-              <span className="text-[11px] font-extrabold text-[#9E2A2B] bg-[#FAF0E6] px-3 py-1 rounded-xl border border-[#E8D6C3]">
-                You have Organizer Permissions ⚡
-              </span>
-            )}
           </div>
         </div>
 
@@ -344,6 +420,18 @@ export const TournamentDetailPage: React.FC = () => {
           >
             <Flame className="w-4 h-4" />
             <span>📊 Leaderboards & Stats</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab("gallery")}
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-2xl text-xs font-black transition-all ${
+              activeTab === "gallery"
+                ? "bg-[#9E2A2B] text-white shadow-md shadow-[#9E2A2B]/20"
+                : "bg-white text-[#7C6E63] hover:bg-[#FAF0E6] hover:text-[#9E2A2B] border border-[#E5DACB]"
+            }`}
+          >
+            <Camera className="w-4 h-4" />
+            <span>📸 Gallery & Highlights</span>
           </button>
         </div>
 
@@ -828,6 +916,16 @@ export const TournamentDetailPage: React.FC = () => {
           </div>
         )}
 
+        {/* TAB 6: GALLERY & HIGHLIGHTS */}
+        {activeTab === "gallery" && (
+          <MediaGalleryView
+            tournamentId={tournament.id}
+            title={`${tournament.name} Gallery & Action`}
+            description="Trophy presentations, match action photos, squad portraits, and celebrations."
+            allowUpload={true}
+          />
+        )}
+
       </main>
 
       {/* In-Context Organizer Workspace Modal */}
@@ -838,6 +936,28 @@ export const TournamentDetailPage: React.FC = () => {
         onRefresh={() => {
           fetchTournamentData();
         }}
+      />
+
+      {/* BANNER UPLOAD MODAL */}
+      <ImageUploadModal
+        isOpen={showBannerModal}
+        onClose={() => setShowBannerModal(false)}
+        onSuccess={handleUpdateBanner}
+        title={`Update ${tournament.name} Banner`}
+        description="Upload a high-resolution tournament stage or field banner."
+        aspectRatio="banner"
+        currentUrl={tournament.bannerUrl}
+      />
+
+      {/* LOGO UPLOAD MODAL */}
+      <ImageUploadModal
+        isOpen={showLogoModal}
+        onClose={() => setShowLogoModal(false)}
+        onSuccess={handleUpdateLogo}
+        title={`Update ${tournament.name} Logo`}
+        description="Upload the official tournament emblem or crest."
+        aspectRatio="square"
+        currentUrl={tournament.logoUrl}
       />
 
     </div>

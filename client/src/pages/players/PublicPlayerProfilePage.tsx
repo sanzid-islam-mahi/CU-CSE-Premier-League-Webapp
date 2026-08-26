@@ -8,6 +8,8 @@ import {
   Shirt
 } from "lucide-react";
 import { api } from "@/lib/api";
+import { SmartAvatar } from "@/components/common/SmartAvatar";
+import { MediaGalleryView } from "@/components/common/MediaGalleryView";
 
 export const PublicPlayerProfilePage: React.FC = () => {
   const { idOrRoll } = useParams<{ idOrRoll: string }>();
@@ -64,7 +66,7 @@ export const PublicPlayerProfilePage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#FAF7F2] text-[#2C221E] flex flex-col">
+    <div className="min-h-screen bg-[#FAF7F2] text-[#2C221E] flex flex-col pb-20">
       
       {/* Top Header */}
       <div className="bg-white border-b border-[#E5DACB] sticky top-0 z-30 shadow-xs">
@@ -77,9 +79,14 @@ export const PublicPlayerProfilePage: React.FC = () => {
             <span>Back to CSEPL Home</span>
           </Link>
 
-          <span className="text-xs font-extrabold text-[#842021] bg-[#FAF0E6] px-3 py-1 rounded-full border border-[#E8D6C3]">
-            {player.batch ? player.batch.name : "CSE Department Roster"}
-          </span>
+          {player.batch && (
+            <Link
+              to={`/batches/${player.batch.slug || `batch-${player.batch.id}`}`}
+              className="text-xs font-extrabold text-[#842021] bg-[#FAF0E6] px-3 py-1 rounded-full border border-[#E8D6C3] hover:bg-[#FAF7F2] transition-colors"
+            >
+              🏛️ {player.batch.name}
+            </Link>
+          )}
         </div>
       </div>
 
@@ -87,60 +94,88 @@ export const PublicPlayerProfilePage: React.FC = () => {
       <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
         
         {/* Banner Hero */}
-        <div className="bg-white rounded-3xl border-2 border-[#E5DACB] p-6 sm:p-8 shadow-xs relative overflow-hidden">
-          <div className="h-3 w-full brick-gradient absolute top-0 left-0 right-0" />
-
-          <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 text-center sm:text-left pt-2">
-            
-            <div className="w-24 h-24 rounded-3xl brick-gradient text-white flex items-center justify-center text-3xl font-black shadow-lg shadow-[#9E2A2B]/20 border-2 border-[#842021] shrink-0">
-              {player.name.charAt(0)}
+        <div className="bg-white rounded-3xl border-2 border-[#E5DACB] shadow-sm overflow-hidden relative">
+          
+          {/* Cover Photo */}
+          {player.coverUrl ? (
+            <div className="relative h-40 sm:h-52 w-full overflow-hidden">
+              <img
+                src={player.coverUrl}
+                alt={`${player.name} Cover`}
+                className="w-full h-full object-cover"
+              />
+              <div className="absolute inset-0 bg-linear-to-t from-black/60 via-transparent to-transparent" />
             </div>
+          ) : (
+            <div className="h-3 w-full brick-gradient" />
+          )}
 
-            <div className="space-y-1.5 flex-1">
-              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
-                <h1 className="text-2xl sm:text-3xl font-black text-[#2C221E] tracking-tight">
-                  {player.name}
-                </h1>
-                <span className="font-mono text-xs font-black bg-[#FAF0E6] text-[#842021] px-2.5 py-0.5 rounded-lg border border-[#E8D6C3]">
-                  Roll: {player.studentId}
-                </span>
+          <div className="p-6 sm:p-8 relative">
+            <div className={`flex flex-col sm:flex-row items-center sm:items-end justify-between gap-6 ${player.coverUrl ? "-mt-16 sm:-mt-20" : "pt-2"}`}>
+              
+              <div className="flex flex-col sm:flex-row items-center sm:items-end gap-5 text-center sm:text-left">
+                <SmartAvatar
+                  src={player.avatarUrl}
+                  alt={player.name}
+                  size="2xl"
+                  shape="rounded"
+                  className="ring-4 ring-white shadow-xl shrink-0"
+                />
+
+                <div className="space-y-1.5 pb-1">
+                  <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
+                    <h1 className="text-2xl sm:text-3xl font-black text-[#2C221E] tracking-tight">
+                      {player.name}
+                    </h1>
+                    <span className="font-mono text-xs font-black bg-[#FAF0E6] text-[#842021] px-2.5 py-0.5 rounded-lg border border-[#E8D6C3]">
+                      Roll: {player.studentId}
+                    </span>
+                  </div>
+
+                  <p className="text-xs text-[#7C6E63] font-medium flex items-center justify-center sm:justify-start gap-3">
+                    {player.batch && (
+                      <Link
+                        to={`/batches/${player.batch.slug || `batch-${player.batch.id}`}`}
+                        className="hover:underline font-bold text-[#9E2A2B]"
+                      >
+                        🏛️ {player.batch.name} ({player.batch.session})
+                      </Link>
+                    )}
+                    <span>•</span>
+                    <span>📧 {player.email}</span>
+                  </p>
+
+                  <p className="text-xs text-[#4A3E35] font-medium italic pt-1 max-w-xl">
+                    "{player.bio || "CSE Chittagong University Premier League Athlete"}"
+                  </p>
+                </div>
               </div>
 
-              <p className="text-xs text-[#7C6E63] font-medium flex items-center justify-center sm:justify-start gap-3">
-                <span>🏛️ {player.batch ? `${player.batch.name} (${player.batch.session})` : "CSE CU"}</span>
-                <span>•</span>
-                <span>📧 {player.email}</span>
-              </p>
+              {/* Jersey Pill */}
+              {player.preferredJerseyNo && (
+                <div className="p-3 bg-[#FAF0E6] rounded-2xl border border-[#E8D6C3] flex items-center gap-2 self-center sm:self-end">
+                  <Shirt className="w-5 h-5 text-[#9E2A2B]" />
+                  <div>
+                    <p className="text-[10px] font-bold text-[#7C6E63] uppercase">Jersey</p>
+                    <p className="font-black text-sm text-[#9E2A2B]">#{player.preferredJerseyNo}</p>
+                  </div>
+                </div>
+              )}
 
-              <p className="text-xs text-[#4A3E35] font-medium italic pt-1 max-w-xl">
-                "{player.bio || "CSE Chittagong University Premier League Athlete"}"
-              </p>
             </div>
 
-            {/* Jersey Pill */}
-            {player.preferredJerseyNo && (
-              <div className="p-3 bg-[#FAF0E6] rounded-2xl border border-[#E8D6C3] flex items-center gap-2 self-center sm:self-start">
-                <Shirt className="w-5 h-5 text-[#9E2A2B]" />
-                <div>
-                  <p className="text-[10px] font-bold text-[#7C6E63] uppercase">Jersey</p>
-                  <p className="font-black text-sm text-[#9E2A2B]">#{player.preferredJerseyNo}</p>
+            {/* Active Tournament Organizers Badge */}
+            {player.organizerTournaments?.length > 0 && (
+              <div className="mt-6 pt-5 border-t border-[#EFE8DC]">
+                <div className="p-3.5 bg-[#FAF0E6] rounded-2xl border border-[#E8D6C3] flex items-center gap-3">
+                  <Shield className="w-5 h-5 text-[#9E2A2B]" />
+                  <p className="text-xs text-[#2C221E] font-bold">
+                    Designated Tournament Organizer for: <span className="text-[#842021]">{player.organizerTournaments.map((t: any) => t.name).join(", ")}</span>
+                  </p>
                 </div>
               </div>
             )}
-
           </div>
-
-          {/* Active Tournament Organizers Badge */}
-          {player.organizerTournaments?.length > 0 && (
-            <div className="mt-6 pt-5 border-t border-[#EFE8DC]">
-              <div className="p-3.5 bg-[#FAF0E6] rounded-2xl border border-[#E8D6C3] flex items-center gap-3">
-                <Shield className="w-5 h-5 text-[#9E2A2B]" />
-                <p className="text-xs text-[#2C221E] font-bold">
-                  Designated Tournament Organizer for: <span className="text-[#842021]">{player.organizerTournaments.map((t: any) => t.name).join(", ")}</span>
-                </p>
-              </div>
-            </div>
-          )}
         </div>
 
         {/* Sports Capabilities Grid */}
@@ -199,6 +234,18 @@ export const PublicPlayerProfilePage: React.FC = () => {
           </div>
 
         </div>
+
+        {/* Player Photo Album */}
+        {player.id && (
+          <div className="pt-2">
+            <MediaGalleryView
+              userId={player.id}
+              title={`${player.name}'s Match Gallery & Moments`}
+              description="Moments captured during CSEPL tournaments and match days."
+              allowUpload={false}
+            />
+          </div>
+        )}
 
       </main>
 
