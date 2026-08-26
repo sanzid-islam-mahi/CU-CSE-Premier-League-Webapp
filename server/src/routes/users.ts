@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../db.js";
-import { hashPassword } from "../lib/auth.js";
+import { hashPassword, generateRandomTempPassword } from "../lib/auth.js";
 import { requireAuth, requireAdmin } from "../middleware/auth.js";
 
 const usersRouter = Router();
@@ -68,6 +68,7 @@ usersRouter.get("/", async (req, res) => {
       email: u.email,
       role: u.role,
       isTemporaryPassword: u.isTemporaryPassword,
+      temporaryPlainPassword: u.temporaryPlainPassword,
       batch: u.batch ? u.batch.name : "Unassigned",
       batchId: u.batchId,
       cricketRole: u.cricketRole,
@@ -172,7 +173,7 @@ usersRouter.post("/", requireAuth, requireAdmin, async (req, res) => {
       return;
     }
 
-    const plainPassword = temporaryPassword || `CSEPL@${studentId}`;
+    const plainPassword = temporaryPassword || generateRandomTempPassword();
     const hashedPassword = await hashPassword(plainPassword);
 
     const user = await prisma.user.create({
@@ -182,6 +183,7 @@ usersRouter.post("/", requireAuth, requireAdmin, async (req, res) => {
         email: resolvedEmail,
         password: hashedPassword,
         isTemporaryPassword: true,
+        temporaryPlainPassword: plainPassword,
         batchId: batchId || null,
         role: role || "USER",
         cricketRole: cricketRole || null,
@@ -199,6 +201,7 @@ usersRouter.post("/", requireAuth, requireAdmin, async (req, res) => {
       email: user.email,
       role: user.role,
       isTemporaryPassword: user.isTemporaryPassword,
+      temporaryPlainPassword: user.temporaryPlainPassword,
       batch: user.batch ? user.batch.name : "Unassigned",
       batchId: user.batchId,
       cricketRole: user.cricketRole,
@@ -252,7 +255,7 @@ usersRouter.post("/bulk", requireAuth, requireAdmin, async (req, res) => {
           resolvedBatchId = batchMap.get(row.batch.toLowerCase().trim()) || null;
         }
 
-        const plainPass = `CSEPL@${row.roll}`;
+        const plainPass = generateRandomTempPassword();
         const hashed = await hashPassword(plainPass);
 
         await prisma.user.create({
@@ -262,6 +265,7 @@ usersRouter.post("/bulk", requireAuth, requireAdmin, async (req, res) => {
             email: rowEmail,
             password: hashed,
             isTemporaryPassword: true,
+            temporaryPlainPassword: plainPass,
             batchId: resolvedBatchId,
             role: "USER",
             cricketRole: row.role || null,
@@ -296,8 +300,7 @@ usersRouter.put("/:id/reset-temp-pass", requireAuth, requireAdmin, async (req, r
       return;
     }
 
-    const randomDigits = Math.floor(100 + Math.random() * 900);
-    const newTempPassword = `CSEPL@${user.studentId}_${randomDigits}`;
+    const newTempPassword = generateRandomTempPassword();
     const hashedPassword = await hashPassword(newTempPassword);
 
     await prisma.user.update({
@@ -305,6 +308,7 @@ usersRouter.put("/:id/reset-temp-pass", requireAuth, requireAdmin, async (req, r
       data: {
         password: hashedPassword,
         isTemporaryPassword: true,
+        temporaryPlainPassword: newTempPassword,
       }
     });
 

@@ -31,6 +31,7 @@ export interface UserItem {
   email: string;
   role: "ADMIN" | "USER";
   isTemporaryPassword: boolean;
+  temporaryPlainPassword?: string | null;
   batch: string;
   batchId?: number | null;
   cricketRole?: string;

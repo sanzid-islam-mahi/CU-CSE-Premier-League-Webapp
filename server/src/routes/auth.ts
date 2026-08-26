@@ -219,6 +219,7 @@ authRouter.post("/change-password", requireAuth, async (req: AuthenticatedReques
       data: {
         password: hashedPassword,
         isTemporaryPassword: false, // Mark temporary pass as resolved!
+        temporaryPlainPassword: null, // Clear plain temporary password
       },
     });
 

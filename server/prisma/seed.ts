@@ -64,17 +64,23 @@ async function main() {
 
   const createdUsers: any[] = [];
   for (const p of playersData) {
-    const tempPass = `CSEPL@${p.studentId}`;
+    const chars = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
+    let rand = "";
+    for (let i = 0; i < 6; i++) rand += chars.charAt(Math.floor(Math.random() * chars.length));
+    const tempPass = `CSEPL@${rand}`;
     const hashed = await hashPassword(tempPass);
     const user = await prisma.user.upsert({
       where: { studentId: p.studentId },
-      update: {},
+      update: {
+        temporaryPlainPassword: tempPass,
+      },
       create: {
         studentId: p.studentId,
         name: p.name,
         email: p.email,
         password: hashed,
         isTemporaryPassword: true,
+        temporaryPlainPassword: tempPass,
         batchId: batchesMap.get(p.batchNum),
         cricketRole: p.cricketRole,
         footballPosition: p.footballPosition,
@@ -83,7 +89,7 @@ async function main() {
     });
     createdUsers.push(user);
   }
-  console.log(`✅ Created ${createdUsers.length} initial Players with Temporary Passwords.`);
+  console.log(`✅ Created ${createdUsers.length} initial Players with Random Temporary Passwords.`);
 
   // 4. Create Tournaments
   const cricketTourn = await prisma.tournament.upsert({

@@ -32,3 +32,13 @@ export async function hashPassword(password: string): Promise<string> {
 export async function comparePassword(password: string, hash: string): Promise<boolean> {
   return bcrypt.compare(password, hash);
 }
+
+export function generateRandomTempPassword(prefix = "CSEPL"): string {
+  const chars = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ"; // exclude easily confusable characters (0, O, 1, I)
+  let randomPart = "";
+  for (let i = 0; i < 6; i++) {
+    randomPart += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return `${prefix}@${randomPart}`;
+}
+

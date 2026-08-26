@@ -186,7 +186,11 @@ export const AdminDashboard: React.FC = () => {
   const handleResetTempPass = async (player: UserItem) => {
     try {
       const res = await api.users.resetTempPass(player.id);
-      setPlayers(prev => prev.map(p => p.id === player.id ? { ...p, isTemporaryPassword: true } : p));
+      setPlayers(prev => prev.map(p => p.id === player.id ? { 
+        ...p, 
+        isTemporaryPassword: true, 
+        temporaryPlainPassword: res.temporaryPassword 
+      } : p));
       triggerNotification(`Reset temp pass for ${player.name}: ${res.temporaryPassword}`);
     } catch (err: any) {
       alert(err.message || "Failed to reset password.");
@@ -742,15 +746,16 @@ export const AdminDashboard: React.FC = () => {
                           <td className="py-3.5 px-4">
                             {player.isTemporaryPassword ? (
                               <div className="flex items-center gap-1.5">
-                                <span className="font-mono text-[11px] bg-[#FAF0E6] text-[#842021] px-2 py-0.5 rounded border border-[#E8D6C3]">
-                                  CSEPL@{player.studentId}
+                                <span className="font-mono text-[11px] bg-[#FAF0E6] text-[#842021] px-2 py-0.5 rounded border border-[#E8D6C3] font-bold">
+                                  {player.temporaryPlainPassword || `CSEPL@${player.studentId}`}
                                 </span>
                                 <button
                                   onClick={() => {
-                                    navigator.clipboard.writeText(`CSEPL@${player.studentId}`);
-                                    triggerNotification(`Copied temp pass for ${player.name} to clipboard!`);
+                                    const passToCopy = player.temporaryPlainPassword || `CSEPL@${player.studentId}`;
+                                    navigator.clipboard.writeText(passToCopy);
+                                    triggerNotification(`Copied temp pass (${passToCopy}) for ${player.name} to clipboard!`);
                                   }}
-                                  title="Copy temp pass"
+                                  title="Copy random temp pass"
                                   className="p-1 text-[#7C6E63] hover:text-[#9E2A2B]"
                                 >
                                   <Copy className="w-3.5 h-3.5" />
@@ -1099,7 +1104,7 @@ export const AdminDashboard: React.FC = () => {
               </div>
 
               <div className="p-2.5 bg-[#FAF0E6] rounded-xl border border-[#E8D6C3] text-[11px] text-[#842021]">
-                <strong>Generated Temp Pass:</strong> <code className="font-mono bg-white px-1.5 py-0.5 rounded ml-1">CSEPL@{newPlayerRoll || "Roll"}</code>
+                <strong>🔐 Random Temp Pass:</strong> <span className="text-[#6B5E53] ml-1">A secure 6-character random password (e.g. <code className="font-mono bg-white px-1.5 py-0.5 rounded font-bold text-[#842021]">CSEPL@7K9M2P</code>) will be generated and ready to copy.</span>
               </div>
 
               <div className="pt-2 flex gap-2">
