@@ -484,6 +484,16 @@ export const api = {
       return data;
     },
 
+    clearScheduled: async (tournamentIdOrSlug: string | number) => {
+      const res = await fetch(`${API_BASE}/matches/tournament/${tournamentIdOrSlug}/matches/scheduled`, {
+        method: "DELETE",
+        headers: getAuthHeaders(),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to clear scheduled matches");
+      return data;
+    },
+
     update: async (id: number, payload: any) => {
       const res = await fetch(`${API_BASE}/matches/${id}`, {
         method: "PUT",

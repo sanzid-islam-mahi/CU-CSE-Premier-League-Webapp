@@ -283,6 +283,21 @@ export const OrganizerWorkspaceModal: React.FC<OrganizerWorkspaceModalProps> = (
     }
   };
 
+  // 12. Clear All Scheduled Matches Handler
+  const handleClearScheduledMatches = async () => {
+    if (!confirm("Are you sure you want to clear all scheduled matches in this tournament? Completed/Live matches will be preserved.")) return;
+    setLoading(true);
+    try {
+      const res = await api.matches.clearScheduled(tournament.id);
+      triggerToast(res.message);
+      onRefresh();
+    } catch (err: any) {
+      alert(err.message || "Failed to clear scheduled matches.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // 12. Assign Scorer Handler
   const handleAssignScorer = async (matchId: number) => {
     if (!selectedScorerUserId) return;
@@ -819,7 +834,7 @@ export const OrganizerWorkspaceModal: React.FC<OrganizerWorkspaceModalProps> = (
                   </p>
                 </div>
 
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   <Button
                     type="button"
                     onClick={handleAutoGenerateFixtures}
@@ -827,7 +842,7 @@ export const OrganizerWorkspaceModal: React.FC<OrganizerWorkspaceModalProps> = (
                     className="bg-[#9E2A2B] hover:bg-[#842021] text-white font-bold text-xs h-10 px-4 rounded-xl shadow-md shadow-[#9E2A2B]/20 flex items-center gap-1.5"
                   >
                     <Sparkles className="w-4 h-4" />
-                    <span>⚡ Generate Group Fixtures</span>
+                    <span>⚡ Re-Generate Group Fixtures</span>
                   </Button>
 
                   <Button
@@ -839,6 +854,20 @@ export const OrganizerWorkspaceModal: React.FC<OrganizerWorkspaceModalProps> = (
                     <Plus className="w-4 h-4 mr-1 text-[#9E2A2B]" />
                     <span>Manual Match</span>
                   </Button>
+
+                  {(tournament.matches?.length || 0) > 0 && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleClearScheduledMatches}
+                      disabled={loading}
+                      className="border-[#FFC9C9] text-[#C92A2A] hover:bg-[#FFF5F5] font-bold text-xs h-10 px-3 rounded-xl"
+                      title="Clear all scheduled matches"
+                    >
+                      <Trash2 className="w-4 h-4 mr-1" />
+                      <span>Clear All Scheduled</span>
+                    </Button>
+                  )}
                 </div>
               </div>
 

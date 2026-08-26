@@ -166,7 +166,7 @@ matchesRouter.post("/tournament/:idOrSlug", requireAuth, async (req: Authenticat
   }
 });
 
-// AUTO-GENERATE ROUND ROBIN FIXTURES (1-Click Group Stage Generator)
+// AUTO-GENERATE ROUND ROBIN FIXTURES (Group Stage Generator)
 matchesRouter.post("/tournament/:idOrSlug/generate-round-robin", requireAuth, async (req: AuthenticatedRequest, res) => {
   try {
     const { idOrSlug } = req.params;
@@ -175,9 +175,15 @@ matchesRouter.post("/tournament/:idOrSlug/generate-round-robin", requireAuth, as
     const tournament: any = await prisma.tournament.findFirst({
       where: isNum ? { id: Number(idOrSlug) } : { slug: slugStr },
       include: {
-        groups: { include: { teams: true } },
+        groups: { 
+          include: { 
+            teams: true 
+          } 
+        },
         teams: true,
-        matches: true,
+        matches: {
+          orderBy: { matchNumber: "asc" }
+        },
       }
     });
 
@@ -192,14 +198,26 @@ matchesRouter.post("/tournament/:idOrSlug/generate-round-robin", requireAuth, as
       return;
     }
 
-    let nextMatchNumber = (tournament.matches.length > 0)
-      ? Math.max(...tournament.matches.map((m: any) => m.matchNumber)) + 1
-      : 1;
+    // Delete any existing un-played SCHEDULED group stage matches to ensure clean schedule
+    await prisma.match.deleteMany({
+      where: {
+        tournamentId: tournament.id,
+        stage: "GROUP_STAGE",
+        status: "SCHEDULED",
+      }
+    });
+
+    // Determine starting match number based on any remaining completed/live matches
+    const remainingMatches = await prisma.match.findMany({
+      where: { tournamentId: tournament.id },
+      orderBy: { matchNumber: "desc" }
+    });
+    let nextMatchNumber = remainingMatches.length > 0 ? (remainingMatches[0].matchNumber + 1) : 1;
 
     const createdMatches: any[] = [];
     const defaultVenue = tournament.sport === "CRICKET" ? "CU CSE Ground" : "CU Central Field";
 
-    // Helper to generate pairs
+    // Helper to generate unique pairings within a list of teams
     const generatePairs = (teamList: any[], groupId: number | null) => {
       const pairs: Array<{ teamAId: number; teamBId: number; groupId: number | null }> = [];
       for (let i = 0; i < teamList.length; i++) {
@@ -216,70 +234,98 @@ matchesRouter.post("/tournament/:idOrSlug/generate-round-robin", requireAuth, as
 
     let allPairs: Array<{ teamAId: number; teamBId: number; groupId: number | null }> = [];
 
-    if (tournament.groups.length > 0) {
+    if (tournament.groups && tournament.groups.length > 0) {
+      // Group-based tournament: strictly generate round-robin matches WITHIN each group
       for (const g of tournament.groups) {
-        if (g.teams.length >= 2) {
+        if (g.teams && g.teams.length >= 2) {
           allPairs = allPairs.concat(generatePairs(g.teams, g.id));
         }
       }
     } else {
-      if (tournament.teams.length >= 2) {
+      // General single-pool tournament: all teams play round-robin
+      if (tournament.teams && tournament.teams.length >= 2) {
         allPairs = allPairs.concat(generatePairs(tournament.teams, null));
       }
     }
 
     if (allPairs.length === 0) {
-      res.status(400).json({ error: "At least 2 teams in a group or tournament are required to generate fixtures." });
+      res.status(400).json({ 
+        error: tournament.groups?.length > 0
+          ? "Please allocate at least 2 teams into your groups before generating fixtures."
+          : "At least 2 teams are required in the tournament to generate fixtures." 
+      });
       return;
     }
 
     for (const pair of allPairs) {
-      // Check if match already exists
-      const existing = await prisma.match.findFirst({
-        where: {
+      const m = await prisma.match.create({
+        data: {
           tournamentId: tournament.id,
-          OR: [
-            { teamAId: pair.teamAId, teamBId: pair.teamBId },
-            { teamAId: pair.teamBId, teamBId: pair.teamAId }
-          ]
+          groupId: pair.groupId,
+          stage: "GROUP_STAGE",
+          matchNumber: nextMatchNumber++,
+          teamAId: pair.teamAId,
+          teamBId: pair.teamBId,
+          venue: defaultVenue,
+          status: "SCHEDULED",
+        },
+        include: {
+          teamA: { select: { id: true, name: true, shortName: true } },
+          teamB: { select: { id: true, name: true, shortName: true } },
+          group: { select: { id: true, name: true } }
         }
       });
 
-      if (!existing) {
-        const m = await prisma.match.create({
-          data: {
-            tournamentId: tournament.id,
-            groupId: pair.groupId,
-            stage: "GROUP_STAGE",
-            matchNumber: nextMatchNumber++,
-            teamAId: pair.teamAId,
-            teamBId: pair.teamBId,
-            venue: defaultVenue,
-            status: "SCHEDULED",
-          },
-          include: {
-            teamA: { select: { id: true, name: true, shortName: true } },
-            teamB: { select: { id: true, name: true, shortName: true } },
-          }
+      if (tournament.sport === "FOOTBALL") {
+        await prisma.footballMatchDetail.create({
+          data: { matchId: m.id, halfDurationMinutes: 20 }
         });
-
-        if (tournament.sport === "FOOTBALL") {
-          await prisma.footballMatchDetail.create({
-            data: { matchId: m.id, halfDurationMinutes: 20 }
-          });
-        }
-
-        createdMatches.push(m);
       }
+
+      createdMatches.push(m);
     }
 
     res.status(201).json({
-      message: `Successfully generated ${createdMatches.length} round-robin match fixtures.`,
+      message: `Successfully generated ${createdMatches.length} group stage match fixtures (${tournament.groups?.length > 0 ? `${tournament.groups.length} groups` : "Single pool"}).`,
       count: createdMatches.length,
       fixtures: createdMatches,
     });
   } catch (err: any) {
     res.status(500).json({ error: err.message || "Failed to generate round robin fixtures" });
+  }
+});
+
+// CLEAR / DELETE ALL SCHEDULED FIXTURES IN TOURNAMENT
+matchesRouter.delete("/tournament/:idOrSlug/matches/scheduled", requireAuth, async (req: AuthenticatedRequest, res) => {
+  try {
+    const { idOrSlug } = req.params;
+    const isNum = !isNaN(Number(idOrSlug));
+    const slugStr = String(idOrSlug);
+    const tournament = await prisma.tournament.findFirst({
+      where: isNum ? { id: Number(idOrSlug) } : { slug: slugStr }
+    });
+
+    if (!tournament) {
+      res.status(404).json({ error: "Tournament not found" });
+      return;
+    }
+
+    const allowed = await isOrganizerOrAdmin(req.user!.id, req.user!.role, tournament.id);
+    if (!allowed) {
+      res.status(403).json({ error: "Access denied. Only Tournament Organizers can clear fixtures." });
+      return;
+    }
+
+    const result = await prisma.match.deleteMany({
+      where: {
+        tournamentId: tournament.id,
+        status: "SCHEDULED"
+      }
+    });
+
+    res.json({ message: `Successfully cleared ${result.count} scheduled matches.` });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || "Failed to clear scheduled fixtures" });
   }
 });
 
