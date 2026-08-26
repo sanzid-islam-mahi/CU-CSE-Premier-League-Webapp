@@ -358,27 +358,56 @@ matchesRouter.post("/tournament/:idOrSlug/generate-knockouts", requireAuth, asyn
       return;
     }
 
+    const getRankedTeams = (teamList: any[]) => {
+      const statsMap = new Map<number, { team: any; points: number; won: number; lost: number }>();
+      for (const t of teamList) {
+        statsMap.set(t.id, { team: t, points: 0, won: 0, lost: 0 });
+      }
+      for (const m of tournament.matches) {
+        if (m.status !== "COMPLETED") continue;
+        const sA = statsMap.get(m.teamAId);
+        const sB = statsMap.get(m.teamBId);
+        if (sA && sB) {
+          if (m.winnerTeamId === m.teamAId) {
+            sA.won++;
+            sA.points += (tournament.sport === "FOOTBALL" ? 3 : 2);
+            sB.lost++;
+          } else if (m.winnerTeamId === m.teamBId) {
+            sB.won++;
+            sB.points += (tournament.sport === "FOOTBALL" ? 3 : 2);
+            sA.lost++;
+          } else if (m.isTied || m.isNoResult) {
+            sA.points += 1;
+            sB.points += 1;
+          }
+        }
+      }
+      const sorted = Array.from(statsMap.values()).sort((a, b) => b.points - a.points || b.won - a.won);
+      return sorted.map(s => s.team);
+    };
+
     let sf1_teamAId: number;
     let sf1_teamBId: number;
     let sf2_teamAId: number;
     let sf2_teamBId: number;
 
     if (tournament.groups && tournament.groups.length >= 2) {
-      const gA = tournament.groups[0];
-      const gB = tournament.groups[1];
-      if (gA.teams.length < 2 || gB.teams.length < 2) {
+      const rankedA = getRankedTeams(tournament.groups[0].teams);
+      const rankedB = getRankedTeams(tournament.groups[1].teams);
+      if (rankedA.length < 2 || rankedB.length < 2) {
         res.status(400).json({ error: "Each group must have at least 2 teams to generate semi-finals." });
         return;
       }
-      sf1_teamAId = gA.teams[0].id;
-      sf1_teamBId = gB.teams[1].id;
-      sf2_teamAId = gB.teams[0].id;
-      sf2_teamBId = gA.teams[1].id;
+      sf1_teamAId = rankedA[0].id;
+      sf1_teamBId = rankedB[1].id;
+      sf2_teamAId = rankedB[0].id;
+      sf2_teamBId = rankedA[1].id;
     } else if (tournament.teams.length >= 4) {
-      sf1_teamAId = tournament.teams[0].id;
-      sf1_teamBId = tournament.teams[3].id;
-      sf2_teamAId = tournament.teams[1].id;
-      sf2_teamBId = tournament.teams[2].id;
+      const rankedAll = getRankedTeams(tournament.teams);
+      sf1_teamAId = rankedAll[0].id;
+      sf1_teamBId = rankedAll[3].id;
+      sf2_teamAId = rankedAll[1].id;
+      sf2_teamBId = rankedAll[2].id;
     } else {
       res.status(400).json({ error: "At least 4 participating teams are required for a knockout bracket." });
       return;
@@ -513,6 +542,25 @@ matchesRouter.put("/:id", requireAuth, async (req: AuthenticatedRequest, res) =>
         playerOfTheMatch: true,
       }
     });
+
+    // Auto-advance Semi-Final winners into the Grand Final
+    if (match.stage === "SEMI_FINAL" && status === "COMPLETED" && winnerTeamId) {
+      const allSemiFinals = await prisma.match.findMany({
+        where: { tournamentId: match.tournamentId, stage: "SEMI_FINAL" },
+        orderBy: { matchNumber: "asc" }
+      });
+      const finalMatch = await prisma.match.findFirst({
+        where: { tournamentId: match.tournamentId, stage: "FINAL" }
+      });
+
+      if (finalMatch && allSemiFinals.length >= 2) {
+        const isFirstSF = allSemiFinals[0].id === match.id;
+        await prisma.match.update({
+          where: { id: finalMatch.id },
+          data: isFirstSF ? { teamAId: winnerTeamId } : { teamBId: winnerTeamId }
+        });
+      }
+    }
 
     res.json(updated);
   } catch (err: any) {

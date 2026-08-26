@@ -4,7 +4,9 @@ import {
   Sparkles, 
   MapPin, 
   CheckCircle2, 
-  Pencil
+  Pencil,
+  AlertCircle,
+  Clock
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
@@ -30,8 +32,32 @@ export const TournamentBracketView: React.FC<TournamentBracketViewProps> = ({
     setTimeout(() => setNotification(null), 3500);
   };
 
+  const matches = tournament.matches || [];
+  
+  // Group stage progress metrics
+  const groupMatches = matches.filter((m: any) => m.stage === "GROUP_STAGE");
+  const totalGroupMatches = groupMatches.length;
+  const completedGroupMatches = groupMatches.filter((m: any) => m.status === "COMPLETED").length;
+  const isGroupStageFinished = totalGroupMatches > 0 && completedGroupMatches === totalGroupMatches;
+
+  // Knockout stage matches
+  const semiFinals = matches.filter((m: any) => m.stage === "SEMI_FINAL");
+  const finalMatch = matches.find((m: any) => m.stage === "FINAL");
+  const thirdPlaceMatch = matches.find((m: any) => m.stage === "THIRD_PLACE");
+
+  const hasKnockoutsGenerated = semiFinals.length > 0 || !!finalMatch;
+  const isFinalCompleted = finalMatch && finalMatch.status === "COMPLETED";
+  const championTeam = isFinalCompleted ? finalMatch.winnerTeam : null;
+
+  // Handle Generate Knockout Fixtures
   const handleGenerateKnockouts = async () => {
-    if (!confirm("This will automatically generate Semi-Finals and Final fixtures based on current group seeds. Proceed?")) return;
+    let confirmMsg = "This will lock in the Semi-Finals and Final fixtures based on current group stage standings. Proceed?";
+    if (!isGroupStageFinished) {
+      confirmMsg = `Group Stage is still in progress (${completedGroupMatches} of ${totalGroupMatches} matches played). Standings are not yet final.\n\nDo you want to generate provisional knockout fixtures now based on current rankings, or wait for all group matches to finish?`;
+    }
+
+    if (!confirm(confirmMsg)) return;
+
     setLoading(true);
     try {
       const res = await api.matches.generateKnockouts(tournament.id);
@@ -44,66 +70,90 @@ export const TournamentBracketView: React.FC<TournamentBracketViewProps> = ({
     }
   };
 
-  const matches = tournament.matches || [];
-  
-  // Categorize knockout matches
-  const semiFinals = matches.filter((m: any) => m.stage === "SEMI_FINAL");
-  const finalMatch = matches.find((m: any) => m.stage === "FINAL");
-  const thirdPlaceMatch = matches.find((m: any) => m.stage === "THIRD_PLACE");
-
-  const isFinalCompleted = finalMatch && finalMatch.status === "COMPLETED";
-  const championTeam = isFinalCompleted ? finalMatch.winnerTeam : null;
-
-  // Placeholder seed preview if no SFs are scheduled yet
+  // Group references
   const groupA = tournament.groups?.[0];
   const groupB = tournament.groups?.[1];
 
-  const sf1TeamA = semiFinals[0]?.teamA?.name || (groupA ? `1st ${groupA.name}` : "Seed #1");
-  const sf1TeamB = semiFinals[0]?.teamB?.name || (groupB ? `2nd ${groupB.name}` : "Seed #4");
-  const sf2TeamA = semiFinals[1]?.teamA?.name || (groupB ? `1st ${groupB.name}` : "Seed #2");
-  const sf2TeamB = semiFinals[1]?.teamB?.name || (groupA ? `2nd ${groupA.name}` : "Seed #3");
+  // Team names for SF1 & SF2 (or placeholder text if not yet finalized)
+  const sf1TeamA = semiFinals[0]?.teamA?.name || (groupA ? `🥇 1st ${groupA.name}` : "Seed #1");
+  const sf1TeamB = semiFinals[0]?.teamB?.name || (groupB ? `🥈 2nd ${groupB.name}` : "Seed #4");
+  const sf2TeamA = semiFinals[1]?.teamA?.name || (groupB ? `🥇 1st ${groupB.name}` : "Seed #2");
+  const sf2TeamB = semiFinals[1]?.teamB?.name || (groupA ? `🥈 2nd ${groupA.name}` : "Seed #3");
+
+  const finalTeamA = finalMatch?.teamA?.name || (semiFinals[0] ? `Winner Semi-Final 1` : "Winner SF 1");
+  const finalTeamB = finalMatch?.teamB?.name || (semiFinals[1] ? `Winner Semi-Final 2` : "Winner SF 2");
 
   return (
-    <div className="space-y-8 animate-in fade-in">
+    <div className="space-y-6 animate-in fade-in">
       
       {/* Toast Notification */}
       {notification && (
-        <div className="p-3 rounded-2xl bg-[#E6FCF5] border border-[#20C997] text-[#0CA678] text-xs font-bold flex items-center gap-2">
+        <div className="p-3.5 rounded-2xl bg-[#E6FCF5] border border-[#20C997] text-[#0CA678] text-xs font-bold flex items-center gap-2">
           <CheckCircle2 className="w-4 h-4 shrink-0" />
           <span>{notification}</span>
         </div>
       )}
 
-      {/* Header Banner & Organizer Action */}
-      <div className="bg-white rounded-3xl border-2 border-[#E5DACB] p-6 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <Trophy className="w-5 h-5 text-[#9E2A2B]" />
-            <h2 className="text-base sm:text-lg font-black text-[#2C221E]">
-              Championship Knockout Bracket
-            </h2>
+      {/* TOURNAMENT LIFECYCLE BANNER */}
+      <div className="bg-white rounded-3xl border-2 border-[#E5DACB] p-5 shadow-xs space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <Trophy className="w-5 h-5 text-[#9E2A2B]" />
+              <h2 className="text-base sm:text-lg font-black text-[#2C221E]">
+                Championship Knockout Bracket
+              </h2>
+            </div>
+            
+            {/* Status indicator */}
+            {!isGroupStageFinished ? (
+              <p className="text-xs text-[#7C6E63] flex items-center gap-1.5 font-medium">
+                <span className="w-2 h-2 rounded-full bg-[#F59F00] animate-pulse shrink-0" />
+                <span>
+                  <strong>Phase 1: Group Stage In Progress</strong> · {completedGroupMatches} of {totalGroupMatches} matches played.
+                </span>
+              </p>
+            ) : (
+              <p className="text-xs text-[#2A7B54] flex items-center gap-1.5 font-bold">
+                <span className="w-2 h-2 rounded-full bg-[#2A7B54] shrink-0" />
+                <span>
+                  <strong>Phase 2: Group Stage Concluded!</strong> Top 2 teams from each group qualify for the Semi-Finals.
+                </span>
+              </p>
+            )}
           </div>
-          <p className="text-xs text-[#7C6E63]">
-            Path to Glory: Semi-Finals, 3rd Place Playoff, and the Grand Championship Final.
-          </p>
+
+          {isOrganizer && (
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                onClick={handleGenerateKnockouts}
+                disabled={loading}
+                className="bg-[#9E2A2B] hover:bg-[#842021] text-white font-bold text-xs h-10 px-4 rounded-2xl shadow-md shadow-[#9E2A2B]/20 flex items-center gap-1.5 shrink-0"
+              >
+                <Sparkles className="w-4 h-4" />
+                <span>
+                  {hasKnockoutsGenerated ? "⚡ Re-Seed Knockout Fixtures" : "⚡ Seed & Generate Semi-Finals"}
+                </span>
+              </Button>
+            </div>
+          )}
         </div>
 
-        {isOrganizer && (
-          <Button
-            type="button"
-            onClick={handleGenerateKnockouts}
-            disabled={loading}
-            className="bg-[#9E2A2B] hover:bg-[#842021] text-white font-bold text-xs h-10 px-4 rounded-2xl shadow-md shadow-[#9E2A2B]/20 flex items-center gap-1.5 shrink-0"
-          >
-            <Sparkles className="w-4 h-4" />
-            <span>⚡ Auto-Generate Knockouts (SF & Final)</span>
-          </Button>
+        {/* Informative Lifecycle Note */}
+        {!hasKnockoutsGenerated && (
+          <div className="p-3 bg-[#FAF7F2] rounded-2xl border border-[#E8DCCF] text-xs text-[#6B5E53] flex items-start gap-2">
+            <AlertCircle className="w-4 h-4 text-[#9E2A2B] shrink-0 mt-0.5" />
+            <p>
+              The bracket below displays the <strong>Official Tournament Roadmap</strong>. In this format, the <strong>Winner of Group A (1st)</strong> plays the <strong>Runner-Up of Group B (2nd)</strong> in SF1, and the <strong>Winner of Group B (1st)</strong> plays the <strong>Runner-Up of Group A (2nd)</strong> in SF2. Once the group matches are completed, the top 2 teams will be finalized into the Semi-Final fixtures.
+            </p>
+          </div>
         )}
       </div>
 
       {/* VISUAL BRACKET TREE */}
       <div className="overflow-x-auto pb-6">
-        <div className="min-w-[760px] grid grid-cols-3 gap-6 items-center">
+        <div className="min-w-[800px] grid grid-cols-3 gap-6 items-center">
           
           {/* COLUMN 1: SEMI-FINALS */}
           <div className="space-y-6">
@@ -120,12 +170,13 @@ export const TournamentBracketView: React.FC<TournamentBracketViewProps> = ({
                   {semiFinals[0] ? `Match #${semiFinals[0].matchNumber}` : "Semi-Final 1"}
                 </span>
                 <span className="font-semibold text-[#2A7B54]">
-                  {semiFinals[0]?.status || "TBD"}
+                  {semiFinals[0]?.status || (hasKnockoutsGenerated ? "SCHEDULED" : "Awaiting Qualifiers")}
                 </span>
                 {isOrganizer && semiFinals[0] && onEditMatch && (
                   <button
                     onClick={() => onEditMatch(semiFinals[0])}
                     className="p-1 text-[#7C6E63] hover:text-[#9E2A2B]"
+                    title="Edit Match"
                   >
                     <Pencil className="w-3 h-3" />
                   </button>
@@ -166,12 +217,15 @@ export const TournamentBracketView: React.FC<TournamentBracketViewProps> = ({
               <div className="pt-1 flex items-center justify-between text-[10px] text-[#7C6E63]">
                 <span className="flex items-center gap-1">
                   <MapPin className="w-3 h-3 text-[#9E2A2B]" />
-                  <span>{semiFinals[0]?.venue || "CU Ground"}</span>
+                  <span>{semiFinals[0]?.venue || "CU CSE Grounds"}</span>
                 </span>
-                {semiFinals[0]?.startTime && (
-                  <span className="font-mono">
+                {semiFinals[0]?.startTime ? (
+                  <span className="font-mono flex items-center gap-1">
+                    <Clock className="w-3 h-3 text-[#9E2A2B]" />
                     {new Date(semiFinals[0].startTime).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
                   </span>
+                ) : (
+                  <span className="italic text-[#A89A8D]">Post-Group Stage</span>
                 )}
               </div>
             </div>
@@ -183,12 +237,13 @@ export const TournamentBracketView: React.FC<TournamentBracketViewProps> = ({
                   {semiFinals[1] ? `Match #${semiFinals[1].matchNumber}` : "Semi-Final 2"}
                 </span>
                 <span className="font-semibold text-[#2A7B54]">
-                  {semiFinals[1]?.status || "TBD"}
+                  {semiFinals[1]?.status || (hasKnockoutsGenerated ? "SCHEDULED" : "Awaiting Qualifiers")}
                 </span>
                 {isOrganizer && semiFinals[1] && onEditMatch && (
                   <button
                     onClick={() => onEditMatch(semiFinals[1])}
                     className="p-1 text-[#7C6E63] hover:text-[#9E2A2B]"
+                    title="Edit Match"
                   >
                     <Pencil className="w-3 h-3" />
                   </button>
@@ -229,12 +284,15 @@ export const TournamentBracketView: React.FC<TournamentBracketViewProps> = ({
               <div className="pt-1 flex items-center justify-between text-[10px] text-[#7C6E63]">
                 <span className="flex items-center gap-1">
                   <MapPin className="w-3 h-3 text-[#9E2A2B]" />
-                  <span>{semiFinals[1]?.venue || "CU Ground"}</span>
+                  <span>{semiFinals[1]?.venue || "CU CSE Grounds"}</span>
                 </span>
-                {semiFinals[1]?.startTime && (
-                  <span className="font-mono">
+                {semiFinals[1]?.startTime ? (
+                  <span className="font-mono flex items-center gap-1">
+                    <Clock className="w-3 h-3 text-[#9E2A2B]" />
                     {new Date(semiFinals[1].startTime).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
                   </span>
+                ) : (
+                  <span className="italic text-[#A89A8D]">Post-Group Stage</span>
                 )}
               </div>
             </div>
@@ -258,12 +316,13 @@ export const TournamentBracketView: React.FC<TournamentBracketViewProps> = ({
                   {finalMatch ? `Match #${finalMatch.matchNumber} · FINAL` : "Championship Final"}
                 </span>
                 <span className="font-bold text-[#2A7B54]">
-                  {finalMatch?.status || "TBD"}
+                  {finalMatch?.status || (hasKnockoutsGenerated ? "SCHEDULED" : "Awaiting SF Winners")}
                 </span>
                 {isOrganizer && finalMatch && onEditMatch && (
                   <button
                     onClick={() => onEditMatch(finalMatch)}
                     className="p-1 text-[#7C6E63] hover:text-[#9E2A2B]"
+                    title="Edit Match"
                   >
                     <Pencil className="w-3 h-3" />
                   </button>
@@ -281,7 +340,7 @@ export const TournamentBracketView: React.FC<TournamentBracketViewProps> = ({
                     {finalMatch?.teamA?.shortName || "SF1"}
                   </span>
                   <span className="truncate">
-                    {finalMatch?.teamA?.name || "Winner Semi-Final 1"}
+                    {finalTeamA}
                   </span>
                 </div>
                 {finalMatch?.winnerTeamId === finalMatch?.teamAId && <span className="text-sm">👑</span>}
@@ -302,7 +361,7 @@ export const TournamentBracketView: React.FC<TournamentBracketViewProps> = ({
                     {finalMatch?.teamB?.shortName || "SF2"}
                   </span>
                   <span className="truncate">
-                    {finalMatch?.teamB?.name || "Winner Semi-Final 2"}
+                    {finalTeamB}
                   </span>
                 </div>
                 {finalMatch?.winnerTeamId === finalMatch?.teamBId && <span className="text-sm">👑</span>}
@@ -312,7 +371,7 @@ export const TournamentBracketView: React.FC<TournamentBracketViewProps> = ({
               <div className="pt-2 border-t border-[#EFE8DC] flex items-center justify-between text-[10px] text-[#7C6E63]">
                 <span className="flex items-center gap-1">
                   <MapPin className="w-3 h-3 text-[#9E2A2B]" />
-                  <span>{finalMatch?.venue || "CU CSE Main Grounds"}</span>
+                  <span>{finalMatch?.venue || "CU CSE Main Ground"}</span>
                 </span>
                 {finalMatch?.resultSummary && (
                   <span className="font-bold text-[#842021]">{finalMatch.resultSummary}</span>
