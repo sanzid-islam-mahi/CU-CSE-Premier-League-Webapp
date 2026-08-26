@@ -7,14 +7,27 @@ async function hashPassword(plain: string) {
   return bcrypt.hash(plain, 10);
 }
 
+function generateRandomPassword(): string {
+  const chars = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
+  let rand = "";
+  for (let i = 0; i < 6; i++) {
+    rand += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return `CSEPL@${rand}`;
+}
+
 async function main() {
-  console.log("🌱 Seeding CSEPL Database...");
+  console.log("🌱 Cleaning and Seeding CSEPL Database...");
 
   // 1. Create Super Admin
   const adminPassword = await hashPassword("admin123");
   const admin = await prisma.user.upsert({
     where: { email: "admin@cse.cu.ac.bd" },
-    update: {},
+    update: {
+      password: adminPassword,
+      role: UserRole.ADMIN,
+      isTemporaryPassword: false,
+    },
     create: {
       studentId: "ADMIN01",
       name: "CSE Dept Administrator",
@@ -27,69 +40,116 @@ async function main() {
   });
   console.log("✅ Admin user ready:", admin.email);
 
-  // 2. Create Batches (18th to 25th)
+  // Clean old users (except admin) and batches to ensure fresh pattern
+  await prisma.tournamentOrganizer.deleteMany({});
+  await prisma.matchScorer.deleteMany({});
+  await prisma.matchSquad.deleteMany({});
+  await prisma.cricketBall.deleteMany({});
+  await prisma.cricketBattingScorecard.deleteMany({});
+  await prisma.cricketBowlingScorecard.deleteMany({});
+  await prisma.cricketInnings.deleteMany({});
+  await prisma.footballMatchEvent.deleteMany({});
+  await prisma.footballMatchDetail.deleteMany({});
+  await prisma.match.deleteMany({});
+  await prisma.teamMember.deleteMany({});
+  await prisma.team.deleteMany({});
+  await prisma.user.deleteMany({
+    where: {
+      email: { not: "admin@cse.cu.ac.bd" }
+    }
+  });
+  await prisma.batch.deleteMany({});
+
+  // 2. Create the 6 Requested Batches
   const batchData = [
-    { batchNumber: 18, name: "18th Batch", session: "2016-17", slug: "batch-18", slogan: "The Veteran Titans" },
-    { batchNumber: 19, name: "19th Batch", session: "2017-18", slug: "batch-19", slogan: "The Legacy Pioneers" },
-    { batchNumber: 20, name: "20th Batch", session: "2018-19", slug: "batch-20", slogan: "The Invincible Titans" },
-    { batchNumber: 21, name: "21st Batch", session: "2019-20", slug: "batch-21", slogan: "The Red Brick Warriors" },
-    { batchNumber: 22, name: "22nd Batch", session: "2020-21", slug: "batch-22", slogan: "The Rising Royals" },
-    { batchNumber: 23, name: "23rd Batch", session: "2021-22", slug: "batch-23", slogan: "The Challengers" },
-    { batchNumber: 24, name: "24th Batch", session: "2022-23", slug: "batch-24", slogan: "The Spark Pioneers" },
-    { batchNumber: 25, name: "25th Batch", session: "2023-24", slug: "batch-25", slogan: "The Fresh Gladiators" },
+    { batchNumber: 21, name: "Anabil 21", session: "2020-2021", slug: "batch-21", slogan: "The Incessant Wave" },
+    { batchNumber: 22, name: "Dwimik 22", session: "2021-2022", slug: "batch-22", slogan: "The Binary Force" },
+    { batchNumber: 23, name: "Adhrubo 23", session: "2022-2023", slug: "batch-23", slogan: "The Steadfast Titans" },
+    { batchNumber: 24, name: "24th Batch", session: "2023-2024", slug: "batch-24", slogan: "The Spark Pioneers" },
+    { batchNumber: 25, name: "25th Batch", session: "2024-2025", slug: "batch-25", slogan: "The Fresh Gladiators" },
+    { batchNumber: 26, name: "26th Batch", session: "2025-2026", slug: "batch-26", slogan: "The Rising Stars" },
   ];
 
   const batchesMap = new Map<number, number>();
   for (const b of batchData) {
-    const batch = await prisma.batch.upsert({
-      where: { slug: b.slug },
-      update: {},
-      create: b,
+    const batch = await prisma.batch.create({
+      data: b,
     });
     batchesMap.set(b.batchNumber, batch.id);
   }
-  console.log(`✅ Created ${batchesMap.size} Academic Batches.`);
+  console.log(`✅ Created ${batchesMap.size} Batches (Anabil 21 to 26th Batch).`);
 
-  // 3. Create Sample Players with Temporary Passwords
-  const playersData = [
-    { studentId: "19701042", name: "Sanzid Rahman", email: "sanzid@cse.cu.ac.bd", batchNum: 20, cricketRole: "🏏 Top-Order Bat", footballPosition: "⚽ Forward" },
-    { studentId: "19701015", name: "Tanvir Ahmed", email: "tanvir@cse.cu.ac.bd", batchNum: 20, cricketRole: "🏏 All-Rounder", footballPosition: "⚽ Midfielder" },
-    { studentId: "20701004", name: "Farhan Kabir", email: "farhan@cse.cu.ac.bd", batchNum: 21, cricketRole: "🏏 Fast Bowler", footballPosition: "⚽ Defender" },
-    { studentId: "20701028", name: "Rafid Hasan", email: "rafid@cse.cu.ac.bd", batchNum: 21, cricketRole: "🏏 Top-Order Bat", footballPosition: "⚽ Forward" },
-    { studentId: "21701033", name: "Nahid Islam", email: "nahid@cse.cu.ac.bd", batchNum: 22, cricketRole: "🏏 Spin Bowler", footballPosition: "⚽ Midfielder" },
-    { studentId: "21701050", name: "Shakil Hossain", email: "shakil@cse.cu.ac.bd", batchNum: 22, cricketRole: "🏏 All-Rounder", footballPosition: "⚽ Forward" },
-    { studentId: "22701012", name: "Arif Chowdhury", email: "arif@cse.cu.ac.bd", batchNum: 23, cricketRole: "🏏 Wicketkeeper", footballPosition: "⚽ Goalkeeper" },
-    { studentId: "23701008", name: "Samiul Haque", email: "samiul@cse.cu.ac.bd", batchNum: 24, cricketRole: "🏏 All-Rounder", footballPosition: "⚽ Midfielder" },
-  ];
+  // 3. 20 Players per Batch Names Roster
+  const batchRosters: Record<number, string[]> = {
+    21: [
+      "Sanzid Rahman", "Tanvir Ahmed", "Shakil Hossain", "Mahmudul Hasan", "Farhan Kabir",
+      "Asif Mahmud", "Naimur Rahman", "Rifat Hosen", "Shahriar Nafis", "Jubayer Ahmed",
+      "Towhidul Islam", "Sadek Ali", "Ahsan Habib", "Mehedi Hasan", "Zubair Hossain",
+      "Fahim Faysal", "Imtiaz Ahmed", "Sourav Das", "Pranto Barua", "Amit Roy"
+    ],
+    22: [
+      "Rafid Hasan", "Nahid Islam", "Arif Chowdhury", "Salman Farsi", "Hasan Al Banna",
+      "Raihan Uddin", "Mustakim Billah", "Tamzidul Haque", "Abir Hasan", "Shafiul Alam",
+      "Zihadul Islam", "Mahir Daiyan", "Joy Dey", "Niloy Barua", "Shuvo Paul",
+      "Tariqul Islam", "Emran Nazir", "Kazi Maruf", "Saiful Karim", "Al Amin"
+    ],
+    23: [
+      "Samiul Haque", "Rakibul Islam", "Sajid Karim", "Abdullah Al Mamun", "Tahmidur Rahman",
+      "Emon Sikder", "Joynal Abedin", "Nazmul Huda", "Sayeed Anwar", "Kamrul Hasan",
+      "Palash Kanti", "Debashish Biswas", "Pritom Roy", "Shanto Das", "Ashraful Islam",
+      "Iftekhar Alam", "Muntasir Billah", "Rashedul Karim", "Zahid Hasan", "Monirul Islam"
+    ],
+    24: [
+      "Shahadat Hossain", "Mahbubur Rahman", "Fardeen Khan", "Sazzad Hossain", "Arman Malik",
+      "Sadman Sakib", "Alif Chowdhury", "Wasim Akram", "Shawon Paul", "Subrata Ghosh",
+      "Anik Barua", "Tausif Ahmed", "Habibur Rahman", "Nafees Imtiaz", "Rony Mia",
+      "Jahidul Islam", "Shakhawat Hossain", "Biplob Kumar", "Shanto Karmakar", "Faisal Ahmed"
+    ],
+    25: [
+      "Faridur Reza", "Siam Ahmed", "Miraz Hossain", "Ridwanul Haque", "Nayeem Siddique",
+      "Mushfiqur Rahim", "Shakib Al Hasan", "Liton Das", "Mehidy Hasan", "Taskin Ahmed",
+      "Shoriful Islam", "Mustafizur Rahman", "Afif Hossain", "Towhid Hridoy", "Tanzid Hasan",
+      "Shamim Hossain", "Rishad Hossain", "Tanzim Hasan", "Hasan Mahmud", "Nasum Ahmed"
+    ],
+    26: [
+      "Abrar Fahim", "Fahad Bin Sayed", "Rayhan Kabir", "Mahfuzur Rahman", "Labib Hasan",
+      "Ahnaf Tahmid", "Shohanur Rahman", "Dipankar Roy", "Arpan Barua", "Shuvro Dey",
+      "Tarek Aziz", "Jubair Al Mahmud", "Shahriar Shuvo", "Imran Nazir", "Rakib Hasan",
+      "Alvee Rahman", "Tanmoy Saha", "Nirjhor Chakrabarty", "Shifat Ahmed", "Kazi Abdullah"
+    ]
+  };
 
-  const createdUsers: any[] = [];
-  for (const p of playersData) {
-    const chars = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
-    let rand = "";
-    for (let i = 0; i < 6; i++) rand += chars.charAt(Math.floor(Math.random() * chars.length));
-    const tempPass = `CSEPL@${rand}`;
-    const hashed = await hashPassword(tempPass);
-    const user = await prisma.user.upsert({
-      where: { studentId: p.studentId },
-      update: {
-        temporaryPlainPassword: tempPass,
-      },
-      create: {
-        studentId: p.studentId,
-        name: p.name,
-        email: p.email,
-        password: hashed,
-        isTemporaryPassword: true,
-        temporaryPlainPassword: tempPass,
-        batchId: batchesMap.get(p.batchNum),
-        cricketRole: p.cricketRole,
-        footballPosition: p.footballPosition,
-        role: UserRole.USER,
-      }
-    });
-    createdUsers.push(user);
+  const createdPlayers: any[] = [];
+
+  for (const [batchNumStr, names] of Object.entries(batchRosters)) {
+    const batchNum = parseInt(batchNumStr);
+    const batchId = batchesMap.get(batchNum)!;
+
+    for (let i = 0; i < names.length; i++) {
+      const rollSuffix = String(i + 1).padStart(3, "0");
+      const studentId = `${batchNum}701${rollSuffix}`; // e.g. 21701001..21701020, 22701001..22701020
+      const name = names[i];
+      const email = `${studentId}@cse.cu.ac.bd`;
+      const tempPass = generateRandomPassword();
+      const hashedPassword = await hashPassword(tempPass);
+
+      const user = await prisma.user.create({
+        data: {
+          studentId,
+          name,
+          email,
+          password: hashedPassword,
+          isTemporaryPassword: true,
+          temporaryPlainPassword: tempPass,
+          batchId,
+          role: UserRole.USER,
+        }
+      });
+      createdPlayers.push(user);
+    }
   }
-  console.log(`✅ Created ${createdUsers.length} initial Players with Random Temporary Passwords.`);
+
+  console.log(`✅ Created ${createdPlayers.length} total players (20 per batch with random temporary passwords).`);
 
   // 4. Create Tournaments
   const cricketTourn = await prisma.tournament.upsert({
@@ -120,13 +180,13 @@ async function main() {
   console.log("✅ Created Tournaments:", cricketTourn.name, "&", footballTourn.name);
 
   // 5. Delegate Organizers
-  if (createdUsers.length >= 4) {
+  if (createdPlayers.length >= 6) {
     await prisma.tournamentOrganizer.createMany({
       data: [
-        { tournamentId: cricketTourn.id, userId: createdUsers[0].id }, // Sanzid
-        { tournamentId: cricketTourn.id, userId: createdUsers[1].id }, // Tanvir
-        { tournamentId: footballTourn.id, userId: createdUsers[3].id }, // Rafid
-        { tournamentId: footballTourn.id, userId: createdUsers[4].id }, // Nahid
+        { tournamentId: cricketTourn.id, userId: createdPlayers[0].id },  // Sanzid (Anabil 21)
+        { tournamentId: cricketTourn.id, userId: createdPlayers[1].id },  // Tanvir (Anabil 21)
+        { tournamentId: footballTourn.id, userId: createdPlayers[20].id }, // Rafid (Dwimik 22)
+        { tournamentId: footballTourn.id, userId: createdPlayers[21].id }, // Nahid (Dwimik 22)
       ],
       skipDuplicates: true,
     });
