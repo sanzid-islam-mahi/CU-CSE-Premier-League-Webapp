@@ -104,6 +104,47 @@ export const api = {
       if (!res.ok) throw new Error(data.error || "Failed to fetch user");
       return data;
     },
+
+    updateProfile: async (profileData: {
+      name?: string;
+      phone?: string | null;
+      bio?: string | null;
+      avatarUrl?: string | null;
+      cricketRole?: string | null;
+      battingStyle?: string | null;
+      bowlingStyle?: string | null;
+      footballPosition?: string | null;
+      preferredJerseyNo?: number | null;
+    }) => {
+      const res = await fetch(`${API_BASE}/auth/profile`, {
+        method: "PUT",
+        headers: getAuthHeaders(),
+        body: JSON.stringify(profileData),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to update profile");
+      if (data.user) {
+        localStorage.setItem("csepl_user", JSON.stringify(data.user));
+      }
+      return data;
+    },
+
+    changePassword: async (currentPassword: string, newPassword: string) => {
+      const res = await fetch(`${API_BASE}/auth/change-password`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ currentPassword, newPassword }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to change password");
+      // Update local storage user flag if present
+      const currentUser = api.auth.getCurrentUser();
+      if (currentUser) {
+        currentUser.isTemporaryPassword = false;
+        localStorage.setItem("csepl_user", JSON.stringify(currentUser));
+      }
+      return data;
+    },
   },
 
   batches: {
@@ -194,6 +235,13 @@ export const api = {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to delete user");
+      return data;
+    },
+
+    getPublicProfile: async (idOrRoll: string | number) => {
+      const res = await fetch(`${API_BASE}/users/${idOrRoll}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to fetch user profile");
       return data;
     },
   },

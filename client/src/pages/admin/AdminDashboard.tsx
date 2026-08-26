@@ -725,7 +725,12 @@ export const AdminDashboard: React.FC = () => {
                             {player.studentId}
                           </td>
                           <td className="py-3.5 px-4">
-                            <p className="font-extrabold text-[#2C221E]">{player.name}</p>
+                            <Link 
+                              to={`/players/${player.studentId}`}
+                              className="font-extrabold text-[#2C221E] hover:text-[#9E2A2B] hover:underline"
+                            >
+                              {player.name}
+                            </Link>
                             <p className="text-[11px] text-[#7C6E63]">{player.email}</p>
                           </td>
                           <td className="py-3.5 px-4 font-semibold text-[#842021]">

@@ -1,18 +1,21 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { 
   Trophy, 
   User as UserIcon, 
-  Sparkles, 
   Menu, 
   X, 
-  Lock, 
-  CheckCircle2,
   Calendar,
   Layers,
   Award,
-  BarChart3
+  BarChart3,
+  LogOut,
+  Shield,
+  ChevronDown
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { api } from "@/lib/api";
+import { PlayerLoginModal } from "../auth/PlayerLoginModal";
 
 interface NavbarProps {
   activeSport: "cricket" | "football";
@@ -20,11 +23,41 @@ interface NavbarProps {
 }
 
 export const Navbar: React.FC<NavbarProps> = ({ activeSport, onSelectSport }) => {
+  const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [showStudentLoginModal, setShowStudentLoginModal] = useState(false);
-  const [studentRoll, setStudentRoll] = useState("");
-  const [studentPass, setStudentPass] = useState("");
-  const [loginFeedback, setLoginFeedback] = useState<string | null>(null);
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [userDropdownOpen, setUserDropdownOpen] = useState(false);
+
+  // Check login state on mount
+  const checkAuth = async () => {
+    const localUser = api.auth.getCurrentUser();
+    if (localUser) {
+      setCurrentUser(localUser);
+      // Fetch fresh profile in background
+      try {
+        const fresh = await api.auth.getMe();
+        setCurrentUser(fresh);
+      } catch {
+        // Token expired
+        api.auth.logout();
+        setCurrentUser(null);
+      }
+    } else {
+      setCurrentUser(null);
+    }
+  };
+
+  useEffect(() => {
+    checkAuth();
+  }, []);
+
+  const handleLogout = () => {
+    api.auth.logout();
+    setCurrentUser(null);
+    setUserDropdownOpen(false);
+    navigate("/");
+  };
 
   const navItems = [
     { label: "Matches", icon: Calendar },
@@ -34,26 +67,14 @@ export const Navbar: React.FC<NavbarProps> = ({ activeSport, onSelectSport }) =>
     { label: "Stats", icon: BarChart3 },
   ];
 
-  const handleStudentLoginSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!studentRoll || !studentPass) return;
-    setLoginFeedback(`Welcome, Roll ${studentRoll}! (Dummy Mode: Login verified. First-time login password change simulated.)`);
-    setTimeout(() => {
-      setShowStudentLoginModal(false);
-      setLoginFeedback(null);
-      setStudentRoll("");
-      setStudentPass("");
-    }, 1800);
-  };
-
   return (
     <>
-      <header className="sticky top-0 z-50 w-full border-b border-[#E8DCCF] bg-[#FAF7F2]/95 backdrop-blur-md">
+      <header className="sticky top-0 z-40 w-full border-b border-[#E8DCCF] bg-[#FAF7F2]/95 backdrop-blur-md">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-18">
             
             {/* Department Brand & Logo */}
-            <div className="flex items-center gap-3.5">
+            <Link to="/" className="flex items-center gap-3.5">
               <div className="w-11 h-11 rounded-xl brick-gradient flex items-center justify-center text-white shadow-md shadow-[#9E2A2B]/25 border border-[#842021]">
                 <Trophy className="w-6 h-6" />
               </div>
@@ -70,7 +91,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeSport, onSelectSport }) =>
                   Dept. of Computer Science & Engineering, CU
                 </p>
               </div>
-            </div>
+            </Link>
 
             {/* Sport Switcher Toggle */}
             <div className="flex items-center bg-[#EDE4D6] p-1 rounded-full border border-[#DFD2BF] shadow-inner">
@@ -100,7 +121,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeSport, onSelectSport }) =>
               </button>
             </div>
 
-            {/* Public Unlinked Navigation Menu Items */}
+            {/* Public Navigation Menu Items */}
             <nav className="hidden lg:flex items-center gap-1">
               {navItems.map((item) => (
                 <span
@@ -113,17 +134,82 @@ export const Navbar: React.FC<NavbarProps> = ({ activeSport, onSelectSport }) =>
               ))}
             </nav>
 
-            {/* Action Buttons: Student Sign In */}
+            {/* User Area (Signed in vs Guest) */}
             <div className="flex items-center gap-2.5">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowStudentLoginModal(true)}
-                className="border-[#D8C7B3] text-[#6B1C1D] bg-white/80 hover:bg-[#FBEFE9] hover:text-[#9E2A2B] hover:border-[#9E2A2B] font-semibold text-xs h-9 px-3.5 rounded-xl shadow-xs"
-              >
-                <UserIcon className="w-3.5 h-3.5 mr-1.5 text-[#9E2A2B]" />
-                Player Sign In
-              </Button>
+              {currentUser ? (
+                <div className="relative">
+                  <button
+                    onClick={() => setUserDropdownOpen(!userDropdownOpen)}
+                    className="flex items-center gap-2.5 bg-white border border-[#D8C7B3] hover:border-[#9E2A2B] px-3 py-1.5 rounded-2xl shadow-xs transition-all"
+                  >
+                    <div className="w-7 h-7 rounded-xl brick-gradient text-white flex items-center justify-center font-bold text-xs">
+                      {currentUser.name?.charAt(0) || "U"}
+                    </div>
+                    <div className="text-left hidden sm:block">
+                      <p className="text-xs font-black text-[#2C221E] leading-tight">
+                        {currentUser.name?.split(" ")[0]}
+                      </p>
+                      <p className="text-[10px] text-[#7C6E63] font-mono leading-none">
+                        {currentUser.studentId}
+                      </p>
+                    </div>
+                    <ChevronDown className="w-3.5 h-3.5 text-[#7C6E63]" />
+                  </button>
+
+                  {/* User Dropdown Menu */}
+                  {userDropdownOpen && (
+                    <div className="absolute right-0 mt-2 w-56 bg-white border border-[#E5DACB] rounded-2xl shadow-xl p-2 space-y-1 z-50 animate-in fade-in duration-150">
+                      <div className="px-3 py-2 border-b border-[#EFE8DC]">
+                        <p className="text-xs font-extrabold text-[#2C221E]">{currentUser.name}</p>
+                        <p className="text-[10px] text-[#7C6E63] font-mono">Roll: {currentUser.studentId}</p>
+                        {currentUser.batch && (
+                          <span className="inline-block mt-1 text-[10px] font-bold text-[#842021] bg-[#FAF0E6] px-2 py-0.5 rounded border border-[#E8D6C3]">
+                            {currentUser.batch.name || currentUser.batch}
+                          </span>
+                        )}
+                      </div>
+
+                      <Link
+                        to="/profile"
+                        onClick={() => setUserDropdownOpen(false)}
+                        className="flex items-center gap-2 px-3 py-2 text-xs font-bold text-[#2C221E] hover:bg-[#FAF7F2] rounded-xl transition-colors"
+                      >
+                        <UserIcon className="w-4 h-4 text-[#9E2A2B]" />
+                        <span>My Profile & Sports Roles</span>
+                      </Link>
+
+                      {currentUser.role === "ADMIN" && (
+                        <Link
+                          to="/admin/dashboard"
+                          onClick={() => setUserDropdownOpen(false)}
+                          className="flex items-center gap-2 px-3 py-2 text-xs font-bold text-[#842021] hover:bg-[#FAF0E6] rounded-xl transition-colors"
+                        >
+                          <Shield className="w-4 h-4 text-[#9E2A2B]" />
+                          <span>Admin Dashboard</span>
+                        </Link>
+                      )}
+
+                      <button
+                        onClick={handleLogout}
+                        className="w-full flex items-center gap-2 px-3 py-2 text-xs font-bold text-[#C92A2A] hover:bg-[#FFF5F5] rounded-xl transition-colors text-left"
+                      >
+                        <LogOut className="w-4 h-4" />
+                        <span>Sign Out</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowLoginModal(true)}
+                  className="border-[#D8C7B3] text-[#6B1C1D] bg-white/80 hover:bg-[#FBEFE9] hover:text-[#9E2A2B] hover:border-[#9E2A2B] font-semibold text-xs h-9 px-3.5 rounded-xl shadow-xs"
+                >
+                  <UserIcon className="w-3.5 h-3.5 mr-1.5 text-[#9E2A2B]" />
+                  <span>Player Sign In</span>
+                </Button>
+              )}
 
               {/* Mobile menu trigger */}
               <button
@@ -135,6 +221,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeSport, onSelectSport }) =>
                 {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
               </button>
             </div>
+
           </div>
         </div>
 
@@ -152,108 +239,50 @@ export const Navbar: React.FC<NavbarProps> = ({ activeSport, onSelectSport }) =>
                 </div>
               ))}
             </div>
-            <div className="pt-2 border-t border-[#E8DCCF]">
-              <Button
-                onClick={() => {
-                  setMobileMenuOpen(false);
-                  setShowStudentLoginModal(true);
-                }}
-                className="w-full bg-[#9E2A2B] hover:bg-[#842021] text-white text-xs font-semibold h-10 rounded-xl"
-              >
-                Player Login (Roll & Password)
-              </Button>
-            </div>
+
+            {currentUser ? (
+              <div className="pt-2 border-t border-[#E8DCCF] space-y-2">
+                <Link
+                  to="/profile"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="block w-full text-center py-2.5 bg-[#9E2A2B] text-white text-xs font-bold rounded-xl"
+                >
+                  Go to My Profile ({currentUser.name})
+                </Link>
+                <button
+                  onClick={handleLogout}
+                  className="block w-full text-center py-2 text-xs font-bold text-[#C92A2A] bg-[#FFF5F5] rounded-xl border border-[#FF8787]"
+                >
+                  Sign Out
+                </button>
+              </div>
+            ) : (
+              <div className="pt-2 border-t border-[#E8DCCF]">
+                <Button
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    setShowLoginModal(true);
+                  }}
+                  className="w-full bg-[#9E2A2B] hover:bg-[#842021] text-white text-xs font-semibold h-10 rounded-xl"
+                >
+                  Player Sign In (Roll & Temp Pass)
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </header>
 
-      {/* Student / Player Login Mock Dialog */}
-      {showStudentLoginModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="bg-white border border-[#E5DACB] rounded-2xl shadow-2xl w-full max-w-md p-6 relative">
-            <button
-              onClick={() => setShowStudentLoginModal(false)}
-              className="absolute top-4 right-4 text-[#7C6E63] hover:text-[#2C221E] p-1 rounded-lg hover:bg-[#F3ECE2]"
-            >
-              <X className="w-5 h-5" />
-            </button>
-
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-xl bg-[#FBEFE9] text-[#9E2A2B] flex items-center justify-center border border-[#9E2A2B]/20">
-                <Lock className="w-5 h-5" />
-              </div>
-              <div>
-                <h3 className="text-lg font-bold text-[#2C221E]">Player & Student Sign In</h3>
-                <p className="text-xs text-[#7C6E63]">Department of CSE, University of Chittagong</p>
-              </div>
-            </div>
-
-            <div className="mb-4 p-3 bg-[#FAF7F2] rounded-xl border border-[#E8DCCF] text-xs text-[#6B1C1D] flex items-start gap-2">
-              <Sparkles className="w-4 h-4 mt-0.5 shrink-0 text-[#9E2A2B]" />
-              <div>
-                <strong className="font-semibold">Temporary Password Notice:</strong> Admin provides your initial temp pass (e.g. <code className="font-mono bg-[#EFE6D8] px-1 py-0.5 rounded">CSEPL@&lt;Roll&gt;</code>). You will reset your password on first sign-in.
-              </div>
-            </div>
-
-            {loginFeedback ? (
-              <div className="py-6 text-center space-y-2 text-[#2A7B54]">
-                <CheckCircle2 className="w-10 h-10 mx-auto animate-bounce" />
-                <p className="text-sm font-semibold">{loginFeedback}</p>
-              </div>
-            ) : (
-              <form onSubmit={handleStudentLoginSubmit} className="space-y-4">
-                <div>
-                  <label className="block text-xs font-bold text-[#4A3E35] mb-1">
-                    Student ID / Roll Number
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. 19701042"
-                    value={studentRoll}
-                    onChange={(e) => setStudentRoll(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-[#D8C7B3] bg-[#FAF7F2] text-[#2C221E] text-sm focus:outline-none focus:ring-2 focus:ring-[#9E2A2B]"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-[#4A3E35] mb-1">
-                    Password / Temp Pass
-                  </label>
-                  <input
-                    type="password"
-                    required
-                    placeholder="••••••••••••"
-                    value={studentPass}
-                    onChange={(e) => setStudentPass(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-[#D8C7B3] bg-[#FAF7F2] text-[#2C221E] text-sm focus:outline-none focus:ring-2 focus:ring-[#9E2A2B]"
-                  />
-                </div>
-
-                <div className="flex gap-2 pt-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => {
-                      setStudentRoll("20701042");
-                      setStudentPass("CSEPL@20701042");
-                    }}
-                    className="w-1/2 border-[#D8C7B3] text-xs font-semibold h-10 rounded-xl hover:bg-[#F3ECE2]"
-                  >
-                    Use Sample Student
-                  </Button>
-                  <Button
-                    type="submit"
-                    className="w-1/2 bg-[#9E2A2B] hover:bg-[#842021] text-white text-xs font-bold h-10 rounded-xl shadow-md shadow-[#9E2A2B]/20"
-                  >
-                    Sign In
-                  </Button>
-                </div>
-              </form>
-            )}
-          </div>
-        </div>
-      )}
+      {/* Real Player Login Modal */}
+      <PlayerLoginModal
+        isOpen={showLoginModal}
+        onClose={() => setShowLoginModal(false)}
+        onSuccess={(loggedUser) => {
+          setCurrentUser(loggedUser);
+          setShowLoginModal(false);
+          navigate("/profile");
+        }}
+      />
     </>
   );
 };

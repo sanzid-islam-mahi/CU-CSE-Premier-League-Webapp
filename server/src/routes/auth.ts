@@ -174,7 +174,10 @@ authRouter.get("/me", requireAuth, async (req: AuthenticatedRequest, res) => {
       batch: user.batch,
       phone: user.phone,
       bio: user.bio,
+      avatarUrl: user.avatarUrl,
       cricketRole: user.cricketRole,
+      battingStyle: user.battingStyle,
+      bowlingStyle: user.bowlingStyle,
       footballPosition: user.footballPosition,
       preferredJerseyNo: user.preferredJerseyNo,
       organizerTournaments: user.organizerTournaments.map(ot => ot.tournament),
@@ -183,6 +186,82 @@ authRouter.get("/me", requireAuth, async (req: AuthenticatedRequest, res) => {
     });
   } catch (err: any) {
     res.status(500).json({ error: err.message || "Internal server error" });
+  }
+});
+
+const updateProfileSchema = z.object({
+  name: z.string().min(1, "Name is required").optional(),
+  phone: z.string().optional().nullable(),
+  bio: z.string().optional().nullable(),
+  avatarUrl: z.string().optional().nullable(),
+  cricketRole: z.string().optional().nullable(),
+  battingStyle: z.string().optional().nullable(),
+  bowlingStyle: z.string().optional().nullable(),
+  footballPosition: z.string().optional().nullable(),
+  preferredJerseyNo: z.number().int().optional().nullable(),
+});
+
+// Update Profile
+authRouter.put("/profile", requireAuth, async (req: AuthenticatedRequest, res) => {
+  try {
+    const parsed = updateProfileSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalid profile input" });
+      return;
+    }
+
+    const {
+      name,
+      phone,
+      bio,
+      avatarUrl,
+      cricketRole,
+      battingStyle,
+      bowlingStyle,
+      footballPosition,
+      preferredJerseyNo,
+    } = parsed.data;
+
+    const updated = await prisma.user.update({
+      where: { id: req.user!.id },
+      data: {
+        name: name !== undefined ? name : undefined,
+        phone: phone !== undefined ? phone : undefined,
+        bio: bio !== undefined ? bio : undefined,
+        avatarUrl: avatarUrl !== undefined ? avatarUrl : undefined,
+        cricketRole: cricketRole !== undefined ? cricketRole : undefined,
+        battingStyle: battingStyle !== undefined ? battingStyle : undefined,
+        bowlingStyle: bowlingStyle !== undefined ? bowlingStyle : undefined,
+        footballPosition: footballPosition !== undefined ? footballPosition : undefined,
+        preferredJerseyNo: preferredJerseyNo !== undefined ? preferredJerseyNo : undefined,
+      },
+      include: {
+        batch: true,
+      }
+    });
+
+    res.json({
+      message: "Profile updated successfully.",
+      user: {
+        id: updated.id,
+        studentId: updated.studentId,
+        name: updated.name,
+        email: updated.email,
+        role: updated.role,
+        isTemporaryPassword: updated.isTemporaryPassword,
+        batch: updated.batch,
+        phone: updated.phone,
+        bio: updated.bio,
+        avatarUrl: updated.avatarUrl,
+        cricketRole: updated.cricketRole,
+        battingStyle: updated.battingStyle,
+        bowlingStyle: updated.bowlingStyle,
+        footballPosition: updated.footballPosition,
+        preferredJerseyNo: updated.preferredJerseyNo,
+      }
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || "Failed to update profile" });
   }
 });
 
@@ -230,3 +309,4 @@ authRouter.post("/change-password", requireAuth, async (req: AuthenticatedReques
 });
 
 export default authRouter;
+

@@ -83,12 +83,16 @@ usersRouter.get("/", async (req, res) => {
   }
 });
 
-// GET single user profile
-usersRouter.get("/:id", async (req, res) => {
+// GET single user profile (by ID or Student Roll)
+usersRouter.get("/:idOrRoll", async (req, res) => {
   try {
-    const id = Number(req.params.id);
-    const user = await prisma.user.findUnique({
-      where: { id },
+    const { idOrRoll } = req.params;
+    const isIdNum = !isNaN(Number(idOrRoll)) && idOrRoll.length < 6; // usually id is small integer, rolls are 8 digits
+
+    const user = await prisma.user.findFirst({
+      where: isIdNum
+        ? { id: Number(idOrRoll) }
+        : { OR: [{ studentId: idOrRoll }, { id: isNaN(Number(idOrRoll)) ? undefined : Number(idOrRoll) }] },
       include: {
         batch: true,
         teamMemberships: {
