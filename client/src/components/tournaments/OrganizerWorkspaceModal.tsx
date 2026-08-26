@@ -12,7 +12,8 @@ import {
   AlertCircle, 
   UserCheck, 
   MapPin, 
-  Flame 
+  Flame,
+  UserMinus
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { api, type BatchItem, type UserItem } from "@/lib/api";
@@ -41,14 +42,17 @@ export const OrganizerWorkspaceModal: React.FC<OrganizerWorkspaceModalProps> = (
   const [selectedBatchId, setSelectedBatchId] = useState<number | "">("");
   const [customTeamName, setCustomTeamName] = useState("");
   const [customShortName, setCustomShortName] = useState("");
+  const [importGroupId, setImportGroupId] = useState<number | "">("");
 
   // Form states: Custom Team
   const [showCustomTeamForm, setShowCustomTeamForm] = useState(false);
   const [manualTeamName, setManualTeamName] = useState("");
   const [manualShortName, setManualShortName] = useState("");
+  const [customTeamGroupId, setCustomTeamGroupId] = useState<number | "">("");
 
   // Form states: Create Group
   const [newGroupName, setNewGroupName] = useState("");
+  const [groupAddTeamMap, setGroupAddTeamMap] = useState<{ [groupId: number]: number | "" }>({});
 
   // Form states: Schedule Match
   const [showScheduleModal, setShowScheduleModal] = useState(false);
@@ -104,11 +108,13 @@ export const OrganizerWorkspaceModal: React.FC<OrganizerWorkspaceModalProps> = (
         batchId: Number(selectedBatchId),
         teamName: customTeamName || undefined,
         shortName: customShortName || undefined,
+        groupId: importGroupId !== "" ? Number(importGroupId) : undefined,
       });
       triggerToast(res.message);
       setSelectedBatchId("");
       setCustomTeamName("");
       setCustomShortName("");
+      setImportGroupId("");
       onRefresh();
     } catch (err: any) {
       setError(err.message || "Failed to import batch as team.");
@@ -129,10 +135,12 @@ export const OrganizerWorkspaceModal: React.FC<OrganizerWorkspaceModalProps> = (
         tournamentId: tournament.id,
         name: manualTeamName.trim(),
         shortName: manualShortName.trim() || undefined,
+        groupId: customTeamGroupId !== "" ? Number(customTeamGroupId) : null,
       });
       triggerToast(`Custom team "${manualTeamName}" created!`);
       setManualTeamName("");
       setManualShortName("");
+      setCustomTeamGroupId("");
       setShowCustomTeamForm(false);
       onRefresh();
     } catch (err: any) {
@@ -165,7 +173,18 @@ export const OrganizerWorkspaceModal: React.FC<OrganizerWorkspaceModalProps> = (
     }
   };
 
-  // 5. Create Group Handler
+  // 5. Update Team Group (Add / Move / Remove from group)
+  const handleSetTeamGroup = async (teamId: number, groupId: number | null) => {
+    try {
+      await api.teams.update(teamId, { groupId });
+      triggerToast(groupId ? "Team assigned to group!" : "Team moved to unallocated pool.");
+      onRefresh();
+    } catch (err: any) {
+      alert(err.message || "Failed to update team group.");
+    }
+  };
+
+  // 6. Create Group Handler
   const handleCreateGroup = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newGroupName.trim()) return;
@@ -180,7 +199,7 @@ export const OrganizerWorkspaceModal: React.FC<OrganizerWorkspaceModalProps> = (
     }
   };
 
-  // 6. Delete Group Handler
+  // 7. Delete Group Handler
   const handleDeleteGroup = async (groupId: number, groupName: string) => {
     if (!confirm(`Are you sure you want to delete "${groupName}"? Teams will be moved to unallocated pool.`)) return;
     try {
@@ -192,7 +211,20 @@ export const OrganizerWorkspaceModal: React.FC<OrganizerWorkspaceModalProps> = (
     }
   };
 
-  // 7. Auto Generate Round Robin Fixtures Handler
+  // 8. Add selected team into a specific group from group card
+  const handleAddTeamToGroupFromCard = async (groupId: number) => {
+    const selectedTeamId = groupAddTeamMap[groupId];
+    if (!selectedTeamId) return;
+
+    try {
+      await handleSetTeamGroup(Number(selectedTeamId), groupId);
+      setGroupAddTeamMap(prev => ({ ...prev, [groupId]: "" }));
+    } catch (err: any) {
+      alert(err.message || "Failed to add team to group.");
+    }
+  };
+
+  // 9. Auto Generate Round Robin Fixtures Handler
   const handleAutoGenerateFixtures = async () => {
     if (!confirm("This will automatically generate round-robin match fixtures for all groups in this tournament. Proceed?")) return;
     setLoading(true);
@@ -207,7 +239,7 @@ export const OrganizerWorkspaceModal: React.FC<OrganizerWorkspaceModalProps> = (
     }
   };
 
-  // 8. Manual Schedule Match Handler
+  // 10. Manual Schedule Match Handler
   const handleScheduleMatch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!matchTeamAId || !matchTeamBId) return;
@@ -239,7 +271,7 @@ export const OrganizerWorkspaceModal: React.FC<OrganizerWorkspaceModalProps> = (
     }
   };
 
-  // 9. Delete Match Handler
+  // 11. Delete Match Handler
   const handleDeleteMatch = async (matchId: number, matchNum: number) => {
     if (!confirm(`Are you sure you want to delete Match #${matchNum}?`)) return;
     try {
@@ -251,7 +283,7 @@ export const OrganizerWorkspaceModal: React.FC<OrganizerWorkspaceModalProps> = (
     }
   };
 
-  // 10. Assign Scorer Handler
+  // 12. Assign Scorer Handler
   const handleAssignScorer = async (matchId: number) => {
     if (!selectedScorerUserId) return;
     try {
@@ -268,6 +300,9 @@ export const OrganizerWorkspaceModal: React.FC<OrganizerWorkspaceModalProps> = (
   // Available batches not yet imported into this tournament
   const importedBatchIds = new Set((tournament.teams || []).map((t: any) => t.batchId).filter(Boolean));
   const availableBatches = batches.filter(b => !importedBatchIds.has(b.id));
+
+  // Teams without any assigned group
+  const unassignedTeams = (tournament.teams || []).filter((t: any) => !t.groupId);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
@@ -292,7 +327,7 @@ export const OrganizerWorkspaceModal: React.FC<OrganizerWorkspaceModalProps> = (
                 </span>
               </div>
               <p className="text-xs text-[#7C6E63]">
-                Manage teams, 1-click batch imports, groups, captains, fixtures and match scorers.
+                Manage teams, 1-click batch imports, group distributions, captains, fixtures and match scorers.
               </p>
             </div>
           </div>
@@ -359,8 +394,10 @@ export const OrganizerWorkspaceModal: React.FC<OrganizerWorkspaceModalProps> = (
           </div>
         )}
 
-        {/* TAB 1: TEAMS & SQUADS */}
+        {/* TAB CONTENTS */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
+          
+          {/* TAB 1: TEAMS & SQUADS */}
           {activeTab === "teams" && (
             <div className="space-y-6">
               
@@ -378,7 +415,7 @@ export const OrganizerWorkspaceModal: React.FC<OrganizerWorkspaceModalProps> = (
                   </span>
                 </div>
 
-                <form onSubmit={handleImportBatch} className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
+                <form onSubmit={handleImportBatch} className="grid grid-cols-1 sm:grid-cols-5 gap-3 text-xs">
                   <div>
                     <label className="block font-bold text-[#4A3E35] mb-1">Select Batch</label>
                     <select
@@ -394,7 +431,7 @@ export const OrganizerWorkspaceModal: React.FC<OrganizerWorkspaceModalProps> = (
                       }}
                       className="w-full px-3 py-2 rounded-xl border border-[#D8C7B3] bg-white text-[#2C221E] focus:outline-none focus:ring-2 focus:ring-[#9E2A2B]"
                     >
-                      <option value="">-- Choose Academic Batch --</option>
+                      <option value="">-- Academic Batch --</option>
                       {availableBatches.map((b) => (
                         <option key={b.id} value={b.id}>
                           {b.name} ({b.session})
@@ -415,7 +452,7 @@ export const OrganizerWorkspaceModal: React.FC<OrganizerWorkspaceModalProps> = (
                   </div>
 
                   <div>
-                    <label className="block font-bold text-[#4A3E35] mb-1">Short Code (Max 6)</label>
+                    <label className="block font-bold text-[#4A3E35] mb-1">Short Code</label>
                     <input
                       type="text"
                       maxLength={6}
@@ -426,6 +463,20 @@ export const OrganizerWorkspaceModal: React.FC<OrganizerWorkspaceModalProps> = (
                     />
                   </div>
 
+                  <div>
+                    <label className="block font-bold text-[#4A3E35] mb-1">Group (Optional)</label>
+                    <select
+                      value={importGroupId}
+                      onChange={(e) => setImportGroupId(e.target.value === "" ? "" : Number(e.target.value))}
+                      className="w-full px-3 py-2 rounded-xl border border-[#D8C7B3] bg-white text-[#2C221E] focus:outline-none focus:ring-2 focus:ring-[#9E2A2B]"
+                    >
+                      <option value="">-- No Group --</option>
+                      {tournament.groups?.map((g: any) => (
+                        <option key={g.id} value={g.id}>{g.name}</option>
+                      ))}
+                    </select>
+                  </div>
+
                   <div className="flex items-end">
                     <Button
                       type="submit"
@@ -433,7 +484,7 @@ export const OrganizerWorkspaceModal: React.FC<OrganizerWorkspaceModalProps> = (
                       className="w-full bg-[#9E2A2B] hover:bg-[#842021] text-white font-bold text-xs h-9 rounded-xl shadow-xs flex items-center justify-center gap-1.5"
                     >
                       <Plus className="w-4 h-4" />
-                      <span>Import Batch Roster</span>
+                      <span>Import Batch</span>
                     </Button>
                   </div>
                 </form>
@@ -464,7 +515,7 @@ export const OrganizerWorkspaceModal: React.FC<OrganizerWorkspaceModalProps> = (
                 </div>
 
                 {showCustomTeamForm && (
-                  <form onSubmit={handleCreateCustomTeam} className="p-4 bg-white rounded-2xl border border-[#E5DACB] grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs animate-in fade-in">
+                  <form onSubmit={handleCreateCustomTeam} className="p-4 bg-white rounded-2xl border border-[#E5DACB] grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs animate-in fade-in">
                     <div>
                       <label className="block font-bold text-[#4A3E35] mb-1">Team Name</label>
                       <input
@@ -486,6 +537,19 @@ export const OrganizerWorkspaceModal: React.FC<OrganizerWorkspaceModalProps> = (
                         onChange={(e) => setManualShortName(e.target.value.toUpperCase())}
                         className="w-full px-3 py-2 rounded-xl border border-[#D8C7B3] bg-[#FAF7F2] text-[#2C221E] font-mono uppercase focus:outline-none focus:ring-2 focus:ring-[#9E2A2B]"
                       />
+                    </div>
+                    <div>
+                      <label className="block font-bold text-[#4A3E35] mb-1">Group (Optional)</label>
+                      <select
+                        value={customTeamGroupId}
+                        onChange={(e) => setCustomTeamGroupId(e.target.value === "" ? "" : Number(e.target.value))}
+                        className="w-full px-3 py-2 rounded-xl border border-[#D8C7B3] bg-[#FAF7F2] text-[#2C221E] focus:outline-none focus:ring-2 focus:ring-[#9E2A2B]"
+                      >
+                        <option value="">-- No Group --</option>
+                        {tournament.groups?.map((g: any) => (
+                          <option key={g.id} value={g.id}>{g.name}</option>
+                        ))}
+                      </select>
                     </div>
                     <div className="flex items-end">
                       <Button
@@ -525,24 +589,43 @@ export const OrganizerWorkspaceModal: React.FC<OrganizerWorkspaceModalProps> = (
                         </button>
                       </div>
 
-                      {/* Captain Selector */}
-                      <div className="pt-2 border-t border-[#EFE8DC] text-xs">
-                        <label className="block font-bold text-[#7C6E63] text-[11px] mb-1">
-                          👑 Team Captain:
-                        </label>
-                        <select
-                          value={team.captainId || ""}
-                          onChange={(e) => handleSetCaptain(team.id, Number(e.target.value))}
-                          className="w-full px-2.5 py-1.5 rounded-lg border border-[#D8C7B3] bg-[#FAF7F2] text-[#2C221E] font-medium text-xs focus:outline-none focus:ring-2 focus:ring-[#9E2A2B]"
-                        >
-                          <option value="">-- Elect Captain from Squad --</option>
-                          {team.members?.map((m: any) => (
-                            <option key={m.userId} value={m.userId}>
-                              {m.user.name} (Roll: {m.user.studentId})
-                            </option>
-                          ))}
-                        </select>
+                      {/* Group and Captain Controls */}
+                      <div className="pt-2 border-t border-[#EFE8DC] grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                        <div>
+                          <label className="block font-bold text-[#7C6E63] text-[11px] mb-1">
+                            🏷️ Group Allocation:
+                          </label>
+                          <select
+                            value={team.groupId || ""}
+                            onChange={(e) => handleSetTeamGroup(team.id, e.target.value === "" ? null : Number(e.target.value))}
+                            className="w-full px-2.5 py-1.5 rounded-lg border border-[#D8C7B3] bg-[#FAF7F2] text-[#2C221E] font-medium text-xs focus:outline-none focus:ring-2 focus:ring-[#9E2A2B]"
+                          >
+                            <option value="">-- Unassigned --</option>
+                            {tournament.groups?.map((g: any) => (
+                              <option key={g.id} value={g.id}>{g.name}</option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block font-bold text-[#7C6E63] text-[11px] mb-1">
+                            👑 Team Captain:
+                          </label>
+                          <select
+                            value={team.captainId || ""}
+                            onChange={(e) => handleSetCaptain(team.id, Number(e.target.value))}
+                            className="w-full px-2.5 py-1.5 rounded-lg border border-[#D8C7B3] bg-[#FAF7F2] text-[#2C221E] font-medium text-xs focus:outline-none focus:ring-2 focus:ring-[#9E2A2B]"
+                          >
+                            <option value="">-- Elect Captain --</option>
+                            {team.members?.map((m: any) => (
+                              <option key={m.userId} value={m.userId}>
+                                {m.user.name} ({m.user.studentId})
+                              </option>
+                            ))}
+                          </select>
+                        </div>
                       </div>
+
                     </div>
                   ))}
                 </div>
@@ -556,58 +639,166 @@ export const OrganizerWorkspaceModal: React.FC<OrganizerWorkspaceModalProps> = (
             <div className="space-y-6">
               
               {/* Create Group Form */}
-              <form onSubmit={handleCreateGroup} className="p-4 bg-[#FAF7F2] rounded-3xl border border-[#E5DACB] flex gap-3 text-xs">
+              <form onSubmit={handleCreateGroup} className="p-4 bg-[#FAF7F2] rounded-3xl border border-[#E5DACB] flex flex-col sm:flex-row gap-3 text-xs">
+                <div className="flex items-center gap-2 shrink-0">
+                  <Layers className="w-4 h-4 text-[#9E2A2B]" />
+                  <span className="font-bold text-[#2C221E]">Create New Group:</span>
+                </div>
                 <input
                   type="text"
                   required
-                  placeholder="e.g. Group A or Group B"
+                  placeholder="e.g. Group A, Group B, Pool 1..."
                   value={newGroupName}
                   onChange={(e) => setNewGroupName(e.target.value)}
                   className="flex-1 px-3.5 py-2 rounded-xl border border-[#D8C7B3] bg-white text-[#2C221E] focus:outline-none focus:ring-2 focus:ring-[#9E2A2B]"
                 />
                 <Button
                   type="submit"
-                  className="bg-[#9E2A2B] hover:bg-[#842021] text-white font-bold text-xs px-5 rounded-xl flex items-center gap-1.5"
+                  className="bg-[#9E2A2B] hover:bg-[#842021] text-white font-bold text-xs px-5 rounded-xl flex items-center justify-center gap-1.5"
                 >
                   <Plus className="w-4 h-4" />
                   <span>Create Group</span>
                 </Button>
               </form>
 
-              {/* Groups Distribution */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {tournament.groups?.map((group: any) => (
-                  <div key={group.id} className="bg-white rounded-2xl border border-[#E5DACB] p-4 shadow-xs space-y-3">
-                    <div className="flex items-center justify-between pb-2 border-b border-[#EFE8DC]">
-                      <h4 className="font-extrabold text-sm text-[#9E2A2B] flex items-center gap-2">
-                        <Layers className="w-4 h-4" />
-                        <span>{group.name}</span>
-                      </h4>
-                      <button
-                        onClick={() => handleDeleteGroup(group.id, group.name)}
-                        className="p-1 rounded-lg text-[#7C6E63] hover:text-[#C92A2A] hover:bg-[#FFF5F5]"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
+              {/* Group Cards with Team Allocator */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                {tournament.groups?.map((group: any) => {
+                  const assignedTeamIds = new Set((group.teams || []).map((t: any) => t.id));
+                  const candidateTeams = (tournament.teams || []).filter((t: any) => !assignedTeamIds.has(t.id));
 
-                    <div className="space-y-1.5 text-xs">
-                      {group.teams?.map((t: any) => (
-                        <div key={t.id} className="p-2 bg-[#FAF7F2] rounded-xl border border-[#E8DCCF] flex items-center justify-between">
-                          <span className="font-bold text-[#2C221E]">{t.name}</span>
-                          <span className="font-mono text-[10px] text-[#7C6E63]">{t.shortName}</span>
+                  return (
+                    <div key={group.id} className="bg-white rounded-3xl border-2 border-[#E5DACB] p-5 shadow-xs space-y-4 flex flex-col justify-between">
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between pb-2 border-b border-[#EFE8DC]">
+                          <div className="flex items-center gap-2">
+                            <div className="w-7 h-7 rounded-lg bg-[#FAF0E6] text-[#9E2A2B] flex items-center justify-center font-black text-xs border border-[#E8D6C3]">
+                              {group.name.charAt(0) || "G"}
+                            </div>
+                            <div>
+                              <h4 className="font-extrabold text-sm text-[#9E2A2B]">{group.name}</h4>
+                              <p className="text-[10px] text-[#7C6E63]">{group.teams?.length || 0} Teams allocated</p>
+                            </div>
+                          </div>
+
+                          <button
+                            onClick={() => handleDeleteGroup(group.id, group.name)}
+                            className="p-1.5 rounded-lg text-[#7C6E63] hover:text-[#C92A2A] hover:bg-[#FFF5F5] transition-colors"
+                            title="Delete Group"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
                         </div>
-                      ))}
 
-                      {(!group.teams || group.teams.length === 0) && (
-                        <p className="text-xs text-[#7C6E63] italic py-2 text-center">
-                          No teams assigned to this group yet.
-                        </p>
-                      )}
+                        {/* Assigned Teams List */}
+                        <div className="space-y-2">
+                          {group.teams?.map((t: any) => (
+                            <div key={t.id} className="p-2.5 bg-[#FAF7F2] rounded-xl border border-[#E8DCCF] flex items-center justify-between text-xs">
+                              <div className="flex items-center gap-2">
+                                <span className="w-6 h-6 rounded-md brick-gradient text-white flex items-center justify-center font-bold text-[10px]">
+                                  {t.shortName || t.name.slice(0, 2)}
+                                </span>
+                                <div>
+                                  <p className="font-bold text-[#2C221E] leading-tight">{t.name}</p>
+                                  <p className="text-[10px] text-[#7C6E63]">{t.batch ? t.batch.name : "Custom Team"}</p>
+                                </div>
+                              </div>
+
+                              <button
+                                onClick={() => handleSetTeamGroup(t.id, null)}
+                                className="p-1 rounded-lg text-[#7C6E63] hover:text-[#C92A2A] hover:bg-[#FFF5F5] transition-colors"
+                                title="Remove from this group"
+                              >
+                                <UserMinus className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          ))}
+
+                          {(!group.teams || group.teams.length === 0) && (
+                            <div className="p-4 bg-[#FAF7F2] rounded-2xl border border-dashed border-[#D8C7B3] text-center space-y-1">
+                              <p className="text-xs font-bold text-[#7C6E63]">No teams in {group.name} yet.</p>
+                              <p className="text-[11px] text-[#A89A8D]">Add teams below or pick from unassigned pool.</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Add Team Dropdown inside this group */}
+                      <div className="pt-3 border-t border-[#EFE8DC] space-y-1.5">
+                        <label className="block text-[11px] font-bold text-[#4A3E35]">
+                          + Add Team to {group.name}:
+                        </label>
+                        <div className="flex gap-2">
+                          <select
+                            value={groupAddTeamMap[group.id] || ""}
+                            onChange={(e) => setGroupAddTeamMap(prev => ({
+                              ...prev,
+                              [group.id]: e.target.value === "" ? "" : Number(e.target.value)
+                            }))}
+                            className="flex-1 px-3 py-1.5 rounded-xl border border-[#D8C7B3] bg-[#FAF7F2] text-[#2C221E] text-xs focus:outline-none focus:ring-2 focus:ring-[#9E2A2B]"
+                          >
+                            <option value="">-- Choose Team to Add --</option>
+                            {candidateTeams.map((t: any) => (
+                              <option key={t.id} value={t.id}>
+                                {t.name} {t.groupId ? `(Currently in another group)` : `(Unassigned)`}
+                              </option>
+                            ))}
+                          </select>
+
+                          <Button
+                            type="button"
+                            disabled={!groupAddTeamMap[group.id]}
+                            onClick={() => handleAddTeamToGroupFromCard(group.id)}
+                            className="bg-[#9E2A2B] hover:bg-[#842021] text-white font-bold text-xs h-8 px-3 rounded-xl shadow-xs"
+                          >
+                            Add
+                          </Button>
+                        </div>
+                      </div>
+
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
+
+              {/* Unassigned Teams Section */}
+              {unassignedTeams.length > 0 && (
+                <div className="p-5 bg-[#FAF0E6] rounded-3xl border border-[#E8D6C3] space-y-3 animate-in fade-in">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="text-base">⚠️</span>
+                      <h4 className="text-xs font-black uppercase text-[#842021] tracking-wider">
+                        Unallocated Teams Pool ({unassignedTeams.length})
+                      </h4>
+                    </div>
+                    <span className="text-[11px] text-[#6B5E53]">
+                      Click a button below to quickly allocate team into a group:
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
+                    {unassignedTeams.map((t: any) => (
+                      <div key={t.id} className="p-3 bg-white rounded-2xl border border-[#E8D6C3] flex items-center justify-between text-xs">
+                        <span className="font-bold text-[#2C221E] truncate max-w-[120px]" title={t.name}>
+                          {t.name}
+                        </span>
+
+                        <div className="flex items-center gap-1">
+                          {tournament.groups?.map((g: any) => (
+                            <button
+                              key={g.id}
+                              onClick={() => handleSetTeamGroup(t.id, g.id)}
+                              className="px-2 py-1 rounded-lg bg-[#FAF0E6] hover:bg-[#9E2A2B] text-[#842021] hover:text-white border border-[#E8D6C3] text-[10px] font-bold transition-colors"
+                            >
+                              + {g.name}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
             </div>
           )}
@@ -737,7 +928,7 @@ export const OrganizerWorkspaceModal: React.FC<OrganizerWorkspaceModalProps> = (
                       />
                     </div>
 
-                    <div className="flex items-end">
+                    <div className="flex items-end sm:col-span-3">
                       <Button
                         type="submit"
                         className="w-full bg-[#9E2A2B] hover:bg-[#842021] text-white font-bold text-xs h-9 rounded-xl"
@@ -760,7 +951,7 @@ export const OrganizerWorkspaceModal: React.FC<OrganizerWorkspaceModalProps> = (
                     <div key={m.id} className="p-4 bg-white rounded-2xl border border-[#E5DACB] shadow-xs space-y-3 text-xs">
                       <div className="flex items-center justify-between text-[11px] text-[#7C6E63] pb-2 border-b border-[#EFE8DC]">
                         <span className="font-bold text-[#9E2A2B]">Match #{m.matchNumber}</span>
-                        <span>{m.stage?.replace("_", " ")}</span>
+                        <span>{m.stage?.replace("_", " ")} {m.group ? `· ${m.group.name}` : ""}</span>
                         <button
                           onClick={() => handleDeleteMatch(m.id, m.matchNumber)}
                           className="p-1 rounded-lg text-[#C92A2A] hover:bg-[#FFF5F5]"

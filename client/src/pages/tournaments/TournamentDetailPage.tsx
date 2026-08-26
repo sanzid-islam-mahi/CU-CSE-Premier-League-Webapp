@@ -338,7 +338,14 @@ export const TournamentDetailPage: React.FC = () => {
                         {team.shortName || team.name.slice(0, 2)}
                       </div>
                       <div>
-                        <h3 className="text-base font-black text-[#2C221E]">{team.name}</h3>
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-base font-black text-[#2C221E]">{team.name}</h3>
+                          {team.group && (
+                            <span className="text-[10px] font-black uppercase bg-[#FAF0E6] text-[#842021] px-2 py-0.5 rounded-full border border-[#E8D6C3]">
+                              {team.group.name}
+                            </span>
+                          )}
+                        </div>
                         <p className="text-xs text-[#7C6E63]">
                           {team.batch ? `🏛️ ${team.batch.name} (${team.batch.session})` : "Independent Squad"} · {team.members?.length || 0} Players
                         </p>
