@@ -70,6 +70,20 @@ export const LiveScorerPage: React.FC = () => {
   const [footballEventPrimaryPlayerId, setFootballEventPrimaryPlayerId] = useState<number | "">("");
   const [footballEventSecondaryPlayerId, setFootballEventSecondaryPlayerId] = useState<number | "">("");
 
+  // Football Substitution Modal
+  const [showSubModal, setShowSubModal] = useState(false);
+  const [subTeamId, setSubTeamId] = useState<number | "">("");
+  const [subPlayerOutId, setSubPlayerOutId] = useState<number | "">("");
+  const [subPlayerInId, setSubPlayerInId] = useState<number | "">("");
+  const [subMinute, setSubMinute] = useState<number>(1);
+
+  // Football Penalty Shootout Modal (Knockout tiebreaker)
+  const [showPenaltyShootoutModal, setShowPenaltyShootoutModal] = useState(false);
+  const [penScoreA, setPenScoreA] = useState<number>(0);
+  const [penScoreB, setPenScoreB] = useState<number>(0);
+  const [penWinnerId, setPenWinnerId] = useState<number | "">("");
+  const [penPotmId, setPenPotmId] = useState<number | "">("");
+
   const timerRef = useRef<any>(null);
 
   const triggerToast = (msg: string) => {
@@ -122,11 +136,13 @@ export const LiveScorerPage: React.FC = () => {
         }
       }
 
-      // Initialize Football Stopwatch
+      // Initialize Football Stopwatch (Only on initial load or if timer is not actively running)
       if (m.tournament.sport === "FOOTBALL" && m.footballDetail) {
-        setFootballTimerSeconds(m.footballDetail.clockSeconds || 0);
-        setIsFootballTimerRunning(m.footballDetail.isClockRunning || false);
-        setFootballCurrentHalf(m.footballDetail.currentHalf || 1);
+        if (isInitial || !isFootballTimerRunning) {
+          setFootballTimerSeconds(m.footballDetail.clockSeconds || 0);
+          setIsFootballTimerRunning(m.footballDetail.isClockRunning || false);
+          setFootballCurrentHalf(m.footballDetail.currentHalf || 1);
+        }
       }
 
     } catch (err: any) {
@@ -309,7 +325,26 @@ export const LiveScorerPage: React.FC = () => {
     triggerToast("Bowler changed!");
   };
 
-  // 7. Football: Toggle Stopwatch Timer (Start / Pause)
+  // 7. Football: Lifecycle - Start 1st Half
+  const handleStartFootballFirstHalf = async () => {
+    setIsFootballTimerRunning(true);
+    setFootballCurrentHalf(1);
+    setFootballTimerSeconds(0);
+    try {
+      await api.scoring.updateFootballTimer(matchId, {
+        clockSeconds: 0,
+        isClockRunning: true,
+        currentHalf: 1,
+        status: "LIVE",
+      });
+      triggerToast("Match Started! 1st Half LIVE ▶");
+      fetchMatchData();
+    } catch (err: any) {
+      alert(err.message || "Failed to start match.");
+    }
+  };
+
+  // Football: Toggle Stopwatch Timer (Pause / Resume)
   const handleToggleFootballTimer = async () => {
     const nextRunning = !isFootballTimerRunning;
     setIsFootballTimerRunning(nextRunning);
@@ -321,9 +356,78 @@ export const LiveScorerPage: React.FC = () => {
         currentHalf: footballCurrentHalf,
         status: nextRunning ? "LIVE" : "PAUSED",
       });
-      triggerToast(nextRunning ? "Timer started (LIVE)" : "Timer paused");
+      triggerToast(nextRunning ? "Timer Resumed ▶" : "Timer Paused ⏸");
     } catch (err: any) {
       console.error(err);
+    }
+  };
+
+  // Football: Lifecycle - Mark Half Time
+  const handleMarkHalfTime = async () => {
+    if (!confirm("Conclude 1st Half and mark Half-Time?")) return;
+    setIsFootballTimerRunning(false);
+    const halfDur = (matchData?.footballDetail?.halfDurationMinutes || 20) * 60;
+    const finalHalfSeconds = Math.max(footballTimerSeconds, halfDur);
+    setFootballTimerSeconds(finalHalfSeconds);
+    try {
+      await api.scoring.updateFootballTimer(matchId, {
+        clockSeconds: finalHalfSeconds,
+        isClockRunning: false,
+        currentHalf: 1,
+        status: "HALFTIME",
+      });
+      triggerToast("1st Half Concluded (HALFTIME ⏸)");
+      fetchMatchData();
+    } catch (err: any) {
+      alert(err.message || "Failed to mark halftime.");
+    }
+  };
+
+  // Football: Lifecycle - Start 2nd Half
+  const handleStartFootballSecondHalf = async () => {
+    const halfDur = (matchData?.footballDetail?.halfDurationMinutes || 20) * 60;
+    const startSec = Math.max(footballTimerSeconds, halfDur);
+    setFootballTimerSeconds(startSec);
+    setIsFootballTimerRunning(true);
+    setFootballCurrentHalf(2);
+    try {
+      await api.scoring.updateFootballTimer(matchId, {
+        clockSeconds: startSec,
+        isClockRunning: true,
+        currentHalf: 2,
+        status: "LIVE",
+      });
+      triggerToast("2nd Half Started! LIVE ▶");
+      fetchMatchData();
+    } catch (err: any) {
+      alert(err.message || "Failed to start 2nd half.");
+    }
+  };
+
+  // Football: Lifecycle - Mark Full Time
+  const handleMarkFullTime = async () => {
+    if (!confirm("Conclude 2nd Half and mark Full Time?")) return;
+    setIsFootballTimerRunning(false);
+    try {
+      await api.scoring.updateFootballTimer(matchId, {
+        clockSeconds: footballTimerSeconds,
+        isClockRunning: false,
+        currentHalf: 2,
+        status: "COMPLETED",
+      });
+
+      const isKnockout = matchData.stage !== "GROUP_STAGE";
+      const isTied = (matchData.footballDetail?.teamAScore || 0) === (matchData.footballDetail?.teamBScore || 0);
+
+      if (isKnockout && isTied) {
+        setPenScoreA(0);
+        setPenScoreB(0);
+        setShowPenaltyShootoutModal(true);
+      } else {
+        setShowCompleteModal(true);
+      }
+    } catch (err: any) {
+      alert(err.message || "Failed to mark full time.");
     }
   };
 
@@ -354,6 +458,7 @@ export const LiveScorerPage: React.FC = () => {
         eventType: footballEventType,
         primaryPlayerId: Number(footballEventPrimaryPlayerId),
         secondaryPlayerId: footballEventSecondaryPlayerId ? Number(footballEventSecondaryPlayerId) : null,
+        currentClockSeconds: footballTimerSeconds,
       });
       triggerToast(`Event logged at ${footballEventMinute}'!`);
       setShowFootballEventModal(false);
@@ -365,7 +470,74 @@ export const LiveScorerPage: React.FC = () => {
     }
   };
 
-  // 10. Football: Delete Event Handler
+  // 10. Football: Open Substitution Modal
+  const handleOpenSubModal = (teamId: number) => {
+    const currentMinute = Math.max(1, Math.floor(footballTimerSeconds / 60) + 1);
+    setSubTeamId(teamId);
+    setSubMinute(currentMinute);
+    setSubPlayerOutId("");
+    setSubPlayerInId("");
+    setShowSubModal(true);
+  };
+
+  // 11. Football: Save Substitution Handler
+  const handleSaveSubstitution = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!subTeamId || !subPlayerOutId || !subPlayerInId) {
+      alert("Please select both player leaving the pitch (OUT) and player entering (IN).");
+      return;
+    }
+    if (Number(subPlayerOutId) === Number(subPlayerInId)) {
+      alert("Cannot substitute a player for themselves.");
+      return;
+    }
+
+    setActionLoading(true);
+    try {
+      await api.scoring.logFootballEvent(matchId, {
+        teamId: Number(subTeamId),
+        minute: Number(subMinute),
+        eventType: "SUBSTITUTION",
+        primaryPlayerId: Number(subPlayerInId),
+        secondaryPlayerId: Number(subPlayerOutId),
+        currentClockSeconds: footballTimerSeconds,
+      });
+      triggerToast(`Substitution recorded at ${subMinute}'!`);
+      setShowSubModal(false);
+      fetchMatchData();
+    } catch (err: any) {
+      alert(err.message || "Failed to record substitution.");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // 12. Football: Save Penalty Shootout Handler
+  const handleSavePenaltyShootout = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!penWinnerId) {
+      alert("Please select the penalty shootout winner.");
+      return;
+    }
+    setActionLoading(true);
+    try {
+      await api.scoring.recordPenaltyShootout(matchId, {
+        teamAPenaltyScore: Number(penScoreA),
+        teamBPenaltyScore: Number(penScoreB),
+        shootoutWinnerTeamId: Number(penWinnerId),
+        playerOfTheMatchId: penPotmId ? Number(penPotmId) : null,
+      });
+      triggerToast("Penalty shootout recorded! Match completed.");
+      setShowPenaltyShootoutModal(false);
+      fetchMatchData();
+    } catch (err: any) {
+      alert(err.message || "Failed to record shootout.");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // 13. Football: Delete Event Handler
   const handleDeleteFootballEvent = async (eventId: number) => {
     if (!confirm("Are you sure you want to delete this event?")) return;
     try {
@@ -377,7 +549,7 @@ export const LiveScorerPage: React.FC = () => {
     }
   };
 
-  // 11. Complete Match Handler
+  // 14. Complete Match Handler
   const handleCompleteMatch = async (e: React.FormEvent) => {
     e.preventDefault();
     setActionLoading(true);
@@ -836,7 +1008,7 @@ export const LiveScorerPage: React.FC = () => {
             {/* Live Football Match Clock & Scoreboard Card */}
             <div className="bg-white rounded-3xl border-2 border-[#E5DACB] p-6 shadow-sm space-y-5">
               
-              {/* Timer Header */}
+              {/* Timer Header & Lifecycle Actions */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#EFE8DC]">
                 <div className="flex items-center gap-3">
                   <div className={`w-3 h-3 rounded-full ${isFootballTimerRunning ? "bg-[#2A7B54] animate-pulse" : "bg-[#F59F00]"}`} />
@@ -844,47 +1016,122 @@ export const LiveScorerPage: React.FC = () => {
                     {formatTimer(footballTimerSeconds)}
                   </span>
                   <span className="text-xs font-black uppercase px-2.5 py-1 rounded-full bg-[#FAF0E6] text-[#842021] border border-[#E8D6C3]">
-                    {footballCurrentHalf === 1 ? "1st Half" : footballCurrentHalf === 2 ? "2nd Half" : "Extra Time"}
+                    {matchData.status === "HALFTIME"
+                      ? "Half-Time Break ⏸"
+                      : footballCurrentHalf === 1
+                      ? "1st Half"
+                      : "2nd Half"}
                   </span>
                 </div>
 
-                <div className="flex items-center gap-2">
-                  <Button
-                    type="button"
-                    onClick={handleToggleFootballTimer}
-                    className={`font-black text-xs h-10 px-5 rounded-2xl shadow-md flex items-center gap-1.5 ${
-                      isFootballTimerRunning
-                        ? "bg-[#F59F00] hover:bg-[#E67700] text-white shadow-[#F59F00]/20"
-                        : "bg-[#2A7B54] hover:bg-[#206042] text-white shadow-[#2A7B54]/20"
-                    }`}
-                  >
-                    {isFootballTimerRunning ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-                    <span>{isFootballTimerRunning ? "Pause Match ⏸" : "Start / Resume ▶"}</span>
-                  </Button>
+                <div className="flex flex-wrap items-center gap-2">
+                  {/* State 1: Match not started yet */}
+                  {(matchData.status === "SCHEDULED" || matchData.status === "TOSS") && (
+                    <Button
+                      type="button"
+                      onClick={handleStartFootballFirstHalf}
+                      className="bg-[#2A7B54] hover:bg-[#206042] text-white font-black text-xs h-10 px-5 rounded-2xl shadow-md flex items-center gap-1.5"
+                    >
+                      <Play className="w-4 h-4" />
+                      <span>Start Match (1st Half) ▶</span>
+                    </Button>
+                  )}
 
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => {
-                      setFootballCurrentHalf(prev => prev === 1 ? 2 : 1);
-                      triggerToast(`Switched to Half #${footballCurrentHalf === 1 ? 2 : 1}`);
-                    }}
-                    className="border-[#D8C7B3] text-[#7C6E63] text-xs h-10 px-3 rounded-2xl font-bold"
-                  >
-                    Half Switch 🔁
-                  </Button>
+                  {/* State 2: 1st Half LIVE */}
+                  {matchData.status === "LIVE" && footballCurrentHalf === 1 && (
+                    <>
+                      <Button
+                        type="button"
+                        onClick={handleToggleFootballTimer}
+                        className={`font-black text-xs h-10 px-4 rounded-2xl shadow-md flex items-center gap-1.5 ${
+                          isFootballTimerRunning
+                            ? "bg-[#F59F00] hover:bg-[#E67700] text-white"
+                            : "bg-[#2A7B54] hover:bg-[#206042] text-white"
+                        }`}
+                      >
+                        {isFootballTimerRunning ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+                        <span>{isFootballTimerRunning ? "Pause ⏸" : "Resume ▶"}</span>
+                      </Button>
+
+                      <Button
+                        type="button"
+                        onClick={handleMarkHalfTime}
+                        className="bg-[#842021] hover:bg-[#6D1B1C] text-white font-black text-xs h-10 px-4 rounded-2xl shadow-md flex items-center gap-1.5"
+                      >
+                        <span>🏁 Mark Half-Time</span>
+                      </Button>
+                    </>
+                  )}
+
+                  {/* State 3: Half-Time Break */}
+                  {matchData.status === "HALFTIME" && (
+                    <Button
+                      type="button"
+                      onClick={handleStartFootballSecondHalf}
+                      className="bg-[#2A7B54] hover:bg-[#206042] text-white font-black text-xs h-10 px-5 rounded-2xl shadow-md flex items-center gap-1.5 animate-bounce"
+                    >
+                      <Play className="w-4 h-4" />
+                      <span>Start 2nd Half ▶</span>
+                    </Button>
+                  )}
+
+                  {/* State 4: 2nd Half LIVE */}
+                  {matchData.status === "LIVE" && footballCurrentHalf === 2 && (
+                    <>
+                      <Button
+                        type="button"
+                        onClick={handleToggleFootballTimer}
+                        className={`font-black text-xs h-10 px-4 rounded-2xl shadow-md flex items-center gap-1.5 ${
+                          isFootballTimerRunning
+                            ? "bg-[#F59F00] hover:bg-[#E67700] text-white"
+                            : "bg-[#2A7B54] hover:bg-[#206042] text-white"
+                        }`}
+                      >
+                        {isFootballTimerRunning ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+                        <span>{isFootballTimerRunning ? "Pause ⏸" : "Resume ▶"}</span>
+                      </Button>
+
+                      <Button
+                        type="button"
+                        onClick={handleMarkFullTime}
+                        className="bg-[#9E2A2B] hover:bg-[#842021] text-white font-black text-xs h-10 px-4 rounded-2xl shadow-md flex items-center gap-1.5"
+                      >
+                        <Award className="w-4 h-4" />
+                        <span>Mark Full Time 🏆</span>
+                      </Button>
+                    </>
+                  )}
+
+                  {/* Knockout Tiebreaker Penalty Shootout Trigger */}
+                  {matchData.stage !== "GROUP_STAGE" && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setShowPenaltyShootoutModal(true)}
+                      className="border-[#2A7B54] text-[#2A7B54] hover:bg-[#E6FCF5] font-black text-xs h-10 px-3.5 rounded-2xl flex items-center gap-1"
+                    >
+                      <span>🥅 Penalty Shootout</span>
+                    </Button>
+                  )}
                 </div>
               </div>
 
-              {/* Big Score Display with Quick Goal Action */}
+              {/* Big Score Display with Quick Goal, Card, and Sub Actions */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Team A Box */}
                 <div className="p-5 bg-[#FAF7F2] rounded-3xl border-2 border-[#E8DCCF] space-y-3">
                   <div className="flex items-center justify-between">
                     <h3 className="font-extrabold text-sm text-[#2C221E]">{matchData.teamA.name}</h3>
-                    <span className="font-mono text-3xl font-black text-[#9E2A2B]">
-                      {matchData.footballDetail?.teamAScore || 0}
-                    </span>
+                    <div className="text-right">
+                      <span className="font-mono text-3xl font-black text-[#9E2A2B]">
+                        {matchData.footballDetail?.teamAScore || 0}
+                      </span>
+                      {matchData.footballDetail?.teamAPenaltyScore !== null && matchData.footballDetail?.teamAPenaltyScore !== undefined && (
+                        <span className="block text-xs font-black text-[#2A7B54]">
+                          ({matchData.footballDetail.teamAPenaltyScore} pens)
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   <div className="flex flex-wrap gap-2 pt-2 border-t border-[#E8DCCF]">
@@ -911,6 +1158,14 @@ export const LiveScorerPage: React.FC = () => {
                     >
                       + Red 🟥
                     </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => handleOpenSubModal(matchData.teamAId)}
+                      className="border-[#339AF0] bg-[#E7F5FF] text-[#1864AB] text-xs font-bold h-8 px-2.5 rounded-xl flex items-center gap-1"
+                    >
+                      <span>🔄 Sub</span>
+                    </Button>
                   </div>
                 </div>
 
@@ -918,9 +1173,16 @@ export const LiveScorerPage: React.FC = () => {
                 <div className="p-5 bg-[#FAF7F2] rounded-3xl border-2 border-[#E8DCCF] space-y-3">
                   <div className="flex items-center justify-between">
                     <h3 className="font-extrabold text-sm text-[#2C221E]">{matchData.teamB.name}</h3>
-                    <span className="font-mono text-3xl font-black text-[#9E2A2B]">
-                      {matchData.footballDetail?.teamBScore || 0}
-                    </span>
+                    <div className="text-right">
+                      <span className="font-mono text-3xl font-black text-[#9E2A2B]">
+                        {matchData.footballDetail?.teamBScore || 0}
+                      </span>
+                      {matchData.footballDetail?.teamBPenaltyScore !== null && matchData.footballDetail?.teamBPenaltyScore !== undefined && (
+                        <span className="block text-xs font-black text-[#2A7B54]">
+                          ({matchData.footballDetail.teamBPenaltyScore} pens)
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   <div className="flex flex-wrap gap-2 pt-2 border-t border-[#E8DCCF]">
@@ -947,6 +1209,14 @@ export const LiveScorerPage: React.FC = () => {
                     >
                       + Red 🟥
                     </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => handleOpenSubModal(matchData.teamBId)}
+                      className="border-[#339AF0] bg-[#E7F5FF] text-[#1864AB] text-xs font-bold h-8 px-2.5 rounded-xl flex items-center gap-1"
+                    >
+                      <span>🔄 Sub</span>
+                    </Button>
                   </div>
                 </div>
               </div>
@@ -964,11 +1234,17 @@ export const LiveScorerPage: React.FC = () => {
                         <span className="font-mono text-[#9E2A2B] bg-[#FAF0E6] px-2 py-0.5 rounded border border-[#E8D6C3]">
                           {ev.minute}'
                         </span>
-                        <span>
-                          {ev.eventType === "GOAL" ? "⚽ Goal" : ev.eventType === "YELLOW_CARD" ? "🟨 Yellow Card" : "🟥 Red Card"}
-                          : <span className="text-[#2C221E]">{ev.primaryPlayer?.name}</span>
-                          {ev.secondaryPlayer && <span className="text-[#7C6E63] font-normal"> (Assist: {ev.secondaryPlayer.name})</span>}
-                        </span>
+                        {ev.eventType === "SUBSTITUTION" ? (
+                          <span className="text-[#1864AB]">
+                            🔄 Sub: <strong className="text-[#2A7B54]">{ev.primaryPlayer?.name} (IN)</strong> for <span className="text-[#C92A2A] font-normal">{ev.secondaryPlayer?.name} (OUT)</span>
+                          </span>
+                        ) : (
+                          <span>
+                            {ev.eventType === "GOAL" ? "⚽ Goal" : ev.eventType === "YELLOW_CARD" ? "🟨 Yellow Card" : "🟥 Red Card"}
+                            : <span className="text-[#2C221E]">{ev.primaryPlayer?.name}</span>
+                            {ev.secondaryPlayer && <span className="text-[#7C6E63] font-normal"> (Assist: {ev.secondaryPlayer.name})</span>}
+                          </span>
+                        )}
                       </div>
 
                       <button
@@ -983,7 +1259,7 @@ export const LiveScorerPage: React.FC = () => {
 
                   {(!matchData.footballEvents || matchData.footballEvents.length === 0) && (
                     <p className="text-xs text-[#A89A8D] italic p-3 text-center">
-                      No match events logged yet. Match clock will auto-record event minutes when goals or cards occur.
+                      No match events logged yet. Match clock will auto-record event minutes when goals, cards, or subs occur.
                     </p>
                   )}
                 </div>
@@ -1007,80 +1283,104 @@ export const LiveScorerPage: React.FC = () => {
               <button onClick={() => setShowSetupModal(false)} className="text-[#7C6E63]">✕</button>
             </div>
 
-            <form onSubmit={handleSaveSetup} className="p-5 space-y-4 overflow-y-auto text-xs">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-bold text-[#4A3E35] mb-1">Toss Winner Team</label>
-                  <select
-                    value={tossWinnerTeamId}
-                    onChange={(e) => setTossWinnerTeamId(Number(e.target.value))}
-                    className="w-full px-3 py-2 rounded-xl border border-[#D8C7B3] bg-[#FAF7F2]"
-                  >
-                    <option value={matchData.teamAId}>{matchData.teamA.name}</option>
-                    <option value={matchData.teamBId}>{matchData.teamB.name}</option>
-                  </select>
+            {/* Lock notification if match is already underway */}
+            {matchData.status !== "SCHEDULED" && matchData.status !== "TOSS" ? (
+              <div className="p-6 space-y-4 text-xs">
+                <div className="p-4 bg-[#FFF9DB] border border-[#F59F00] rounded-2xl text-[#7E4D00] flex items-start gap-2.5">
+                  <span className="text-lg">🔒</span>
+                  <div>
+                    <h4 className="font-extrabold text-sm">Lineups Locked</h4>
+                    <p className="mt-1 leading-relaxed text-xs">
+                      This match is already in progress (Status: <strong>{matchData.status}</strong>). Starting lineups and toss outcome cannot be modified.
+                    </p>
+                    <p className="mt-2 font-bold">
+                      💡 To change active players on the pitch during a match, use the <span className="text-[#1864AB]">🔄 Substitution</span> button on the scoreboard.
+                    </p>
+                  </div>
                 </div>
 
-                {isCricket && (
+                <div className="pt-2 flex justify-end">
+                  <Button type="button" onClick={() => setShowSetupModal(false)} className="bg-[#9E2A2B] text-white">
+                    Close
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <form onSubmit={handleSaveSetup} className="p-5 space-y-4 overflow-y-auto text-xs">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="block font-bold text-[#4A3E35] mb-1">Elected Decision</label>
+                    <label className="block font-bold text-[#4A3E35] mb-1">Toss Winner Team</label>
                     <select
-                      value={tossDecision}
-                      onChange={(e) => setTossDecision(e.target.value as "BAT" | "BOWL")}
+                      value={tossWinnerTeamId}
+                      onChange={(e) => setTossWinnerTeamId(Number(e.target.value))}
                       className="w-full px-3 py-2 rounded-xl border border-[#D8C7B3] bg-[#FAF7F2]"
                     >
-                      <option value="BAT">Bat First 🏏</option>
-                      <option value="BOWL">Bowl First ⚾</option>
+                      <option value={matchData.teamAId}>{matchData.teamA.name}</option>
+                      <option value={matchData.teamBId}>{matchData.teamB.name}</option>
                     </select>
                   </div>
-                )}
-              </div>
 
-              {/* Team A Lineup Checkbox list */}
-              <div className="space-y-1 pt-2 border-t border-[#EFE8DC]">
-                <label className="block font-black text-[#2C221E]">{matchData.teamA.name} Lineup ({selectedTeamAPlayers.length} selected):</label>
-                <div className="grid grid-cols-2 gap-1.5 max-h-32 overflow-y-auto p-2 bg-[#FAF7F2] rounded-xl border">
-                  {matchData.teamA.members?.map((m: any) => (
-                    <label key={m.userId} className="flex items-center gap-1.5 text-[11px]">
-                      <input
-                        type="checkbox"
-                        checked={selectedTeamAPlayers.includes(m.userId)}
-                        onChange={(e) => {
-                          if (e.target.checked) setSelectedTeamAPlayers(prev => [...prev, m.userId]);
-                          else setSelectedTeamAPlayers(prev => prev.filter(id => id !== m.userId));
-                        }}
-                      />
-                      <span className="truncate">{m.user.name}</span>
-                    </label>
-                  ))}
+                  {isCricket && (
+                    <div>
+                      <label className="block font-bold text-[#4A3E35] mb-1">Elected Decision</label>
+                      <select
+                        value={tossDecision}
+                        onChange={(e) => setTossDecision(e.target.value as "BAT" | "BOWL")}
+                        className="w-full px-3 py-2 rounded-xl border border-[#D8C7B3] bg-[#FAF7F2]"
+                      >
+                        <option value="BAT">Bat First 🏏</option>
+                        <option value="BOWL">Bowl First ⚾</option>
+                      </select>
+                    </div>
+                  )}
                 </div>
-              </div>
 
-              {/* Team B Lineup Checkbox list */}
-              <div className="space-y-1 pt-2 border-t border-[#EFE8DC]">
-                <label className="block font-black text-[#2C221E]">{matchData.teamB.name} Lineup ({selectedTeamBPlayers.length} selected):</label>
-                <div className="grid grid-cols-2 gap-1.5 max-h-32 overflow-y-auto p-2 bg-[#FAF7F2] rounded-xl border">
-                  {matchData.teamB.members?.map((m: any) => (
-                    <label key={m.userId} className="flex items-center gap-1.5 text-[11px]">
-                      <input
-                        type="checkbox"
-                        checked={selectedTeamBPlayers.includes(m.userId)}
-                        onChange={(e) => {
-                          if (e.target.checked) setSelectedTeamBPlayers(prev => [...prev, m.userId]);
-                          else setSelectedTeamBPlayers(prev => prev.filter(id => id !== m.userId));
-                        }}
-                      />
-                      <span className="truncate">{m.user.name}</span>
-                    </label>
-                  ))}
+                {/* Team A Lineup Checkbox list */}
+                <div className="space-y-1 pt-2 border-t border-[#EFE8DC]">
+                  <label className="block font-black text-[#2C221E]">{matchData.teamA.name} Lineup ({selectedTeamAPlayers.length} selected):</label>
+                  <div className="grid grid-cols-2 gap-1.5 max-h-32 overflow-y-auto p-2 bg-[#FAF7F2] rounded-xl border">
+                    {matchData.teamA.members?.map((m: any) => (
+                      <label key={m.userId} className="flex items-center gap-1.5 text-[11px]">
+                        <input
+                          type="checkbox"
+                          checked={selectedTeamAPlayers.includes(m.userId)}
+                          onChange={(e) => {
+                            if (e.target.checked) setSelectedTeamAPlayers(prev => [...prev, m.userId]);
+                            else setSelectedTeamAPlayers(prev => prev.filter(id => id !== m.userId));
+                          }}
+                        />
+                        <span className="truncate">{m.user.name}</span>
+                      </label>
+                    ))}
+                  </div>
                 </div>
-              </div>
 
-              <div className="pt-3 border-t border-[#EFE8DC] flex justify-end gap-2">
-                <Button type="button" variant="outline" onClick={() => setShowSetupModal(false)}>Cancel</Button>
-                <Button type="submit" disabled={actionLoading} className="bg-[#9E2A2B] text-white">Save Setup</Button>
-              </div>
-            </form>
+                {/* Team B Lineup Checkbox list */}
+                <div className="space-y-1 pt-2 border-t border-[#EFE8DC]">
+                  <label className="block font-black text-[#2C221E]">{matchData.teamB.name} Lineup ({selectedTeamBPlayers.length} selected):</label>
+                  <div className="grid grid-cols-2 gap-1.5 max-h-32 overflow-y-auto p-2 bg-[#FAF7F2] rounded-xl border">
+                    {matchData.teamB.members?.map((m: any) => (
+                      <label key={m.userId} className="flex items-center gap-1.5 text-[11px]">
+                        <input
+                          type="checkbox"
+                          checked={selectedTeamBPlayers.includes(m.userId)}
+                          onChange={(e) => {
+                            if (e.target.checked) setSelectedTeamBPlayers(prev => [...prev, m.userId]);
+                            else setSelectedTeamBPlayers(prev => prev.filter(id => id !== m.userId));
+                          }}
+                        />
+                        <span className="truncate">{m.user.name}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="pt-3 border-t border-[#EFE8DC] flex justify-end gap-2">
+                  <Button type="button" variant="outline" onClick={() => setShowSetupModal(false)}>Cancel</Button>
+                  <Button type="submit" disabled={actionLoading} className="bg-[#9E2A2B] text-white">Save Setup</Button>
+                </div>
+              </form>
+            )}
           </div>
         </div>
       )}
@@ -1259,6 +1559,183 @@ export const LiveScorerPage: React.FC = () => {
               <div className="pt-2 flex justify-end gap-2">
                 <Button type="button" variant="outline" onClick={() => setShowFootballEventModal(false)}>Cancel</Button>
                 <Button type="submit" disabled={actionLoading} className="bg-[#9E2A2B] text-white">Save Event</Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* FOOTBALL: SUBSTITUTION MODAL */}
+      {showSubModal && (
+        <div className="fixed inset-0 z-60 flex items-center justify-center p-3 sm:p-4 bg-black/70 backdrop-blur-xs animate-in fade-in">
+          <div className="bg-white border-2 border-[#E5DACB] rounded-3xl shadow-2xl w-full max-w-md p-5 space-y-4 text-xs">
+            <h3 className="text-sm font-black text-[#1864AB] flex items-center gap-1.5">
+              <span>🔄</span>
+              <span>Record Player Substitution</span>
+            </h3>
+
+            <form onSubmit={handleSaveSubstitution} className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold mb-1">Minute</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={130}
+                    value={subMinute}
+                    onChange={(e) => setSubMinute(Number(e.target.value))}
+                    className="w-full px-3 py-2 rounded-xl border border-[#D8C7B3] bg-[#FAF7F2] font-mono font-bold"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold mb-1">Team</label>
+                  <select
+                    value={subTeamId}
+                    onChange={(e) => setSubTeamId(Number(e.target.value))}
+                    className="w-full px-3 py-2 rounded-xl border border-[#D8C7B3] bg-[#FAF7F2]"
+                  >
+                    <option value={matchData.teamAId}>{matchData.teamA.name}</option>
+                    <option value={matchData.teamBId}>{matchData.teamB.name}</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Player Out (Leaving Pitch) */}
+              <div>
+                <label className="block font-black text-[#C92A2A] mb-1">Player Leaving Pitch (OUT) 🟥</label>
+                <select
+                  required
+                  value={subPlayerOutId}
+                  onChange={(e) => setSubPlayerOutId(Number(e.target.value))}
+                  className="w-full px-3 py-2 rounded-xl border border-[#FFC9C9] bg-[#FFF5F5]"
+                >
+                  <option value="">-- Choose Player Out --</option>
+                  {(subTeamId === matchData.teamAId ? matchData.teamA : matchData.teamB)?.members?.map((m: any) => (
+                    <option key={m.userId} value={m.userId}>{m.user.name} ({m.user.studentId})</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Player In (Entering Pitch) */}
+              <div>
+                <label className="block font-black text-[#2A7B54] mb-1">Player Entering Pitch (IN) 🟩</label>
+                <select
+                  required
+                  value={subPlayerInId}
+                  onChange={(e) => setSubPlayerInId(Number(e.target.value))}
+                  className="w-full px-3 py-2 rounded-xl border border-[#B2F2BB] bg-[#EBFBEE]"
+                >
+                  <option value="">-- Choose Player In --</option>
+                  {(subTeamId === matchData.teamAId ? matchData.teamA : matchData.teamB)?.members?.filter((m: any) => m.userId !== Number(subPlayerOutId)).map((m: any) => (
+                    <option key={m.userId} value={m.userId}>{m.user.name} ({m.user.studentId})</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="pt-2 flex justify-end gap-2">
+                <Button type="button" variant="outline" onClick={() => setShowSubModal(false)}>Cancel</Button>
+                <Button type="submit" disabled={actionLoading} className="bg-[#1864AB] hover:bg-[#15538E] text-white font-bold">
+                  Confirm Substitution 🔄
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* FOOTBALL: KNOCKOUT PENALTY SHOOTOUT MODAL */}
+      {showPenaltyShootoutModal && (
+        <div className="fixed inset-0 z-60 flex items-center justify-center p-3 sm:p-4 bg-black/70 backdrop-blur-xs animate-in fade-in">
+          <div className="bg-white border-2 border-[#E5DACB] rounded-3xl shadow-2xl w-full max-w-md p-6 space-y-5 text-xs">
+            <div className="text-center space-y-1">
+              <span className="text-2xl">🥅⚽</span>
+              <h3 className="text-base font-black text-[#2C221E]">Knockout Penalty Shootout</h3>
+              <p className="text-xs text-[#7C6E63]">Scores were tied at Full Time. Record penalty kick conversions.</p>
+            </div>
+
+            <form onSubmit={handleSavePenaltyShootout} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4 text-center">
+                {/* Team A Pens */}
+                <div className="p-4 bg-[#FAF7F2] rounded-2xl border-2 border-[#E8DCCF] space-y-2">
+                  <p className="font-extrabold text-xs text-[#2C221E] truncate">{matchData.teamA.name}</p>
+                  <div className="flex items-center justify-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setPenScoreA(prev => Math.max(0, prev - 1))}
+                      className="w-8 h-8 rounded-xl bg-white border font-black text-sm"
+                    >
+                      -
+                    </button>
+                    <span className="font-mono text-3xl font-black text-[#9E2A2B]">{penScoreA}</span>
+                    <button
+                      type="button"
+                      onClick={() => setPenScoreA(prev => prev + 1)}
+                      className="w-8 h-8 rounded-xl bg-white border font-black text-sm"
+                    >
+                      +
+                    </button>
+                  </div>
+                  <p className="text-[10px] text-[#7C6E63] font-bold">Penalties Scored</p>
+                </div>
+
+                {/* Team B Pens */}
+                <div className="p-4 bg-[#FAF7F2] rounded-2xl border-2 border-[#E8DCCF] space-y-2">
+                  <p className="font-extrabold text-xs text-[#2C221E] truncate">{matchData.teamB.name}</p>
+                  <div className="flex items-center justify-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setPenScoreB(prev => Math.max(0, prev - 1))}
+                      className="w-8 h-8 rounded-xl bg-white border font-black text-sm"
+                    >
+                      -
+                    </button>
+                    <span className="font-mono text-3xl font-black text-[#9E2A2B]">{penScoreB}</span>
+                    <button
+                      type="button"
+                      onClick={() => setPenScoreB(prev => prev + 1)}
+                      className="w-8 h-8 rounded-xl bg-white border font-black text-sm"
+                    >
+                      +
+                    </button>
+                  </div>
+                  <p className="text-[10px] text-[#7C6E63] font-bold">Penalties Scored</p>
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold mb-1">Shootout Winner Team</label>
+                <select
+                  required
+                  value={penWinnerId}
+                  onChange={(e) => setPenWinnerId(Number(e.target.value))}
+                  className="w-full px-3 py-2.5 rounded-xl border border-[#D8C7B3] bg-[#FAF7F2] font-extrabold"
+                >
+                  <option value="">-- Select Shootout Winner --</option>
+                  <option value={matchData.teamAId}>{matchData.teamA.name} (Wins Shootout 🏆)</option>
+                  <option value={matchData.teamBId}>{matchData.teamB.name} (Wins Shootout 🏆)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block font-bold mb-1">Player of the Match (Optional)</label>
+                <select
+                  value={penPotmId}
+                  onChange={(e) => setPenPotmId(e.target.value === "" ? "" : Number(e.target.value))}
+                  className="w-full px-3 py-2 rounded-xl border border-[#D8C7B3] bg-[#FAF7F2]"
+                >
+                  <option value="">-- Select POTM --</option>
+                  {[...(matchData.teamA.members || []), ...(matchData.teamB.members || [])].map((m: any) => (
+                    <option key={m.userId} value={m.userId}>{m.user.name} ({m.user.studentId})</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="pt-2 flex justify-end gap-2">
+                <Button type="button" variant="outline" onClick={() => setShowPenaltyShootoutModal(false)}>Cancel</Button>
+                <Button type="submit" disabled={actionLoading} className="bg-[#2A7B54] text-white font-bold">
+                  Seal Shootout & Advance Winner 🏆
+                </Button>
               </div>
             </form>
           </div>

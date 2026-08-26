@@ -197,9 +197,16 @@ export const MatchDetailPage: React.FC = () => {
                     </p>
                   </div>
                 ) : (
-                  <span className="font-mono text-3xl sm:text-4xl font-black text-[#9E2A2B]">
-                    {matchData.footballDetail?.teamAScore || 0}
-                  </span>
+                  <div>
+                    <span className="font-mono text-3xl sm:text-4xl font-black text-[#9E2A2B]">
+                      {matchData.footballDetail?.teamAScore || 0}
+                    </span>
+                    {matchData.footballDetail?.teamAPenaltyScore !== null && matchData.footballDetail?.teamAPenaltyScore !== undefined && (
+                      <span className="block font-mono text-xs font-black text-[#2A7B54]">
+                        ({matchData.footballDetail.teamAPenaltyScore} pens)
+                      </span>
+                    )}
+                  </div>
                 )}
               </div>
             </div>
@@ -237,9 +244,16 @@ export const MatchDetailPage: React.FC = () => {
                     </p>
                   </div>
                 ) : (
-                  <span className="font-mono text-3xl sm:text-4xl font-black text-[#9E2A2B]">
-                    {matchData.footballDetail?.teamBScore || 0}
-                  </span>
+                  <div>
+                    <span className="font-mono text-3xl sm:text-4xl font-black text-[#9E2A2B]">
+                      {matchData.footballDetail?.teamBScore || 0}
+                    </span>
+                    {matchData.footballDetail?.teamBPenaltyScore !== null && matchData.footballDetail?.teamBPenaltyScore !== undefined && (
+                      <span className="block font-mono text-xs font-black text-[#2A7B54]">
+                        ({matchData.footballDetail.teamBPenaltyScore} pens)
+                      </span>
+                    )}
+                  </div>
                 )}
               </div>
             </div>
@@ -398,15 +412,25 @@ export const MatchDetailPage: React.FC = () => {
                         <span className="font-mono font-bold text-xs bg-[#FAF0E6] px-2.5 py-1 rounded-xl text-[#842021] border border-[#E8D6C3]">
                           {ev.minute}'
                         </span>
-                        <div>
-                          <p className="font-bold text-[#2C221E]">
-                            {ev.eventType === "GOAL" ? "⚽ Goal!" : ev.eventType === "YELLOW_CARD" ? "🟨 Yellow Card" : "🟥 Red Card"}
-                            {" "}· <span className="text-[#9E2A2B]">{ev.primaryPlayer?.name}</span>
-                          </p>
-                          {ev.secondaryPlayer && (
-                            <p className="text-[11px] text-[#7C6E63]">Assist by {ev.secondaryPlayer.name}</p>
-                          )}
-                        </div>
+                        {ev.eventType === "SUBSTITUTION" ? (
+                          <div>
+                            <p className="font-bold text-[#2C221E]">
+                              🔄 Sub: <span className="text-[#2A7B54] font-black">{ev.primaryPlayer?.name} (IN)</span>
+                              {ev.secondaryPlayer && <span className="text-[#C92A2A] font-semibold"> for {ev.secondaryPlayer.name} (OUT)</span>}
+                            </p>
+                            <p className="text-[11px] text-[#7C6E63]">{ev.teamId === matchData.teamAId ? matchData.teamA.name : matchData.teamB.name}</p>
+                          </div>
+                        ) : (
+                          <div>
+                            <p className="font-bold text-[#2C221E]">
+                              {ev.eventType === "GOAL" ? "⚽ Goal!" : ev.eventType === "YELLOW_CARD" ? "🟨 Yellow Card" : "🟥 Red Card"}
+                              {" "}· <span className="text-[#9E2A2B]">{ev.primaryPlayer?.name}</span>
+                            </p>
+                            {ev.secondaryPlayer && (
+                              <p className="text-[11px] text-[#7C6E63]">Assist by {ev.secondaryPlayer.name}</p>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -512,10 +536,16 @@ export const MatchDetailPage: React.FC = () => {
                   <div className="p-4 bg-[#FAF7F2] rounded-2xl border">
                     <p className="text-xs font-bold text-[#7C6E63]">{matchData.teamA.name}</p>
                     <p className="text-3xl font-black text-[#9E2A2B] mt-1">{matchData.footballDetail?.teamAScore || 0}</p>
+                    {matchData.footballDetail?.teamAPenaltyScore !== null && matchData.footballDetail?.teamAPenaltyScore !== undefined && (
+                      <span className="text-xs font-bold text-[#2A7B54]">({matchData.footballDetail.teamAPenaltyScore} pens)</span>
+                    )}
                   </div>
                   <div className="p-4 bg-[#FAF7F2] rounded-2xl border">
                     <p className="text-xs font-bold text-[#7C6E63]">{matchData.teamB.name}</p>
                     <p className="text-3xl font-black text-[#9E2A2B] mt-1">{matchData.footballDetail?.teamBScore || 0}</p>
+                    {matchData.footballDetail?.teamBPenaltyScore !== null && matchData.footballDetail?.teamBPenaltyScore !== undefined && (
+                      <span className="text-xs font-bold text-[#2A7B54]">({matchData.footballDetail.teamBPenaltyScore} pens)</span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -532,12 +562,27 @@ export const MatchDetailPage: React.FC = () => {
                 {matchData.teamA.name} ({matchData.teamA.members?.length || 0} Players)
               </h3>
               <div className="space-y-1.5">
-                {matchData.teamA.members?.map((m: any) => (
-                  <div key={m.userId} className="p-2.5 bg-[#FAF7F2] rounded-xl flex items-center justify-between text-xs">
-                    <span className="font-bold text-[#2C221E]">{m.user.name}</span>
-                    <span className="font-mono text-[10px] text-[#7C6E63]">{m.user.studentId}</span>
-                  </div>
-                ))}
+                {matchData.teamA.members?.map((m: any) => {
+                  const squadEntry = matchData.matchSquads?.find((s: any) => s.userId === m.userId && s.teamId === matchData.teamAId);
+                  const isOnPitch = squadEntry ? squadEntry.isPlayingXI : true;
+                  return (
+                    <div key={m.userId} className="p-2.5 bg-[#FAF7F2] rounded-xl flex items-center justify-between text-xs">
+                      <span className="font-bold text-[#2C221E]">{m.user.name}</span>
+                      <div className="flex items-center gap-2">
+                        {isOnPitch ? (
+                          <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-[#E6FCF5] text-[#0CA678] border border-[#20C997]/30">
+                            🟢 On Pitch
+                          </span>
+                        ) : (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#F1F3F5] text-[#868E96]">
+                            Bench
+                          </span>
+                        )}
+                        <span className="font-mono text-[10px] text-[#7C6E63]">{m.user.studentId}</span>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
@@ -547,12 +592,27 @@ export const MatchDetailPage: React.FC = () => {
                 {matchData.teamB.name} ({matchData.teamB.members?.length || 0} Players)
               </h3>
               <div className="space-y-1.5">
-                {matchData.teamB.members?.map((m: any) => (
-                  <div key={m.userId} className="p-2.5 bg-[#FAF7F2] rounded-xl flex items-center justify-between text-xs">
-                    <span className="font-bold text-[#2C221E]">{m.user.name}</span>
-                    <span className="font-mono text-[10px] text-[#7C6E63]">{m.user.studentId}</span>
-                  </div>
-                ))}
+                {matchData.teamB.members?.map((m: any) => {
+                  const squadEntry = matchData.matchSquads?.find((s: any) => s.userId === m.userId && s.teamId === matchData.teamBId);
+                  const isOnPitch = squadEntry ? squadEntry.isPlayingXI : true;
+                  return (
+                    <div key={m.userId} className="p-2.5 bg-[#FAF7F2] rounded-xl flex items-center justify-between text-xs">
+                      <span className="font-bold text-[#2C221E]">{m.user.name}</span>
+                      <div className="flex items-center gap-2">
+                        {isOnPitch ? (
+                          <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-[#E6FCF5] text-[#0CA678] border border-[#20C997]/30">
+                            🟢 On Pitch
+                          </span>
+                        ) : (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#F1F3F5] text-[#868E96]">
+                            Bench
+                          </span>
+                        )}
+                        <span className="font-mono text-[10px] text-[#7C6E63]">{m.user.studentId}</span>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>

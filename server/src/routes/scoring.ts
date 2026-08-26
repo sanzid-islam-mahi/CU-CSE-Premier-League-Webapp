@@ -135,6 +135,12 @@ scoringRouter.post("/:id/setup", requireAuth, async (req: AuthenticatedRequest, 
       return;
     }
 
+    // Base Starting XI and Toss cannot be modified after match starts
+    if (match.status !== "SCHEDULED" && match.status !== "TOSS") {
+      res.status(400).json({ error: "Base lineup and toss are locked because the match has already started or completed. Use substitutions to adjust active players on the pitch." });
+      return;
+    }
+
     // Update Match toss details
     await prisma.match.update({
       where: { id: matchId },
@@ -635,7 +641,7 @@ scoringRouter.post("/:id/football/events", requireAuth, async (req: Authenticate
       return;
     }
 
-    const { teamId, minute, stoppageMinute, eventType, primaryPlayerId, secondaryPlayerId, description } = req.body;
+    const { teamId, minute, stoppageMinute, eventType, primaryPlayerId, secondaryPlayerId, description, currentClockSeconds } = req.body;
 
     const match = await prisma.match.findUnique({
       where: { id: matchId },
@@ -647,6 +653,50 @@ scoringRouter.post("/:id/football/events", requireAuth, async (req: Authenticate
       return;
     }
 
+    // Keep footballDetail clock in sync if client sent currentClockSeconds
+    if (currentClockSeconds !== undefined && match.footballDetail) {
+      await prisma.footballMatchDetail.update({
+        where: { matchId },
+        data: { clockSeconds: Number(currentClockSeconds) }
+      });
+    }
+
+    // Auto-generate description for substitutions if not supplied
+    let finalDescription = description || null;
+    if (eventType === "SUBSTITUTION" && primaryPlayerId && secondaryPlayerId) {
+      const pIn = await prisma.user.findUnique({ where: { id: Number(primaryPlayerId) }, select: { name: true } });
+      const pOut = await prisma.user.findUnique({ where: { id: Number(secondaryPlayerId) }, select: { name: true } });
+      finalDescription = finalDescription || `Sub: ${pIn?.name || "Player In"} ON, ${pOut?.name || "Player Out"} OFF`;
+
+      // Update MatchSquad on-pitch status
+      // Sub Out -> isPlayingXI = false
+      await prisma.matchSquad.updateMany({
+        where: { matchId, userId: Number(secondaryPlayerId) },
+        data: { isPlayingXI: false }
+      });
+
+      // Sub In -> isPlayingXI = true (upsert if exists)
+      const existingInSquad = await prisma.matchSquad.findUnique({
+        where: { matchId_teamId_userId: { matchId, teamId: Number(teamId), userId: Number(primaryPlayerId) } }
+      });
+
+      if (existingInSquad) {
+        await prisma.matchSquad.update({
+          where: { id: existingInSquad.id },
+          data: { isPlayingXI: true }
+        });
+      } else {
+        await prisma.matchSquad.create({
+          data: {
+            matchId,
+            teamId: Number(teamId),
+            userId: Number(primaryPlayerId),
+            isPlayingXI: true,
+          }
+        });
+      }
+    }
+
     const createdEvent = await prisma.footballMatchEvent.create({
       data: {
         matchId,
@@ -656,7 +706,7 @@ scoringRouter.post("/:id/football/events", requireAuth, async (req: Authenticate
         eventType,
         primaryPlayerId: Number(primaryPlayerId),
         secondaryPlayerId: secondaryPlayerId ? Number(secondaryPlayerId) : null,
-        description: description || null,
+        description: finalDescription,
       },
       include: {
         primaryPlayer: { select: { id: true, name: true, studentId: true } },
@@ -695,6 +745,86 @@ scoringRouter.post("/:id/football/events", requireAuth, async (req: Authenticate
     res.status(201).json({ message: "Event logged successfully.", event: createdEvent });
   } catch (err: any) {
     res.status(500).json({ error: err.message || "Failed to log event" });
+  }
+});
+
+// 8. FOOTBALL: RECORD PENALTY SHOOTOUT (FOR TIED KNOCKOUT MATCHES)
+scoringRouter.post("/:id/football/penalty-shootout", requireAuth, async (req: AuthenticatedRequest, res) => {
+  try {
+    const matchId = Number(req.params.id);
+    const allowed = await canScoreMatch(req.user!.id, req.user!.role, matchId);
+    if (!allowed) {
+      res.status(403).json({ error: "Access denied." });
+      return;
+    }
+
+    const { teamAPenaltyScore, teamBPenaltyScore, shootoutWinnerTeamId, playerOfTheMatchId } = req.body;
+
+    const match = await prisma.match.findUnique({
+      where: { id: matchId },
+      include: { teamA: true, teamB: true, footballDetail: true }
+    });
+
+    if (!match) {
+      res.status(404).json({ error: "Match not found" });
+      return;
+    }
+
+    // Update football details with penalty scores
+    await prisma.footballMatchDetail.upsert({
+      where: { matchId },
+      create: {
+        matchId,
+        teamAPenaltyScore: Number(teamAPenaltyScore),
+        teamBPenaltyScore: Number(teamBPenaltyScore),
+        isClockRunning: false,
+      },
+      update: {
+        teamAPenaltyScore: Number(teamAPenaltyScore),
+        teamBPenaltyScore: Number(teamBPenaltyScore),
+        isClockRunning: false,
+      }
+    });
+
+    const winner = Number(shootoutWinnerTeamId) === match.teamAId ? match.teamA : match.teamB;
+    const regularA = match.footballDetail?.teamAScore || 0;
+    const regularB = match.footballDetail?.teamBScore || 0;
+    const resultSummary = `${winner.name} won on penalties (${teamAPenaltyScore}-${teamBPenaltyScore}) after ${regularA}-${regularB} draw`;
+
+    // Complete the match
+    const updatedMatch = await prisma.match.update({
+      where: { id: matchId },
+      data: {
+        status: "COMPLETED",
+        winnerTeamId: Number(shootoutWinnerTeamId),
+        resultSummary,
+        isTied: false,
+        playerOfTheMatchId: playerOfTheMatchId ? Number(playerOfTheMatchId) : null,
+      }
+    });
+
+    // Auto-advance Semi-Final winners to Grand Final
+    if (match.stage === "SEMI_FINAL") {
+      const allSemiFinals = await prisma.match.findMany({
+        where: { tournamentId: match.tournamentId, stage: "SEMI_FINAL" },
+        orderBy: { matchNumber: "asc" }
+      });
+      const finalMatch = await prisma.match.findFirst({
+        where: { tournamentId: match.tournamentId, stage: "FINAL" }
+      });
+
+      if (finalMatch && allSemiFinals.length >= 2) {
+        const isFirstSF = allSemiFinals[0].id === match.id;
+        await prisma.match.update({
+          where: { id: finalMatch.id },
+          data: isFirstSF ? { teamAId: Number(shootoutWinnerTeamId) } : { teamBId: Number(shootoutWinnerTeamId) }
+        });
+      }
+    }
+
+    res.json({ message: "Penalty shootout recorded & match completed.", match: updatedMatch, resultSummary });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || "Failed to record penalty shootout" });
   }
 });
 

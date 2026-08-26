@@ -653,6 +653,7 @@ export const api = {
       primaryPlayerId: number;
       secondaryPlayerId?: number | null;
       description?: string | null;
+      currentClockSeconds?: number;
     }) => {
       const res = await fetch(`${API_BASE}/scoring/${matchId}/football/events`, {
         method: "POST",
@@ -671,6 +672,23 @@ export const api = {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to delete event");
+      return data;
+    },
+
+    // Penalty Shootout
+    recordPenaltyShootout: async (matchId: number, payload: {
+      teamAPenaltyScore: number;
+      teamBPenaltyScore: number;
+      shootoutWinnerTeamId: number;
+      playerOfTheMatchId?: number | null;
+    }) => {
+      const res = await fetch(`${API_BASE}/scoring/${matchId}/football/penalty-shootout`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to record penalty shootout");
       return data;
     },
 
