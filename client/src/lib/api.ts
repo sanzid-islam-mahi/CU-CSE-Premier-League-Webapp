@@ -123,6 +123,16 @@ export const api = {
       if (!res.ok) throw new Error(data.error || "Failed to create batch");
       return data;
     },
+
+    delete: async (id: number) => {
+      const res = await fetch(`${API_BASE}/batches/${id}`, {
+        method: "DELETE",
+        headers: getAuthHeaders(),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to delete batch");
+      return data;
+    },
   },
 
   users: {
@@ -175,6 +185,16 @@ export const api = {
       if (!res.ok) throw new Error(data.error || "Failed to reset password");
       return data;
     },
+
+    delete: async (userId: number) => {
+      const res = await fetch(`${API_BASE}/users/${userId}`, {
+        method: "DELETE",
+        headers: getAuthHeaders(),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to delete user");
+      return data;
+    },
   },
 
   tournaments: {
@@ -198,6 +218,16 @@ export const api = {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to create tournament");
+      return data;
+    },
+
+    delete: async (tournamentId: number) => {
+      const res = await fetch(`${API_BASE}/tournaments/${tournamentId}`, {
+        method: "DELETE",
+        headers: getAuthHeaders(),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to delete tournament");
       return data;
     },
 

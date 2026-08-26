@@ -314,4 +314,38 @@ usersRouter.put("/:id/reset-temp-pass", requireAuth, requireAdmin, async (req, r
   }
 });
 
+// DELETE User / Player (Admin Only)
+usersRouter.delete("/:id", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+
+    // Prevent deleting main admin
+    const targetUser = await prisma.user.findUnique({ where: { id } });
+    if (!targetUser) {
+      res.status(404).json({ error: "User not found" });
+      return;
+    }
+
+    if (targetUser.role === "ADMIN" && targetUser.email === "admin@cse.cu.ac.bd") {
+      res.status(400).json({ error: "Cannot delete the default department administrator account." });
+      return;
+    }
+
+    // Delete associated mappings (organizer, match scorers, team memberships)
+    await prisma.tournamentOrganizer.deleteMany({ where: { userId: id } });
+    await prisma.matchScorer.deleteMany({ where: { userId: id } });
+    await prisma.teamMember.deleteMany({ where: { userId: id } });
+    await prisma.matchSquad.deleteMany({ where: { userId: id } });
+
+    await prisma.user.delete({
+      where: { id }
+    });
+
+    res.json({ message: `User ${targetUser.name} (Roll: ${targetUser.studentId}) deleted successfully.` });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || "Failed to delete user" });
+  }
+});
+
 export default usersRouter;
+

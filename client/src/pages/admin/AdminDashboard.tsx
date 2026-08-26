@@ -16,6 +16,7 @@ import {
   X, 
   UserCheck,
   RefreshCw,
+  Trash2,
   Loader2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -29,15 +30,16 @@ export const AdminDashboard: React.FC = () => {
   const [alertMessage, setAlertMessage] = useState<string | null>(null);
   const [loadingData, setLoadingData] = useState(true);
 
-  // 1. Batches State
+  // 1. Batches State & Search
   const [batches, setBatches] = useState<BatchItem[]>([]);
+  const [batchSearchQuery, setBatchSearchQuery] = useState("");
   const [showCreateBatchModal, setShowCreateBatchModal] = useState(false);
   const [newBatchName, setNewBatchName] = useState("");
   const [newBatchSession, setNewBatchSession] = useState("");
   const [newBatchNumber, setNewBatchNumber] = useState("");
   const [newBatchSlogan, setNewBatchSlogan] = useState("");
 
-  // 2. Players State
+  // 2. Players State & Search
   const [players, setPlayers] = useState<UserItem[]>([]);
   const [playerSearchQuery, setPlayerSearchQuery] = useState("");
   const [playerBatchFilter, setPlayerBatchFilter] = useState<string>("ALL");
@@ -51,8 +53,10 @@ export const AdminDashboard: React.FC = () => {
   const [newPlayerRole, setNewPlayerRole] = useState("🏏 Top-Order Bat");
   const [newPlayerPosition, setNewPlayerPosition] = useState("⚽ Forward");
 
-  // 3. Tournaments State
+  // 3. Tournaments State & Search
   const [tournaments, setTournaments] = useState<TournamentItem[]>([]);
+  const [tournamentSearchQuery, setTournamentSearchQuery] = useState("");
+  const [tournamentSportFilter, setTournamentSportFilter] = useState<string>("ALL");
   const [showCreateTournamentModal, setShowCreateTournamentModal] = useState(false);
   const [showAssignOrganizerModal, setShowAssignOrganizerModal] = useState(false);
   const [selectedTournamentForOrg, setSelectedTournamentForOrg] = useState<number | null>(null);
@@ -60,7 +64,10 @@ export const AdminDashboard: React.FC = () => {
   const [newTournamentName, setNewTournamentName] = useState("");
   const [newTournamentSport, setNewTournamentSport] = useState<"CRICKET" | "FOOTBALL">("CRICKET");
   const [newTournamentSeason, setNewTournamentSeason] = useState("2026");
-  const [newTournamentRules, setNewTournamentRules] = useState("10 overs per side, 2 overs max per bowler");
+  const [newTournamentOvers, setNewTournamentOvers] = useState("10");
+  const [newTournamentBowlerMax, setNewTournamentBowlerMax] = useState("2");
+  const [newTournamentFormatText, setNewTournamentFormatText] = useState("7-a-side Futsal");
+  const [newTournamentHalfMins, setNewTournamentHalfMins] = useState("20");
 
   // 4. Audit Logs State
   const [auditLogs, setAuditLogs] = useState<{ id: number; time: string; action: string; user: string }[]>([
@@ -98,7 +105,7 @@ export const AdminDashboard: React.FC = () => {
       if (fetchedUsers.length > 0) {
         setSelectedUserForOrg(fetchedUsers[0].id);
       }
-    } catch (err: any) {
+    } catch {
       triggerNotification("Failed to load some dashboard data. Is the server running?");
     } finally {
       setLoadingData(false);
@@ -109,7 +116,7 @@ export const AdminDashboard: React.FC = () => {
     loadAllData();
   }, []);
 
-  // 1. Handle Batch Creation
+  // 1. Batch Operations
   const handleCreateBatch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newBatchName || !newBatchSession) return;
@@ -133,7 +140,18 @@ export const AdminDashboard: React.FC = () => {
     }
   };
 
-  // 2. Handle Player Creation
+  const handleDeleteBatch = async (id: number, name: string) => {
+    if (!confirm(`Are you sure you want to delete ${name}? Associated users will be unassigned.`)) return;
+    try {
+      await api.batches.delete(id);
+      setBatches(prev => prev.filter(b => b.id !== id));
+      triggerNotification(`Batch "${name}" deleted.`);
+    } catch (err: any) {
+      alert(err.message || "Failed to delete batch.");
+    }
+  };
+
+  // 2. Player Operations
   const handleAddPlayer = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newPlayerRoll || !newPlayerName) return;
@@ -158,7 +176,17 @@ export const AdminDashboard: React.FC = () => {
     }
   };
 
-  // 2.2 Handle Reset Temp Password
+  const handleDeletePlayer = async (id: number, name: string, roll: string) => {
+    if (!confirm(`Are you sure you want to delete player ${name} (Roll: ${roll})?`)) return;
+    try {
+      await api.users.delete(id);
+      setPlayers(prev => prev.filter(p => p.id !== id));
+      triggerNotification(`Deleted player ${name} (Roll: ${roll}).`);
+    } catch (err: any) {
+      alert(err.message || "Failed to delete player.");
+    }
+  };
+
   const handleResetTempPass = async (player: UserItem) => {
     try {
       const res = await api.users.resetTempPass(player.id);
@@ -169,7 +197,6 @@ export const AdminDashboard: React.FC = () => {
     }
   };
 
-  // 2.3 Handle Bulk CSV Import
   const handleBulkCsvImport = async () => {
     try {
       const lines = csvContent.trim().split("\n");
@@ -205,16 +232,34 @@ export const AdminDashboard: React.FC = () => {
     }
   };
 
-  // 3. Handle Tournament Creation
+  // 3. Tournament Operations
   const handleCreateTournament = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTournamentName) return;
     try {
+      let rulesObj: any = {};
+      if (newTournamentSport === "CRICKET") {
+        rulesObj = {
+          overs: parseInt(newTournamentOvers) || 10,
+          maxPerBowler: parseInt(newTournamentBowlerMax) || 2,
+          powerplay: Math.max(1, Math.floor((parseInt(newTournamentOvers) || 10) / 4)),
+          pointsWin: 2,
+          pointsTie: 1,
+        };
+      } else {
+        rulesObj = {
+          format: newTournamentFormatText || "7-a-side",
+          halfMinutes: parseInt(newTournamentHalfMins) || 20,
+          pointsWin: 3,
+          pointsDraw: 1,
+        };
+      }
+
       const created = await api.tournaments.create({
         name: newTournamentName,
         sport: newTournamentSport,
         season: newTournamentSeason,
-        rules: { description: newTournamentRules },
+        rules: rulesObj,
       });
       setTournaments(prev => [created, ...prev]);
       setShowCreateTournamentModal(false);
@@ -225,7 +270,22 @@ export const AdminDashboard: React.FC = () => {
     }
   };
 
-  // 3.2 Handle Assign Organizer
+  const handleDeleteTournament = async (id: number, name: string) => {
+    if (!confirm(`Are you sure you want to delete tournament "${name}" and all its fixtures?`)) return;
+    try {
+      await api.tournaments.delete(id);
+      setTournaments(prev => prev.filter(t => t.id !== id));
+      triggerNotification(`Tournament "${name}" deleted.`);
+    } catch (err: any) {
+      alert(err.message || "Failed to delete tournament.");
+    }
+  };
+
+  const handleOpenAssignModalForTournament = (tournamentId: number) => {
+    setSelectedTournamentForOrg(tournamentId);
+    setShowAssignOrganizerModal(true);
+  };
+
   const handleAssignOrganizer = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedTournamentForOrg || !selectedUserForOrg) return;
@@ -239,7 +299,6 @@ export const AdminDashboard: React.FC = () => {
     }
   };
 
-  // 3.3 Handle Remove Organizer
   const handleRemoveOrganizer = async (tournamentId: number, userId: number, userName: string) => {
     if (!confirm(`Are you sure you want to remove ${userName} as an organizer?`)) return;
     try {
@@ -251,7 +310,75 @@ export const AdminDashboard: React.FC = () => {
     }
   };
 
-  // Filter players by query and batch
+  // Human-readable Format & Specifications Pill Renderer
+  const renderRulesPills = (rules: any, sport: "CRICKET" | "FOOTBALL") => {
+    if (!rules) {
+      return (
+        <span className="text-xs text-[#7C6E63] italic">Standard Department Rules</span>
+      );
+    }
+
+    let parsed = rules;
+    if (typeof rules === "string") {
+      try {
+        parsed = JSON.parse(rules);
+      } catch {
+        return <span className="text-xs font-medium text-[#2C221E]">{rules}</span>;
+      }
+    }
+
+    if (sport === "CRICKET") {
+      const overs = parsed.overs ?? 10;
+      const maxBowler = parsed.maxPerBowler ?? 2;
+      const powerplay = parsed.powerplay ?? 2;
+      const pointsWin = parsed.pointsWin ?? 2;
+      const pointsTie = parsed.pointsTie ?? 1;
+
+      return (
+        <div className="flex flex-wrap gap-1.5 pt-1">
+          <span className="px-2.5 py-1 rounded-lg bg-white border border-[#E5DACB] text-[11px] font-bold text-[#842021]">
+            🏏 {overs} Overs / Side
+          </span>
+          <span className="px-2.5 py-1 rounded-lg bg-white border border-[#E5DACB] text-[11px] font-bold text-[#6B5E53]">
+            🎯 Max {maxBowler} ov/bowler
+          </span>
+          <span className="px-2.5 py-1 rounded-lg bg-white border border-[#E5DACB] text-[11px] font-bold text-[#6B5E53]">
+            ⚡ {powerplay} Ov Powerplay
+          </span>
+          <span className="px-2.5 py-1 rounded-lg bg-[#FAF0E6] border border-[#E8D6C3] text-[11px] font-extrabold text-[#9E2A2B]">
+            🏆 Win: {pointsWin} pts · Tie: {pointsTie} pt
+          </span>
+        </div>
+      );
+    } else {
+      const halfMins = parsed.halfMinutes ?? 20;
+      const format = parsed.format ?? "7-a-side";
+      const pointsWin = parsed.pointsWin ?? 3;
+      const pointsDraw = parsed.pointsDraw ?? 1;
+
+      return (
+        <div className="flex flex-wrap gap-1.5 pt-1">
+          <span className="px-2.5 py-1 rounded-lg bg-white border border-[#E5DACB] text-[11px] font-bold text-[#842021]">
+            ⏱️ {halfMins} Min Halves
+          </span>
+          <span className="px-2.5 py-1 rounded-lg bg-white border border-[#E5DACB] text-[11px] font-bold text-[#6B5E53]">
+            👥 {format} Format
+          </span>
+          <span className="px-2.5 py-1 rounded-lg bg-[#FAF0E6] border border-[#E8D6C3] text-[11px] font-extrabold text-[#9E2A2B]">
+            🏆 Win: {pointsWin} pts · Draw: {pointsDraw} pt
+          </span>
+        </div>
+      );
+    }
+  };
+
+  // Filtered lists
+  const filteredBatches = batches.filter(b => 
+    b.name.toLowerCase().includes(batchSearchQuery.toLowerCase()) ||
+    b.session.toLowerCase().includes(batchSearchQuery.toLowerCase()) ||
+    (b.slogan && b.slogan.toLowerCase().includes(batchSearchQuery.toLowerCase()))
+  );
+
   const filteredPlayers = players.filter(p => {
     const matchesSearch = 
       p.name.toLowerCase().includes(playerSearchQuery.toLowerCase()) ||
@@ -259,6 +386,14 @@ export const AdminDashboard: React.FC = () => {
       p.email.toLowerCase().includes(playerSearchQuery.toLowerCase());
     const matchesBatch = playerBatchFilter === "ALL" || p.batchId?.toString() === playerBatchFilter;
     return matchesSearch && matchesBatch;
+  });
+
+  const filteredTournaments = tournaments.filter(t => {
+    const matchesSearch = 
+      t.name.toLowerCase().includes(tournamentSearchQuery.toLowerCase()) ||
+      t.season.toLowerCase().includes(tournamentSearchQuery.toLowerCase());
+    const matchesSport = tournamentSportFilter === "ALL" || t.sport === tournamentSportFilter;
+    return matchesSearch && matchesSport;
   });
 
   return (
@@ -357,7 +492,7 @@ export const AdminDashboard: React.FC = () => {
 
           <div className="bg-white p-5 rounded-3xl border border-[#E5DACB] shadow-xs">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-bold text-[#7C6E63] uppercase">Status</span>
+              <span className="text-xs font-bold text-[#7C6E63] uppercase">Database</span>
               <Activity className="w-4 h-4 text-[#9E2A2B]" />
             </div>
             <p className="text-2xl font-black text-[#2A7B54]">Online</p>
@@ -441,29 +576,62 @@ export const AdminDashboard: React.FC = () => {
               </Button>
             </div>
 
+            {/* Batch Search Filter */}
+            <div className="bg-white p-3 rounded-2xl border border-[#E5DACB] flex items-center gap-3">
+              <Search className="w-4 h-4 text-[#7C6E63] ml-2" />
+              <input
+                type="text"
+                placeholder="Search batches by Name, Session, or Slogan..."
+                value={batchSearchQuery}
+                onChange={(e) => setBatchSearchQuery(e.target.value)}
+                className="w-full bg-transparent text-xs text-[#2C221E] focus:outline-none"
+              />
+              {batchSearchQuery && (
+                <button onClick={() => setBatchSearchQuery("")} className="text-xs text-[#7C6E63] mr-2">
+                  Clear
+                </button>
+              )}
+            </div>
+
+            {/* Batch Cards Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {batches.map((b) => (
-                <div key={b.id} className="bg-white p-5 rounded-3xl border border-[#E5DACB] shadow-xs flex flex-col justify-between space-y-4">
-                  <div>
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="w-10 h-10 rounded-xl bg-[#FAF0E6] text-[#9E2A2B] font-black text-sm flex items-center justify-center border border-[#E8D6C3]">
-                        B{b.batchNumber}
+              {filteredBatches.length === 0 ? (
+                <div className="col-span-full py-8 text-center text-xs text-[#7C6E63]">
+                  No batches found matching "{batchSearchQuery}".
+                </div>
+              ) : (
+                filteredBatches.map((b) => (
+                  <div key={b.id} className="bg-white p-5 rounded-3xl border border-[#E5DACB] shadow-xs flex flex-col justify-between space-y-4 relative group">
+                    <div>
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="w-10 h-10 rounded-xl bg-[#FAF0E6] text-[#9E2A2B] font-black text-sm flex items-center justify-center border border-[#E8D6C3]">
+                          B{b.batchNumber}
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[10px] font-bold text-[#7C6E63] bg-[#FAF7F2] px-2 py-0.5 rounded-md border border-[#E8DCCF]">
+                            Session: {b.session}
+                          </span>
+                          <button
+                            onClick={() => handleDeleteBatch(b.id, b.name)}
+                            title="Delete batch"
+                            className="p-1 text-[#7C6E63] hover:text-[#C92A2A] hover:bg-[#FFF5F5] rounded-md transition-colors"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </div>
-                      <span className="text-[10px] font-bold text-[#7C6E63] bg-[#FAF7F2] px-2 py-0.5 rounded-md border border-[#E8DCCF]">
-                        Session: {b.session}
-                      </span>
+
+                      <h4 className="font-extrabold text-base text-[#2C221E]">{b.name}</h4>
+                      <p className="text-xs text-[#9E2A2B] font-semibold">{b.slogan || "Red Brick Champions"}</p>
                     </div>
 
-                    <h4 className="font-extrabold text-base text-[#2C221E]">{b.name}</h4>
-                    <p className="text-xs text-[#9E2A2B] font-semibold">{b.slogan || "Red Brick Champions"}</p>
+                    <div className="pt-3 border-t border-[#EFE8DC] flex items-center justify-between text-xs text-[#6B5E53]">
+                      <span>👥 {b.studentsCount} Students</span>
+                      <span className="font-semibold text-[#842021]">🏆 {b.teamsCount} Teams</span>
+                    </div>
                   </div>
-
-                  <div className="pt-3 border-t border-[#EFE8DC] flex items-center justify-between text-xs text-[#6B5E53]">
-                    <span>👥 {b.studentsCount} Students</span>
-                    <span className="font-semibold text-[#842021]">🏆 {b.teamsCount} Teams</span>
-                  </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </div>
         )}
@@ -591,13 +759,23 @@ export const AdminDashboard: React.FC = () => {
                             )}
                           </td>
                           <td className="py-3.5 px-4 text-right">
-                            <button
-                              onClick={() => handleResetTempPass(player)}
-                              className="inline-flex items-center gap-1 text-[11px] font-bold text-[#9E2A2B] hover:text-[#842021] bg-[#FAF0E6] hover:bg-[#F5E0D0] px-2.5 py-1 rounded-lg border border-[#E8D6C3] transition-colors"
-                            >
-                              <RefreshCw className="w-3 h-3" />
-                              <span>Reset Pass</span>
-                            </button>
+                            <div className="flex items-center justify-end gap-1.5">
+                              <button
+                                onClick={() => handleResetTempPass(player)}
+                                className="inline-flex items-center gap-1 text-[11px] font-bold text-[#9E2A2B] hover:text-[#842021] bg-[#FAF0E6] hover:bg-[#F5E0D0] px-2.5 py-1 rounded-lg border border-[#E8D6C3] transition-colors"
+                              >
+                                <RefreshCw className="w-3 h-3" />
+                                <span>Reset Pass</span>
+                              </button>
+
+                              <button
+                                onClick={() => handleDeletePlayer(player.id, player.name, player.studentId)}
+                                title="Delete player"
+                                className="p-1.5 text-[#7C6E63] hover:text-[#C92A2A] hover:bg-[#FFF5F5] rounded-lg transition-colors"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ))
@@ -638,53 +816,112 @@ export const AdminDashboard: React.FC = () => {
               </div>
             </div>
 
+            {/* Tournament Search & Sport Filter */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="sm:col-span-2 bg-white p-3 rounded-2xl border border-[#E5DACB] flex items-center gap-3">
+                <Search className="w-4 h-4 text-[#7C6E63] ml-2" />
+                <input
+                  type="text"
+                  placeholder="Search tournaments by Title or Season..."
+                  value={tournamentSearchQuery}
+                  onChange={(e) => setTournamentSearchQuery(e.target.value)}
+                  className="w-full bg-transparent text-xs text-[#2C221E] focus:outline-none"
+                />
+                {tournamentSearchQuery && (
+                  <button onClick={() => setTournamentSearchQuery("")} className="text-xs text-[#7C6E63] mr-2">
+                    Clear
+                  </button>
+                )}
+              </div>
+
+              <div className="bg-white p-2.5 rounded-2xl border border-[#E5DACB] flex items-center">
+                <select
+                  value={tournamentSportFilter}
+                  onChange={(e) => setTournamentSportFilter(e.target.value)}
+                  className="w-full bg-transparent text-xs font-semibold text-[#2C221E] focus:outline-none cursor-pointer"
+                >
+                  <option value="ALL">All Sports ({tournaments.length})</option>
+                  <option value="CRICKET">🏏 Cricket Only</option>
+                  <option value="FOOTBALL">⚽ Football Only</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Tournament Cards Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {tournaments.map((t) => (
-                <div key={t.id} className="bg-white p-6 rounded-3xl border border-[#E5DACB] shadow-xs space-y-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-[#FAF0E6] text-[#842021] border border-[#E8D6C3]">
-                      {t.sport === "CRICKET" ? "🏏 Cricket" : "⚽ Football"}
-                    </span>
-                    <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-[#9E2A2B] text-white">
-                      {t.status}
-                    </span>
-                  </div>
-
-                  <div>
-                    <h4 className="text-lg font-black text-[#2C221E]">{t.name}</h4>
-                    <p className="text-xs text-[#7C6E63] mt-0.5">Season: {t.season} · {t.teamsCount} Teams registered</p>
-                  </div>
-
-                  <div className="p-3 bg-[#FAF7F2] rounded-2xl border border-[#E8DCCF] text-xs space-y-1">
-                    <p className="font-bold text-[#7C6E63] text-[10px] uppercase">Format & Specifications</p>
-                    <p className="text-[#2C221E] font-medium">
-                      {typeof t.rules === "object" ? JSON.stringify(t.rules) : (t.rules || "Standard CSE Tournament Rules")}
-                    </p>
-                  </div>
-
-                  <div className="pt-3 border-t border-[#EFE8DC] space-y-2">
-                    <p className="text-[11px] font-bold text-[#7C6E63] uppercase">Assigned Tournament Organizers:</p>
-                    {t.organizers.length === 0 ? (
-                      <p className="text-xs text-[#7C6E63] italic">No student organizers assigned yet.</p>
-                    ) : (
-                      <div className="flex flex-wrap gap-2">
-                        {t.organizers.map((org) => (
-                          <span key={org.id} className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-lg bg-[#FAF0E6] text-[#842021] border border-[#E8D6C3]">
-                            <span>👤 {org.name} ({org.roll})</span>
-                            <button
-                              onClick={() => handleRemoveOrganizer(t.id, org.id, org.name)}
-                              title="Remove organizer"
-                              className="text-[#9E2A2B] hover:text-[#6F1819]"
-                            >
-                              <X className="w-3.5 h-3.5" />
-                            </button>
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+              {filteredTournaments.length === 0 ? (
+                <div className="col-span-full py-8 text-center text-xs text-[#7C6E63]">
+                  No tournaments found matching "{tournamentSearchQuery}".
                 </div>
-              ))}
+              ) : (
+                filteredTournaments.map((t) => (
+                  <div key={t.id} className="bg-white p-6 rounded-3xl border border-[#E5DACB] shadow-xs space-y-4 relative flex flex-col justify-between">
+                    <div className="space-y-3.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-[#FAF0E6] text-[#842021] border border-[#E8D6C3]">
+                          {t.sport === "CRICKET" ? "🏏 Cricket League" : "⚽ Football Cup"}
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-[#9E2A2B] text-white">
+                            {t.status}
+                          </span>
+                          <button
+                            onClick={() => handleDeleteTournament(t.id, t.name)}
+                            title="Delete tournament"
+                            className="p-1 text-[#7C6E63] hover:text-[#C92A2A] hover:bg-[#FFF5F5] rounded-md transition-colors"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+
+                      <div>
+                        <h4 className="text-lg font-black text-[#2C221E]">{t.name}</h4>
+                        <p className="text-xs text-[#7C6E63] mt-0.5">Season: {t.season} · {t.teamsCount} Teams registered</p>
+                      </div>
+
+                      {/* Formatted Format & Specifications */}
+                      <div className="p-3.5 bg-[#FAF7F2] rounded-2xl border border-[#E8DCCF] text-xs space-y-1.5">
+                        <p className="font-bold text-[#7C6E63] text-[10px] uppercase tracking-wider">Format & Specifications</p>
+                        {renderRulesPills(t.rules, t.sport)}
+                      </div>
+                    </div>
+
+                    {/* Assigned Organizers with + Add Organizer button on card */}
+                    <div className="pt-3.5 border-t border-[#EFE8DC] space-y-2.5">
+                      <div className="flex items-center justify-between">
+                        <p className="text-[11px] font-bold text-[#7C6E63] uppercase">Tournament Organizers ({t.organizers.length}):</p>
+                        <button
+                          onClick={() => handleOpenAssignModalForTournament(t.id)}
+                          className="inline-flex items-center gap-1 text-[11px] font-bold text-[#9E2A2B] hover:text-[#842021] bg-[#FAF0E6] hover:bg-[#F5E0D0] px-2.5 py-1 rounded-lg border border-[#E8D6C3] transition-colors"
+                        >
+                          <Plus className="w-3 h-3" />
+                          <span>Add Organizer</span>
+                        </button>
+                      </div>
+
+                      {t.organizers.length === 0 ? (
+                        <p className="text-xs text-[#7C6E63] italic">No student organizers assigned yet. Click "Add Organizer" above.</p>
+                      ) : (
+                        <div className="flex flex-wrap gap-1.5">
+                          {t.organizers.map((org) => (
+                            <span key={org.id} className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-lg bg-[#FAF0E6] text-[#842021] border border-[#E8D6C3]">
+                              <span>👤 {org.name} ({org.roll})</span>
+                              <button
+                                onClick={() => handleRemoveOrganizer(t.id, org.id, org.name)}
+                                title="Remove organizer"
+                                className="text-[#9E2A2B] hover:text-[#6F1819] p-0.5 hover:bg-[#F5E0D0] rounded"
+                              >
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         )}
@@ -967,8 +1204,8 @@ export const AdminDashboard: React.FC = () => {
                   onChange={(e) => setNewTournamentSport(e.target.value as "CRICKET" | "FOOTBALL")}
                   className="w-full px-3.5 py-2.5 rounded-xl border border-[#D8C7B3] bg-[#FAF7F2] text-[#2C221E] focus:outline-none focus:ring-2 focus:ring-[#9E2A2B]"
                 >
-                  <option value="CRICKET">🏏 Cricket (T10 / T20)</option>
-                  <option value="FOOTBALL">⚽ Football (Futsal / Full)</option>
+                  <option value="CRICKET">🏏 Cricket League</option>
+                  <option value="FOOTBALL">⚽ Football / Futsal Cup</option>
                 </select>
               </div>
 
@@ -982,15 +1219,54 @@ export const AdminDashboard: React.FC = () => {
                 />
               </div>
 
-              <div>
-                <label className="block font-bold text-[#4A3E35] mb-1">Rules & Custom Specifications</label>
-                <textarea
-                  rows={2}
-                  value={newTournamentRules}
-                  onChange={(e) => setNewTournamentRules(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-xl border border-[#D8C7B3] bg-[#FAF7F2] text-[#2C221E] focus:outline-none focus:ring-2 focus:ring-[#9E2A2B]"
-                />
-              </div>
+              {/* Dynamic Rule Specification Inputs */}
+              {newTournamentSport === "CRICKET" ? (
+                <div className="grid grid-cols-2 gap-2 p-3 bg-[#FAF7F2] rounded-xl border border-[#E8DCCF]">
+                  <div>
+                    <label className="block font-bold text-[#4A3E35] mb-1">Overs Per Innings</label>
+                    <input
+                      type="number"
+                      value={newTournamentOvers}
+                      onChange={(e) => setNewTournamentOvers(e.target.value)}
+                      placeholder="10"
+                      className="w-full px-3 py-2 rounded-lg border border-[#D8C7B3] bg-white text-[#2C221E]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-bold text-[#4A3E35] mb-1">Max Overs / Bowler</label>
+                    <input
+                      type="number"
+                      value={newTournamentBowlerMax}
+                      onChange={(e) => setNewTournamentBowlerMax(e.target.value)}
+                      placeholder="2"
+                      className="w-full px-3 py-2 rounded-lg border border-[#D8C7B3] bg-white text-[#2C221E]"
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-2 p-3 bg-[#FAF7F2] rounded-xl border border-[#E8DCCF]">
+                  <div>
+                    <label className="block font-bold text-[#4A3E35] mb-1">Half Duration (Mins)</label>
+                    <input
+                      type="number"
+                      value={newTournamentHalfMins}
+                      onChange={(e) => setNewTournamentHalfMins(e.target.value)}
+                      placeholder="20"
+                      className="w-full px-3 py-2 rounded-lg border border-[#D8C7B3] bg-white text-[#2C221E]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-bold text-[#4A3E35] mb-1">Squad Format</label>
+                    <input
+                      type="text"
+                      value={newTournamentFormatText}
+                      onChange={(e) => setNewTournamentFormatText(e.target.value)}
+                      placeholder="7-a-side"
+                      className="w-full px-3 py-2 rounded-lg border border-[#D8C7B3] bg-white text-[#2C221E]"
+                    />
+                  </div>
+                </div>
+              )}
 
               <div className="pt-2 flex gap-2">
                 <Button type="button" variant="outline" onClick={() => setShowCreateTournamentModal(false)} className="w-1/2 rounded-xl text-xs">

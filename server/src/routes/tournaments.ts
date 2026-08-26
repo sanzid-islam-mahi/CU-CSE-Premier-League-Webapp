@@ -276,4 +276,59 @@ tournamentsRouter.delete("/:id/organizers/:userId", requireAuth, requireAdmin, a
   }
 });
 
+// DELETE Tournament (Admin Only)
+tournamentsRouter.delete("/:id", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+
+    const tournament = await prisma.tournament.findUnique({ where: { id } });
+    if (!tournament) {
+      res.status(404).json({ error: "Tournament not found" });
+      return;
+    }
+
+    // Cascade delete relations: organizers, groups, matches, teams
+    await prisma.tournamentOrganizer.deleteMany({ where: { tournamentId: id } });
+    await prisma.matchScorer.deleteMany({
+      where: { match: { tournamentId: id } }
+    });
+    await prisma.matchSquad.deleteMany({
+      where: { match: { tournamentId: id } }
+    });
+    await prisma.cricketBall.deleteMany({
+      where: { innings: { match: { tournamentId: id } } }
+    });
+    await prisma.cricketBattingScorecard.deleteMany({
+      where: { innings: { match: { tournamentId: id } } }
+    });
+    await prisma.cricketBowlingScorecard.deleteMany({
+      where: { innings: { match: { tournamentId: id } } }
+    });
+    await prisma.cricketInnings.deleteMany({
+      where: { match: { tournamentId: id } }
+    });
+    await prisma.footballMatchEvent.deleteMany({
+      where: { match: { tournamentId: id } }
+    });
+    await prisma.footballMatchDetail.deleteMany({
+      where: { match: { tournamentId: id } }
+    });
+    await prisma.match.deleteMany({ where: { tournamentId: id } });
+    await prisma.teamMember.deleteMany({
+      where: { team: { tournamentId: id } }
+    });
+    await prisma.team.deleteMany({ where: { tournamentId: id } });
+    await prisma.tournamentGroup.deleteMany({ where: { tournamentId: id } });
+
+    await prisma.tournament.delete({
+      where: { id }
+    });
+
+    res.json({ message: `Tournament "${tournament.name}" deleted successfully.` });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || "Failed to delete tournament" });
+  }
+});
+
 export default tournamentsRouter;
+

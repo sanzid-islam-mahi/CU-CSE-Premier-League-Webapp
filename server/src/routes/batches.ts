@@ -170,4 +170,31 @@ batchesRouter.put("/:id", requireAuth, requireAdmin, async (req, res) => {
   }
 });
 
+// DELETE Batch (Admin Only)
+batchesRouter.delete("/:id", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+
+    // Disassociate users from this batch so users are not orphaned/errored
+    await prisma.user.updateMany({
+      where: { batchId: id },
+      data: { batchId: null },
+    });
+
+    // Delete teams tied to batch
+    await prisma.team.deleteMany({
+      where: { batchId: id }
+    });
+
+    await prisma.batch.delete({
+      where: { id }
+    });
+
+    res.json({ message: "Batch deleted successfully." });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || "Failed to delete batch" });
+  }
+});
+
 export default batchesRouter;
+
