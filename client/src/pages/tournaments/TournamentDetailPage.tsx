@@ -251,13 +251,13 @@ export const TournamentDetailPage: React.FC = () => {
                     alt={tournament.name}
                     fallbackText={tournament.name}
                     size="2xl"
-                    shape="rounded"
-                    className="shadow-md ring-2 ring-[#9E2A2B]/20"
+                    shape="circle"
+                    className="shadow-md ring-4 ring-white"
                   />
                   {isOrganizer && (
                     <button
                       onClick={() => setShowLogoModal(true)}
-                      className="absolute inset-0 bg-black/60 rounded-2xl flex items-center justify-center text-white opacity-0 group-hover/logo:opacity-100 transition-opacity"
+                      className="absolute inset-0 bg-black/60 rounded-full flex items-center justify-center text-white opacity-0 group-hover/logo:opacity-100 transition-opacity"
                       title="Update Tournament Logo"
                     >
                       <Upload className="w-5 h-5 text-white" />

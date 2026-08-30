@@ -51,7 +51,7 @@ export const SmartAvatar: React.FC<SmartAvatarProps> = ({
   const showImage = Boolean(src) && !hasError;
 
   return (
-    <div className={`relative inline-block shrink-0 ${className}`}>
+    <div className={`relative inline-block shrink-0 ${shapeClasses[shape]} ${className}`}>
       {showImage ? (
         <img
           src={src!}

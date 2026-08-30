@@ -16,26 +16,29 @@ export const TournamentCard: React.FC<TournamentCardProps> = ({ tournament }) =>
     <div className="bg-white rounded-3xl border-2 border-[#E5DACB] hover:border-[#9E2A2B] shadow-xs hover:shadow-xl transition-all duration-300 overflow-hidden flex flex-col group">
       
       {/* TOP PART: HERO BANNER & STATUS */}
-      <div className="relative h-40 sm:h-44 w-full bg-[#FAF0E6] overflow-hidden">
-        {tournament.bannerUrl ? (
-          <img
-            src={tournament.bannerUrl}
-            alt={tournament.name}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-          />
-        ) : (
-          <div className="w-full h-full bg-linear-to-br from-[#9E2A2B] via-[#842021] to-[#2C221E] flex items-center justify-center relative">
-            <div className="absolute inset-0 opacity-15 flex items-center justify-center text-7xl select-none">
-              {isCricket ? "🏏" : "⚽"}
+      <div className="relative h-40 sm:h-44 w-full bg-[#FAF0E6]">
+        {/* Banner image with internal overflow-hidden for zoom effect */}
+        <div className="w-full h-full overflow-hidden relative">
+          {tournament.bannerUrl ? (
+            <img
+              src={tournament.bannerUrl}
+              alt={tournament.name}
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            />
+          ) : (
+            <div className="w-full h-full bg-linear-to-br from-[#9E2A2B] via-[#842021] to-[#2C221E] flex items-center justify-center relative">
+              <div className="absolute inset-0 opacity-15 flex items-center justify-center text-7xl select-none">
+                {isCricket ? "🏏" : "⚽"}
+              </div>
+              <div className="relative text-center text-white/50 text-xs font-bold uppercase tracking-wider">
+                {isCricket ? "Cricket Championship Arena" : "Football League Arena"}
+              </div>
             </div>
-            <div className="relative text-center text-white/50 text-xs font-bold uppercase tracking-wider">
-              {isCricket ? "Cricket Championship Arena" : "Football League Arena"}
-            </div>
-          </div>
-        )}
+          )}
 
-        {/* Ambient Dark Gradient */}
-        <div className="absolute inset-0 bg-linear-to-t from-black/80 via-black/25 to-transparent" />
+          {/* Ambient Dark Gradient */}
+          <div className="absolute inset-0 bg-linear-to-t from-black/80 via-black/25 to-transparent" />
+        </div>
 
         {/* Top Badges (Sport & Status) */}
         <div className="absolute top-3.5 left-3.5 right-3.5 flex items-center justify-between z-10">
@@ -62,21 +65,21 @@ export const TournamentCard: React.FC<TournamentCardProps> = ({ tournament }) =>
           </div>
         </div>
 
-        {/* Floating Tournament Crest Logo */}
-        <div className="absolute -bottom-4 left-5 z-20">
+        {/* Floating Tournament Crest Logo - Unclipped, fully circular overlapping seam */}
+        <div className="absolute -bottom-6 left-5 z-20">
           <SmartAvatar
             src={tournament.logoUrl}
             alt={tournament.name}
             fallbackText={tournament.name}
             size="lg"
-            shape="rounded"
+            shape="circle"
             className="ring-4 ring-white shadow-xl bg-white"
           />
         </div>
       </div>
 
       {/* BOTTOM PART: METADATA & SPECS */}
-      <div className="p-5 pt-7 space-y-4 bg-white flex flex-col justify-between flex-1">
+      <div className="p-5 pt-8 space-y-4 bg-white flex flex-col justify-between flex-1">
         
         <div className="space-y-2.5">
           <div>
