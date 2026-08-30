@@ -57,13 +57,15 @@ export const MediaGalleryView: React.FC<MediaGalleryViewProps> = ({
 }) => {
   const [mediaList, setMediaList] = useState<MediaItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedCategory, setSelectedCategory] = useState<string>(defaultCategory || "ALL");
+  const [selectedCategory, setSelectedCategory] = useState<string>("ALL");
   const [lightboxItem, setLightboxItem] = useState<MediaItem | null>(null);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [uploadedUrl, setUploadedUrl] = useState<string | null>(null);
   const [captionInput, setCaptionInput] = useState("");
   const [titleInput, setTitleInput] = useState("");
-  const [categoryInput, setCategoryInput] = useState<string>(defaultCategory || "TOURNAMENT_GALLERY");
+  const [categoryInput, setCategoryInput] = useState<string>(
+    defaultCategory && defaultCategory !== "ALL" ? defaultCategory : "MATCH_PHOTO"
+  );
   const [actionLoading, setActionLoading] = useState(false);
 
   const currentUser = api.auth.getCurrentUser();
@@ -132,6 +134,18 @@ export const MediaGalleryView: React.FC<MediaGalleryViewProps> = ({
 
   const filteredList = mediaList.filter(m => {
     if (selectedCategory === "ALL") return true;
+    if (selectedCategory === "PLAYER_AVATAR") {
+      return m.category === "PLAYER_AVATAR" || m.category === "PLAYER_COVER";
+    }
+    if (selectedCategory === "BATCH_GALLERY") {
+      return m.category === "BATCH_GALLERY" || m.category === "BATCH_BANNER" || m.category === "BATCH_AVATAR";
+    }
+    if (selectedCategory === "TEAM_BANNER") {
+      return m.category === "TEAM_BANNER" || m.category === "TEAM_LOGO";
+    }
+    if (selectedCategory === "TOURNAMENT_GALLERY") {
+      return m.category === "TOURNAMENT_GALLERY" || m.category === "TOURNAMENT_BANNER" || m.category === "TOURNAMENT_LOGO";
+    }
     return m.category === selectedCategory;
   });
 
@@ -141,6 +155,7 @@ export const MediaGalleryView: React.FC<MediaGalleryViewProps> = ({
     { id: "AWARD_CEREMONY", label: "🏆 Trophies & Awards" },
     { id: "BATCH_GALLERY", label: "📸 Batch Moments" },
     { id: "TEAM_BANNER", label: "👕 Squad Photos" },
+    { id: "PLAYER_AVATAR", label: "🏃 Athlete Moments" },
     { id: "SPONSOR_LOGO", label: "🤝 Sponsors & Partners" },
   ];
 
@@ -389,6 +404,7 @@ export const MediaGalleryView: React.FC<MediaGalleryViewProps> = ({
                   <option value="AWARD_CEREMONY">🏆 Trophies & Awards Ceremony</option>
                   <option value="BATCH_GALLERY">📸 Batch Moments & Class Photo</option>
                   <option value="TEAM_BANNER">👕 Team Squad Photo</option>
+                  <option value="PLAYER_AVATAR">🏃 Athlete Action & Personal Moments</option>
                   <option value="SPONSOR_LOGO">🤝 Sponsor & Partner Logo</option>
                   <option value="TOURNAMENT_GALLERY">✨ General Tournament Highlight</option>
                 </select>

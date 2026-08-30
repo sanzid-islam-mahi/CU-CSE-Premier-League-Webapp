@@ -213,27 +213,33 @@ export const TournamentDetailPage: React.FC = () => {
         <div className="bg-white rounded-3xl border-2 border-[#E5DACB] shadow-sm overflow-hidden relative">
           
           {/* Top Banner Image */}
-          {tournament.bannerUrl ? (
-            <div className="relative h-44 sm:h-56 md:h-64 w-full overflow-hidden group">
+          <div className="relative h-44 sm:h-56 md:h-64 w-full bg-[#FAF0E6] overflow-hidden group">
+            {tournament.bannerUrl ? (
               <img
                 src={tournament.bannerUrl}
                 alt={tournament.name}
                 className="w-full h-full object-cover"
               />
-              <div className="absolute inset-0 bg-linear-to-t from-black/70 via-black/20 to-transparent" />
-              {isOrganizer && (
-                <button
-                  onClick={() => setShowBannerModal(true)}
-                  className="absolute top-4 right-4 bg-black/60 hover:bg-black/80 text-white text-xs font-black px-3 py-1.5 rounded-xl backdrop-blur-xs border border-white/20 shadow-md flex items-center gap-1.5 transition-all"
-                >
-                  <Camera className="w-3.5 h-3.5 text-[#F59F00]" />
-                  <span>Update Banner</span>
-                </button>
-              )}
-            </div>
-          ) : (
-            <div className="h-3 w-full brick-gradient" />
-          )}
+            ) : (
+              <div className="w-full h-full bg-linear-to-r from-[#9E2A2B] via-[#842021] to-[#2C221E] flex flex-col items-center justify-center text-white/40 p-4 text-center">
+                <Trophy className="w-14 h-14 mb-2 text-white/30" />
+                <span className="text-xs font-black uppercase tracking-wider text-white/70">
+                  CU CSE Department · {tournament.name} ({tournament.season})
+                </span>
+              </div>
+            )}
+            <div className="absolute inset-0 bg-linear-to-t from-black/70 via-black/20 to-transparent" />
+            
+            {isOrganizer && (
+              <button
+                onClick={() => setShowBannerModal(true)}
+                className="absolute top-4 right-4 bg-black/60 hover:bg-black/80 text-white text-xs font-black px-3.5 py-2 rounded-xl backdrop-blur-xs border border-white/20 shadow-md flex items-center gap-1.5 transition-all z-10"
+              >
+                <Camera className="w-3.5 h-3.5 text-[#F59F00]" />
+                <span>{tournament.bannerUrl ? "Update Banner" : "📸 Upload Tournament Banner"}</span>
+              </button>
+            )}
+          </div>
 
           <div className="p-6 sm:p-8 space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">

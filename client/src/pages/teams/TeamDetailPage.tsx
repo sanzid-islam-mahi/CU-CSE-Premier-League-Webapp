@@ -291,7 +291,6 @@ export const TeamDetailPage: React.FC = () => {
         {team.id && (
           <MediaGalleryView
             teamId={team.id}
-            defaultCategory="TEAM_BANNER"
             title={`${team.name} Photo Album & Moments`}
             description="Team squad photos, match action highlights, and victory celebrations."
             allowUpload={true}

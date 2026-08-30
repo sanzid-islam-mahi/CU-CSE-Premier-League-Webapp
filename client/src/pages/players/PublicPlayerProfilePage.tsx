@@ -97,18 +97,20 @@ export const PublicPlayerProfilePage: React.FC = () => {
         <div className="bg-white rounded-3xl border-2 border-[#E5DACB] shadow-sm overflow-hidden relative">
           
           {/* Cover Photo */}
-          {player.coverUrl ? (
-            <div className="relative h-44 sm:h-60 w-full overflow-hidden">
+          <div className="relative h-44 sm:h-60 w-full bg-[#FAF0E6] overflow-hidden group">
+            {player.coverUrl ? (
               <img
                 src={player.coverUrl}
                 alt={`${player.name} Cover`}
                 className="w-full h-full object-cover"
               />
-              <div className="absolute inset-0 bg-linear-to-t from-black/60 via-transparent to-transparent" />
-            </div>
-          ) : (
-            <div className="h-3 w-full brick-gradient" />
-          )}
+            ) : (
+              <div className="w-full h-full bg-linear-to-r from-[#9E2A2B] via-[#842021] to-[#2C221E] flex items-center justify-center text-white/40">
+                <span className="text-xs font-bold uppercase tracking-wider">CU CSE Premier League Athlete</span>
+              </div>
+            )}
+            <div className="absolute inset-0 bg-linear-to-t from-black/60 via-transparent to-transparent" />
+          </div>
 
           {/* Profile Header Body */}
           <div className="px-6 sm:px-8 pb-6 sm:pb-8 pt-0 relative">

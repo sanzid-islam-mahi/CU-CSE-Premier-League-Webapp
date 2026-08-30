@@ -705,7 +705,6 @@ export const ProfilePage: React.FC = () => {
           <div className="pt-4">
             <MediaGalleryView
               userId={user.id}
-              defaultCategory="PLAYER_AVATAR"
               title="My Action Photos & Tournament Moments"
               description="Upload your match action photos, batting/bowling moments, celebrations, and jersey shots."
               allowUpload={true}
