@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
+import { toast } from "@/context/ToastContext";
 import { OrganizerWorkspaceModal } from "@/components/tournaments/OrganizerWorkspaceModal";
 import { TournamentBracketView } from "@/components/tournaments/TournamentBracketView";
 import { SmartAvatar } from "@/components/common/SmartAvatar";
@@ -113,8 +114,9 @@ export const TournamentDetailPage: React.FC = () => {
     try {
       await api.tournaments.update(tournament.id, { bannerUrl: url });
       setTournament((prev: any) => ({ ...prev, bannerUrl: url }));
+      toast.success("Tournament cover banner updated successfully!");
     } catch (err: any) {
-      alert(err.message || "Failed to update tournament banner.");
+      toast.error(err.message || "Failed to update tournament banner.");
     }
   };
 
@@ -122,8 +124,9 @@ export const TournamentDetailPage: React.FC = () => {
     try {
       await api.tournaments.update(tournament.id, { logoUrl: url });
       setTournament((prev: any) => ({ ...prev, logoUrl: url }));
+      toast.success("Tournament crest logo updated successfully!");
     } catch (err: any) {
-      alert(err.message || "Failed to update tournament logo.");
+      toast.error(err.message || "Failed to update tournament logo.");
     }
   };
   const isFinalCompleted = finalMatch && finalMatch.status === "COMPLETED";

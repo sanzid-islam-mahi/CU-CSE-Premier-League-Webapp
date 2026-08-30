@@ -8,7 +8,9 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
+import { toast } from "@/context/ToastContext";
 import { ImageUploadModal } from "./ImageUploadModal";
+import { ConfirmModal } from "./ConfirmModal";
 
 export interface MediaItem {
   id: number;
@@ -67,6 +69,8 @@ export const MediaGalleryView: React.FC<MediaGalleryViewProps> = ({
     defaultCategory && defaultCategory !== "ALL" ? defaultCategory : "MATCH_PHOTO"
   );
   const [actionLoading, setActionLoading] = useState(false);
+  const [deleteCandidateId, setDeleteCandidateId] = useState<number | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const currentUser = api.auth.getCurrentUser();
 
@@ -113,22 +117,28 @@ export const MediaGalleryView: React.FC<MediaGalleryViewProps> = ({
       setUploadedUrl(null);
       setTitleInput("");
       setCaptionInput("");
+      toast.success("Photo published to gallery successfully!");
       fetchMedia();
     } catch (err: any) {
-      alert(err.message || "Failed to save photo to gallery.");
+      toast.error(err.message || "Failed to save photo to gallery.");
     } finally {
       setActionLoading(false);
     }
   };
 
-  const handleDeleteMedia = async (id: number) => {
-    if (!confirm("Are you sure you want to delete this photo from the gallery?")) return;
+  const handleDeleteMedia = async () => {
+    if (!deleteCandidateId) return;
+    setIsDeleting(true);
     try {
-      await api.media.delete(id);
-      setMediaList(prev => prev.filter(m => m.id !== id));
-      if (lightboxItem?.id === id) setLightboxItem(null);
+      await api.media.delete(deleteCandidateId);
+      setMediaList(prev => prev.filter(m => m.id !== deleteCandidateId));
+      if (lightboxItem?.id === deleteCandidateId) setLightboxItem(null);
+      toast.success("Photo deleted from gallery.");
+      setDeleteCandidateId(null);
     } catch (err: any) {
-      alert(err.message || "Failed to delete photo.");
+      toast.error(err.message || "Failed to delete photo.");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -310,7 +320,7 @@ export const MediaGalleryView: React.FC<MediaGalleryViewProps> = ({
 
                 {(currentUser?.role === "ADMIN" || currentUser?.id === lightboxItem.uploadedBy?.id) && (
                   <button
-                    onClick={() => handleDeleteMedia(lightboxItem.id)}
+                    onClick={() => setDeleteCandidateId(lightboxItem.id)}
                     className="p-2 rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-400 transition-colors"
                     title="Delete Photo"
                   >
@@ -366,6 +376,18 @@ export const MediaGalleryView: React.FC<MediaGalleryViewProps> = ({
         }}
         title="Upload Gallery Photo"
         description="Select a photo from match day, batch celebration, or award presentation."
+      />
+
+      {/* ---------------- CONFIRM DELETE MODAL ---------------- */}
+      <ConfirmModal
+        isOpen={deleteCandidateId !== null}
+        title="Delete Gallery Photo"
+        message="Are you sure you want to permanently remove this photo from the media gallery?"
+        confirmLabel="Delete Photo"
+        variant="danger"
+        isLoading={isDeleting}
+        onConfirm={handleDeleteMedia}
+        onClose={() => setDeleteCandidateId(null)}
       />
 
       {/* ---------------- POST-UPLOAD CAPTION FORM MODAL ---------------- */}
@@ -433,7 +455,6 @@ export const MediaGalleryView: React.FC<MediaGalleryViewProps> = ({
           </div>
         </div>
       )}
-
     </div>
   );
 };

@@ -21,13 +21,11 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { api, type BatchItem, type UserItem, type TournamentItem } from "@/lib/api";
+import { toast } from "@/context/ToastContext";
 
 export const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<"batches" | "players" | "tournaments" | "logs">("batches");
-  
-  // Notice alert state
-  const [alertMessage, setAlertMessage] = useState<string | null>(null);
   const [loadingData, setLoadingData] = useState(true);
 
   // 1. Batches State & Search
@@ -74,12 +72,11 @@ export const AdminDashboard: React.FC = () => {
 
   // Toast notification helper
   const triggerNotification = (msg: string) => {
-    setAlertMessage(msg);
+    toast.success(msg);
     setAuditLogs(prev => [
       { id: Date.now(), time: "Just now", action: msg, user: "admin@cse.cu.ac.bd" },
       ...prev
     ]);
-    setTimeout(() => setAlertMessage(null), 4500);
   };
 
   // Load all initial data from server API
@@ -134,7 +131,7 @@ export const AdminDashboard: React.FC = () => {
       setNewBatchSlogan("");
       triggerNotification(`Batch "${created.name}" created successfully!`);
     } catch (err: any) {
-      alert(err.message || "Failed to create batch.");
+      toast.error(err.message || "Failed to create batch.");
     }
   };
 
@@ -145,7 +142,7 @@ export const AdminDashboard: React.FC = () => {
       setBatches(prev => prev.filter(b => b.id !== id));
       triggerNotification(`Batch "${name}" deleted.`);
     } catch (err: any) {
-      alert(err.message || "Failed to delete batch.");
+      toast.error(err.message || "Failed to delete batch.");
     }
   };
 
@@ -168,7 +165,7 @@ export const AdminDashboard: React.FC = () => {
       setNewPlayerEmail("");
       triggerNotification(`Player ${created.name} registered! Generated temp pass: CSEPL@${created.studentId}`);
     } catch (err: any) {
-      alert(err.message || "Failed to create player.");
+      toast.error(err.message || "Failed to create player.");
     }
   };
 
@@ -179,7 +176,7 @@ export const AdminDashboard: React.FC = () => {
       setPlayers(prev => prev.filter(p => p.id !== id));
       triggerNotification(`Deleted player ${name} (Roll: ${roll}).`);
     } catch (err: any) {
-      alert(err.message || "Failed to delete player.");
+      toast.error(err.message || "Failed to delete player.");
     }
   };
 
@@ -193,7 +190,7 @@ export const AdminDashboard: React.FC = () => {
       } : p));
       triggerNotification(`Reset temp pass for ${player.name}: ${res.temporaryPassword}`);
     } catch (err: any) {
-      alert(err.message || "Failed to reset password.");
+      toast.error(err.message || "Failed to reset password.");
     }
   };
 
@@ -218,7 +215,7 @@ export const AdminDashboard: React.FC = () => {
       }
 
       if (rows.length === 0) {
-        alert("No valid player rows found in CSV text.");
+        toast.warning("No valid player rows found in CSV text.");
         return;
       }
 
@@ -228,7 +225,7 @@ export const AdminDashboard: React.FC = () => {
       await loadAllData();
       triggerNotification(res.message || `Imported ${rows.length} players with temporary passwords.`);
     } catch (err: any) {
-      alert(err.message || "Bulk import failed.");
+      toast.error(err.message || "Bulk import failed.");
     }
   };
 
@@ -266,7 +263,7 @@ export const AdminDashboard: React.FC = () => {
       setNewTournamentName("");
       triggerNotification(`Tournament "${created.name}" created!`);
     } catch (err: any) {
-      alert(err.message || "Failed to create tournament.");
+      toast.error(err.message || "Failed to create tournament.");
     }
   };
 
@@ -277,7 +274,7 @@ export const AdminDashboard: React.FC = () => {
       setTournaments(prev => prev.filter(t => t.id !== id));
       triggerNotification(`Tournament "${name}" deleted.`);
     } catch (err: any) {
-      alert(err.message || "Failed to delete tournament.");
+      toast.error(err.message || "Failed to delete tournament.");
     }
   };
 
@@ -295,7 +292,7 @@ export const AdminDashboard: React.FC = () => {
       await loadAllData();
       triggerNotification(res.message || "Assigned organizer successfully!");
     } catch (err: any) {
-      alert(err.message || "Failed to assign organizer.");
+      toast.error(err.message || "Failed to assign organizer.");
     }
   };
 
@@ -306,7 +303,7 @@ export const AdminDashboard: React.FC = () => {
       await loadAllData();
       triggerNotification(`Removed ${userName} from tournament organizers.`);
     } catch (err: any) {
-      alert(err.message || "Failed to remove organizer.");
+      toast.error(err.message || "Failed to remove organizer.");
     }
   };
 
@@ -445,16 +442,6 @@ export const AdminDashboard: React.FC = () => {
           </div>
         </div>
       </header>
-
-      {/* Global Toast Alert */}
-      {alertMessage && (
-        <div className="fixed bottom-6 right-6 z-50 animate-in fade-in slide-in-from-bottom-5 duration-300">
-          <div className="bg-[#2C221E] text-white px-5 py-3.5 rounded-2xl shadow-2xl border border-[#E8DCCF]/20 flex items-center gap-3 text-xs font-semibold">
-            <CheckCircle2 className="w-5 h-5 text-[#20C997] shrink-0" />
-            <span>{alertMessage}</span>
-          </div>
-        </div>
-      )}
 
       {/* Main Admin Content */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">

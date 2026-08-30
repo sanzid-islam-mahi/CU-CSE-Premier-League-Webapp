@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
+import { toast } from "@/context/ToastContext";
 import { SmartAvatar } from "@/components/common/SmartAvatar";
 import { ImageUploadModal } from "@/components/common/ImageUploadModal";
 import { MediaGalleryView } from "@/components/common/MediaGalleryView";
@@ -49,8 +50,9 @@ export const BatchDetailPage: React.FC = () => {
     try {
       await api.batches.update(batch.id, { bannerUrl: url });
       setBatch((prev: any) => ({ ...prev, bannerUrl: url }));
+      toast.success("Batch banner updated successfully!");
     } catch (err: any) {
-      alert(err.message || "Failed to update banner.");
+      toast.error(err.message || "Failed to update banner.");
     }
   };
 
@@ -58,8 +60,9 @@ export const BatchDetailPage: React.FC = () => {
     try {
       await api.batches.update(batch.id, { avatarUrl: url });
       setBatch((prev: any) => ({ ...prev, avatarUrl: url }));
+      toast.success("Batch crest updated successfully!");
     } catch (err: any) {
-      alert(err.message || "Failed to update batch crest.");
+      toast.error(err.message || "Failed to update batch crest.");
     }
   };
 

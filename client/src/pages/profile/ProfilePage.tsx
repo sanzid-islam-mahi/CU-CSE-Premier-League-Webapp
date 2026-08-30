@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
+import { toast } from "@/context/ToastContext";
 import { SmartAvatar } from "@/components/common/SmartAvatar";
 import { ImageUploadModal } from "@/components/common/ImageUploadModal";
 import { MediaGalleryView } from "@/components/common/MediaGalleryView";
@@ -35,11 +36,11 @@ export const ProfilePage: React.FC = () => {
   const [coverUrl, setCoverUrl] = useState("");
   const [showAvatarModal, setShowAvatarModal] = useState(false);
   const [showCoverModal, setShowCoverModal] = useState(false);
-  const [cricketRole, setCricketRole] = useState("🏏 Top-Order Bat");
-  const [battingStyle, setBattingStyle] = useState("Right Hand Bat");
-  const [bowlingStyle, setBowlingStyle] = useState("Right-arm Fast");
-  const [footballPosition, setFootballPosition] = useState("⚽ Forward / Striker");
-  const [preferredJerseyNo, setPreferredJerseyNo] = useState<number | "">("");
+  const [cricketRole, setCricketRole] = useState("");
+  const [battingStyle, setBattingStyle] = useState("");
+  const [bowlingStyle, setBowlingStyle] = useState("");
+  const [footballPosition, setFootballPosition] = useState("");
+  const [preferredJerseyNo, setPreferredJerseyNo] = useState<number | string>("");
 
   // Password Change State
   const [showPasswordChange, setShowPasswordChange] = useState(false);
@@ -49,14 +50,6 @@ export const ProfilePage: React.FC = () => {
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [passwordSuccess, setPasswordSuccess] = useState(false);
   const [passwordError, setPasswordError] = useState<string | null>(null);
-
-  // Toast / Alert Notification
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
-
-  const showToast = (msg: string) => {
-    setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 4000);
-  };
 
   const loadUserProfile = async () => {
     try {
@@ -91,9 +84,9 @@ export const ProfilePage: React.FC = () => {
       setAvatarUrl(url);
       const res = await api.auth.updateProfile({ avatarUrl: url });
       setUser(res.user);
-      showToast("Profile photo updated successfully!");
+      toast.success("Profile photo updated successfully!");
     } catch (err: any) {
-      alert(err.message || "Failed to update profile photo.");
+      toast.error(err.message || "Failed to update profile photo.");
     }
   };
 
@@ -102,9 +95,9 @@ export const ProfilePage: React.FC = () => {
       setCoverUrl(url);
       const res = await api.auth.updateProfile({ coverUrl: url });
       setUser(res.user);
-      showToast("Cover photo updated successfully!");
+      toast.success("Cover photo updated successfully!");
     } catch (err: any) {
-      alert(err.message || "Failed to update cover photo.");
+      toast.error(err.message || "Failed to update cover photo.");
     }
   };
 
@@ -127,9 +120,9 @@ export const ProfilePage: React.FC = () => {
       });
       setUser(res.user);
       setIsEditing(false);
-      showToast("Profile and sports preferences saved successfully!");
+      toast.success("Profile and sports preferences saved successfully!");
     } catch (err: any) {
-      alert(err.message || "Failed to update profile.");
+      toast.error(err.message || "Failed to update profile.");
     } finally {
       setSaving(false);
     }
@@ -157,7 +150,7 @@ export const ProfilePage: React.FC = () => {
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
-      showToast("Password updated successfully!");
+      toast.success("Password updated successfully!");
     } catch (err: any) {
       setPasswordError(err.message || "Failed to change password.");
     } finally {
@@ -197,16 +190,6 @@ export const ProfilePage: React.FC = () => {
           </div>
         </div>
       </div>
-
-      {/* Global Toast */}
-      {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 animate-in fade-in slide-in-from-bottom-5 duration-300">
-          <div className="bg-[#2C221E] text-white px-5 py-3.5 rounded-2xl shadow-2xl border border-[#E8DCCF]/20 flex items-center gap-3 text-xs font-semibold">
-            <CheckCircle2 className="w-5 h-5 text-[#20C997] shrink-0" />
-            <span>{toastMessage}</span>
-          </div>
-        </div>
-      )}
 
       {/* Main Profile Canvas */}
       <main className="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">

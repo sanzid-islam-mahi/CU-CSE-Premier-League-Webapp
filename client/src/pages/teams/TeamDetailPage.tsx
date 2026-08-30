@@ -11,6 +11,7 @@ import {
   Upload
 } from "lucide-react";
 import { api } from "@/lib/api";
+import { toast } from "@/context/ToastContext";
 import { SmartAvatar } from "@/components/common/SmartAvatar";
 import { ImageUploadModal } from "@/components/common/ImageUploadModal";
 import { MediaGalleryView } from "@/components/common/MediaGalleryView";
@@ -50,8 +51,9 @@ export const TeamDetailPage: React.FC = () => {
     try {
       await api.teams.update(team.id, { bannerUrl: url });
       setTeam((prev: any) => ({ ...prev, bannerUrl: url }));
+      toast.success("Team banner updated successfully!");
     } catch (err: any) {
-      alert(err.message || "Failed to update team banner.");
+      toast.error(err.message || "Failed to update team banner.");
     }
   };
 
@@ -59,8 +61,9 @@ export const TeamDetailPage: React.FC = () => {
     try {
       await api.teams.update(team.id, { logoUrl: url });
       setTeam((prev: any) => ({ ...prev, logoUrl: url }));
+      toast.success("Team logo updated successfully!");
     } catch (err: any) {
-      alert(err.message || "Failed to update team logo.");
+      toast.error(err.message || "Failed to update team logo.");
     }
   };
 
