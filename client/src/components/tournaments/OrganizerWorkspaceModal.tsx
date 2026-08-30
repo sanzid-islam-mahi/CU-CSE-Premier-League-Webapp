@@ -65,6 +65,14 @@ export const OrganizerWorkspaceModal: React.FC<OrganizerWorkspaceModalProps> = (
   const [matchStartTime, setMatchStartTime] = useState("");
   const [matchVenue, setMatchVenue] = useState(tournament.sport === "CRICKET" ? "CU CSE Ground" : "CU Central Field");
 
+  // Form states: Edit Team
+  const [editingTeam, setEditingTeam] = useState<any | null>(null);
+  const [editTeamName, setEditTeamName] = useState("");
+  const [editTeamShortName, setEditTeamShortName] = useState("");
+  const [editTeamGroupId, setEditTeamGroupId] = useState<number | "">("");
+  const [editTeamCaptainId, setEditTeamCaptainId] = useState<number | "">("");
+  const [editTeamLogoUrl, setEditTeamLogoUrl] = useState("");
+
   // Form states: Edit Match
   const [editingMatch, setEditingMatch] = useState<any | null>(null);
   const [editMatchTeamAId, setEditMatchTeamAId] = useState<number | "">("");
@@ -84,6 +92,39 @@ export const OrganizerWorkspaceModal: React.FC<OrganizerWorkspaceModalProps> = (
   const triggerToast = (msg: string) => {
     setNotification(msg);
     setTimeout(() => setNotification(null), 3500);
+  };
+
+  const handleOpenEditTeam = (team: any) => {
+    setEditingTeam(team);
+    setEditTeamName(team.name || "");
+    setEditTeamShortName(team.shortName || "");
+    setEditTeamGroupId(team.groupId !== null && team.groupId !== undefined ? team.groupId : "");
+    setEditTeamCaptainId(team.captainId !== null && team.captainId !== undefined ? team.captainId : "");
+    setEditTeamLogoUrl(team.logoUrl || "");
+  };
+
+  const handleSaveEditTeam = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingTeam || !editTeamName.trim()) return;
+
+    setError(null);
+    setLoading(true);
+    try {
+      await api.teams.update(editingTeam.id, {
+        name: editTeamName.trim(),
+        shortName: editTeamShortName.trim() || undefined,
+        groupId: editTeamGroupId !== "" ? Number(editTeamGroupId) : null,
+        captainId: editTeamCaptainId !== "" ? Number(editTeamCaptainId) : null,
+        logoUrl: editTeamLogoUrl.trim() || null,
+      });
+      triggerToast(`Team "${editTeamName}" updated successfully!`);
+      setEditingTeam(null);
+      onRefresh();
+    } catch (err: any) {
+      setError(err.message || "Failed to update team.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -655,13 +696,22 @@ export const OrganizerWorkspaceModal: React.FC<OrganizerWorkspaceModalProps> = (
                           </div>
                         </div>
 
-                        <button
-                          onClick={() => handleDeleteTeam(team.id, team.name)}
-                          className="p-1.5 rounded-lg text-[#C92A2A] hover:bg-[#FFF5F5] transition-colors"
-                          title="Delete Team"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => handleOpenEditTeam(team)}
+                            className="p-1.5 rounded-lg text-[#7C6E63] hover:text-[#9E2A2B] hover:bg-[#FAF0E6] transition-colors"
+                            title="Edit Team Details"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteTeam(team.id, team.name)}
+                            className="p-1.5 rounded-lg text-[#C92A2A] hover:bg-[#FFF5F5] transition-colors"
+                            title="Delete Team"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       </div>
 
                       {/* Group and Captain Controls */}
@@ -1344,6 +1394,127 @@ export const OrganizerWorkspaceModal: React.FC<OrganizerWorkspaceModalProps> = (
               </div>
             </form>
 
+          </div>
+        </div>
+      )}
+
+      {/* EDIT TEAM MODAL */}
+      {editingTeam && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
+          <div className="bg-white border border-[#E5DACB] rounded-3xl shadow-2xl w-full max-w-md p-6 relative">
+            <button
+              onClick={() => setEditingTeam(null)}
+              className="absolute top-4 right-4 text-[#7C6E63] hover:text-[#2C221E]"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-xl bg-[#FAF0E6] text-[#9E2A2B] flex items-center justify-center">
+                <Pencil className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-lg font-black text-[#2C221E]">Edit Team Information</h3>
+                <p className="text-xs text-[#7C6E63]">Update team name, short code, group, or captain</p>
+              </div>
+            </div>
+
+            <form onSubmit={handleSaveEditTeam} className="space-y-3.5 text-xs">
+              <div>
+                <label className="block font-bold text-[#4A3E35] mb-1">
+                  Team Display Name <span className="text-[#9E2A2B]">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. 24th Batch Warriors"
+                  value={editTeamName}
+                  onChange={(e) => setEditTeamName(e.target.value)}
+                  className="w-full px-3.5 py-2 rounded-xl border border-[#D8C7B3] bg-[#FAF7F2] text-[#2C221E] focus:outline-none focus:ring-2 focus:ring-[#9E2A2B]"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-[#4A3E35] mb-1">Short Code (Max 6)</label>
+                  <input
+                    type="text"
+                    maxLength={6}
+                    placeholder="e.g. B24"
+                    value={editTeamShortName}
+                    onChange={(e) => setEditTeamShortName(e.target.value.toUpperCase())}
+                    className="w-full px-3.5 py-2 rounded-xl border border-[#D8C7B3] bg-[#FAF7F2] text-[#2C221E] font-mono uppercase focus:outline-none focus:ring-2 focus:ring-[#9E2A2B]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-[#4A3E35] mb-1">Group Allocation</label>
+                  <select
+                    value={editTeamGroupId}
+                    onChange={(e) => setEditTeamGroupId(e.target.value === "" ? "" : Number(e.target.value))}
+                    className="w-full px-3.5 py-2 rounded-xl border border-[#D8C7B3] bg-[#FAF7F2] text-[#2C221E] focus:outline-none focus:ring-2 focus:ring-[#9E2A2B]"
+                  >
+                    <option value="">-- No Group --</option>
+                    {tournament.groups?.map((g: any) => (
+                      <option key={g.id} value={g.id}>{g.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-[#4A3E35] mb-1">Team Captain</label>
+                <select
+                  value={editTeamCaptainId}
+                  onChange={(e) => setEditTeamCaptainId(e.target.value === "" ? "" : Number(e.target.value))}
+                  className="w-full px-3.5 py-2 rounded-xl border border-[#D8C7B3] bg-[#FAF7F2] text-[#2C221E] focus:outline-none focus:ring-2 focus:ring-[#9E2A2B]"
+                >
+                  <option value="">-- Select Captain --</option>
+                  {editingTeam.members && editingTeam.members.length > 0 ? (
+                    editingTeam.members.map((m: any) => (
+                      <option key={m.user?.id || m.userId} value={m.user?.id || m.userId}>
+                        ⭐ {m.user?.name || `Player #${m.userId}`} (Roll: {m.user?.studentId || "N/A"})
+                      </option>
+                    ))
+                  ) : (
+                    allStudents.map((st) => (
+                      <option key={st.id} value={st.id}>
+                        {st.name} (Roll: {st.studentId})
+                      </option>
+                    ))
+                  )}
+                </select>
+              </div>
+
+              <div>
+                <label className="block font-bold text-[#4A3E35] mb-1">Team Crest / Logo URL</label>
+                <input
+                  type="text"
+                  placeholder="https://... or leave blank"
+                  value={editTeamLogoUrl}
+                  onChange={(e) => setEditTeamLogoUrl(e.target.value)}
+                  className="w-full px-3.5 py-2 rounded-xl border border-[#D8C7B3] bg-[#FAF7F2] text-[#2C221E] focus:outline-none focus:ring-2 focus:ring-[#9E2A2B]"
+                />
+              </div>
+
+              <div className="pt-3 border-t border-[#EFE8DC] flex items-center justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setEditingTeam(null)}
+                  className="border-[#D8C7B3] text-[#7C6E63] text-xs h-9 rounded-xl font-bold"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={loading}
+                  className="bg-[#9E2A2B] hover:bg-[#842021] text-white text-xs h-9 px-5 rounded-xl font-bold shadow-md shadow-[#9E2A2B]/20"
+                >
+                  Save Team
+                </Button>
+              </div>
+            </form>
           </div>
         </div>
       )}

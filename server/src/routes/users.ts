@@ -211,6 +211,84 @@ usersRouter.put("/:id/profile", requireAuth, async (req: any, res) => {
   }
 });
 
+const updateUserAdminSchema = z.object({
+  studentId: z.string().min(1).optional(),
+  name: z.string().min(1).optional(),
+  email: z.string().optional(),
+  batchId: z.number().int().positive().nullable().optional(),
+  role: z.enum(["ADMIN", "USER"]).optional(),
+  cricketRole: z.string().nullable().optional(),
+  footballPosition: z.string().nullable().optional(),
+});
+
+// UPDATE User by ID (Admin Only)
+usersRouter.put("/:id", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    const parsed = updateUserAdminSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalid update input" });
+      return;
+    }
+
+    const { studentId, name, email, batchId, role, cricketRole, footballPosition } = parsed.data;
+
+    // Check duplicate studentId or email if modified
+    if (studentId || email) {
+      const duplicate = await prisma.user.findFirst({
+        where: {
+          id: { not: id },
+          OR: [
+            ...(studentId ? [{ studentId }] : []),
+            ...(email && email.trim() ? [{ email: email.toLowerCase().trim() }] : []),
+          ],
+        },
+      });
+
+      if (duplicate) {
+        res.status(400).json({ error: `Another user with Roll ${studentId || duplicate.studentId} or Email already exists.` });
+        return;
+      }
+    }
+
+    const updated = await prisma.user.update({
+      where: { id },
+      data: {
+        studentId: studentId || undefined,
+        name: name || undefined,
+        email: email !== undefined ? (email.trim() ? email.toLowerCase().trim() : undefined) : undefined,
+        batchId: batchId !== undefined ? batchId : undefined,
+        role: role || undefined,
+        cricketRole: cricketRole !== undefined ? cricketRole : undefined,
+        footballPosition: footballPosition !== undefined ? footballPosition : undefined,
+      },
+      include: {
+        batch: {
+          select: { id: true, name: true, session: true, batchNumber: true }
+        }
+      }
+    });
+
+    res.json({
+      id: updated.id,
+      studentId: updated.studentId,
+      name: updated.name,
+      email: updated.email,
+      role: updated.role,
+      isTemporaryPassword: updated.isTemporaryPassword,
+      temporaryPlainPassword: updated.temporaryPlainPassword,
+      batch: updated.batch ? updated.batch.name : "Unassigned",
+      batchId: updated.batchId,
+      cricketRole: updated.cricketRole,
+      footballPosition: updated.footballPosition,
+      avatarUrl: updated.avatarUrl,
+      createdAt: updated.createdAt,
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || "Failed to update user." });
+  }
+});
+
 // CREATE Single User (Admin Only)
 usersRouter.post("/", requireAuth, requireAdmin, async (req, res) => {
   try {

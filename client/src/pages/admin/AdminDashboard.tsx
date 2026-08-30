@@ -17,7 +17,8 @@ import {
   UserCheck,
   RefreshCw,
   Trash2,
-  Loader2
+  Loader2,
+  Pencil
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { api, type BatchItem, type UserItem, type TournamentItem } from "@/lib/api";
@@ -36,6 +37,7 @@ export const AdminDashboard: React.FC = () => {
   const [newBatchSession, setNewBatchSession] = useState("");
   const [newBatchNumber, setNewBatchNumber] = useState("");
   const [newBatchSlogan, setNewBatchSlogan] = useState("");
+  const [editingBatch, setEditingBatch] = useState<any | null>(null);
 
   // 2. Players State & Search
   const [players, setPlayers] = useState<UserItem[]>([]);
@@ -48,6 +50,7 @@ export const AdminDashboard: React.FC = () => {
   const [newPlayerName, setNewPlayerName] = useState("");
   const [newPlayerEmail, setNewPlayerEmail] = useState("");
   const [newPlayerBatchId, setNewPlayerBatchId] = useState<number | null>(null);
+  const [editingPlayer, setEditingPlayer] = useState<any | null>(null);
 
   // 3. Tournaments State & Search
   const [tournaments, setTournaments] = useState<TournamentItem[]>([]);
@@ -64,6 +67,7 @@ export const AdminDashboard: React.FC = () => {
   const [newTournamentBowlerMax, setNewTournamentBowlerMax] = useState("2");
   const [newTournamentFormatText, setNewTournamentFormatText] = useState("7-a-side Futsal");
   const [newTournamentHalfMins, setNewTournamentHalfMins] = useState("20");
+  const [editingTournament, setEditingTournament] = useState<any | null>(null);
 
   // 4. Audit Logs State
   const [auditLogs, setAuditLogs] = useState<{ id: number; time: string; action: string; user: string }[]>([
@@ -135,6 +139,38 @@ export const AdminDashboard: React.FC = () => {
     }
   };
 
+  const handleOpenEditBatch = (batch: BatchItem) => {
+    setEditingBatch({
+      id: batch.id,
+      name: batch.name,
+      session: batch.session,
+      batchNumber: batch.batchNumber,
+      slogan: batch.slogan || "",
+      avatarUrl: batch.avatarUrl || "",
+      bannerUrl: batch.bannerUrl || "",
+    });
+  };
+
+  const handleSaveEditBatch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingBatch) return;
+    try {
+      const updated = await api.batches.update(editingBatch.id, {
+        name: editingBatch.name,
+        session: editingBatch.session,
+        batchNumber: Number(editingBatch.batchNumber),
+        slogan: editingBatch.slogan || undefined,
+        avatarUrl: editingBatch.avatarUrl || undefined,
+        bannerUrl: editingBatch.bannerUrl || undefined,
+      });
+      setBatches(prev => prev.map(b => b.id === editingBatch.id ? { ...b, ...updated } : b));
+      setEditingBatch(null);
+      triggerNotification(`Batch "${updated.name}" updated successfully!`);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to update batch.");
+    }
+  };
+
   const handleDeleteBatch = async (id: number, name: string) => {
     if (!confirm(`Are you sure you want to delete ${name}? Associated users will be unassigned.`)) return;
     try {
@@ -166,6 +202,40 @@ export const AdminDashboard: React.FC = () => {
       triggerNotification(`Player ${created.name} registered! Generated temp pass: CSEPL@${created.studentId}`);
     } catch (err: any) {
       toast.error(err.message || "Failed to create player.");
+    }
+  };
+
+  const handleOpenEditPlayer = (player: UserItem) => {
+    setEditingPlayer({
+      id: player.id,
+      studentId: player.studentId,
+      name: player.name,
+      email: player.email || "",
+      batchId: player.batchId || "",
+      role: player.role || "USER",
+      cricketRole: player.cricketRole || "",
+      footballPosition: player.footballPosition || "",
+    });
+  };
+
+  const handleSaveEditPlayer = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingPlayer) return;
+    try {
+      const updated = await api.users.update(editingPlayer.id, {
+        studentId: editingPlayer.studentId,
+        name: editingPlayer.name,
+        email: editingPlayer.email || undefined,
+        batchId: editingPlayer.batchId ? Number(editingPlayer.batchId) : null,
+        role: editingPlayer.role,
+        cricketRole: editingPlayer.cricketRole || null,
+        footballPosition: editingPlayer.footballPosition || null,
+      });
+      setPlayers(prev => prev.map(p => p.id === editingPlayer.id ? { ...p, ...updated } : p));
+      setEditingPlayer(null);
+      triggerNotification(`Player ${updated.name} (Roll: ${updated.studentId}) updated successfully!`);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to update player.");
     }
   };
 
@@ -264,6 +334,71 @@ export const AdminDashboard: React.FC = () => {
       triggerNotification(`Tournament "${created.name}" created!`);
     } catch (err: any) {
       toast.error(err.message || "Failed to create tournament.");
+    }
+  };
+
+  const handleOpenEditTournament = (tournament: TournamentItem) => {
+    let rules = tournament.rules;
+    if (typeof rules === "string") {
+      try { rules = JSON.parse(rules); } catch { rules = {}; }
+    }
+    rules = rules || {};
+
+    setEditingTournament({
+      id: tournament.id,
+      name: tournament.name,
+      season: tournament.season,
+      sport: tournament.sport,
+      status: tournament.status || "UPCOMING",
+      bannerUrl: tournament.bannerUrl || "",
+      logoUrl: tournament.logoUrl || "",
+      overs: rules.overs?.toString() || "10",
+      maxPerBowler: rules.maxPerBowler?.toString() || "2",
+      powerplay: rules.powerplay?.toString() || "2",
+      format: rules.format || "7-a-side",
+      halfMinutes: rules.halfMinutes?.toString() || "20",
+      pointsWin: (tournament.sport === "CRICKET" ? rules.pointsWin ?? 2 : rules.pointsWin ?? 3).toString(),
+      pointsTieDraw: (tournament.sport === "CRICKET" ? rules.pointsTie ?? 1 : rules.pointsDraw ?? 1).toString(),
+    });
+  };
+
+  const handleSaveEditTournament = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingTournament) return;
+    try {
+      let rulesObj: any = {};
+      if (editingTournament.sport === "CRICKET") {
+        rulesObj = {
+          overs: parseInt(editingTournament.overs) || 10,
+          maxPerBowler: parseInt(editingTournament.maxPerBowler) || 2,
+          powerplay: parseInt(editingTournament.powerplay) || 2,
+          pointsWin: parseInt(editingTournament.pointsWin) || 2,
+          pointsTie: parseInt(editingTournament.pointsTieDraw) || 1,
+        };
+      } else {
+        rulesObj = {
+          format: editingTournament.format || "7-a-side",
+          halfMinutes: parseInt(editingTournament.halfMinutes) || 20,
+          pointsWin: parseInt(editingTournament.pointsWin) || 3,
+          pointsDraw: parseInt(editingTournament.pointsTieDraw) || 1,
+        };
+      }
+
+      const updated = await api.tournaments.update(editingTournament.id, {
+        name: editingTournament.name,
+        season: editingTournament.season,
+        sport: editingTournament.sport,
+        status: editingTournament.status,
+        rules: rulesObj,
+        bannerUrl: editingTournament.bannerUrl || null,
+        logoUrl: editingTournament.logoUrl || null,
+      });
+
+      setTournaments(prev => prev.map(t => t.id === editingTournament.id ? { ...t, ...updated, rules: rulesObj } : t));
+      setEditingTournament(null);
+      triggerNotification(`Tournament "${updated.name}" updated successfully!`);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to update tournament.");
     }
   };
 
@@ -599,6 +734,13 @@ export const AdminDashboard: React.FC = () => {
                             Session: {b.session}
                           </span>
                           <button
+                            onClick={() => handleOpenEditBatch(b)}
+                            title="Edit batch"
+                            className="p-1 text-[#7C6E63] hover:text-[#9E2A2B] hover:bg-[#FAF0E6] rounded-md transition-colors"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                          <button
                             onClick={() => handleDeleteBatch(b.id, b.name)}
                             title="Delete batch"
                             className="p-1 text-[#7C6E63] hover:text-[#C92A2A] hover:bg-[#FFF5F5] rounded-md transition-colors"
@@ -762,8 +904,17 @@ export const AdminDashboard: React.FC = () => {
                           <td className="py-3.5 px-4 text-right">
                             <div className="flex items-center justify-end gap-1.5">
                               <button
+                                onClick={() => handleOpenEditPlayer(player)}
+                                title="Edit player profile"
+                                className="inline-flex items-center gap-1 text-[11px] font-bold text-[#6B5E53] hover:text-[#2C221E] bg-[#FAF7F2] hover:bg-[#EFE8DC] px-2 py-1 rounded-lg border border-[#D8C7B3] transition-colors"
+                              >
+                                <Pencil className="w-3 h-3 text-[#9E2A2B]" />
+                                <span>Edit</span>
+                              </button>
+
+                              <button
                                 onClick={() => handleResetTempPass(player)}
-                                className="inline-flex items-center gap-1 text-[11px] font-bold text-[#9E2A2B] hover:text-[#842021] bg-[#FAF0E6] hover:bg-[#F5E0D0] px-2.5 py-1 rounded-lg border border-[#E8D6C3] transition-colors"
+                                className="inline-flex items-center gap-1 text-[11px] font-bold text-[#9E2A2B] hover:text-[#842021] bg-[#FAF0E6] hover:bg-[#F5E0D0] px-2 py-1 rounded-lg border border-[#E8D6C3] transition-colors"
                               >
                                 <RefreshCw className="w-3 h-3" />
                                 <span>Reset Pass</span>
@@ -862,10 +1013,17 @@ export const AdminDashboard: React.FC = () => {
                         <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-[#FAF0E6] text-[#842021] border border-[#E8D6C3]">
                           {t.sport === "CRICKET" ? "🏏 Cricket League" : "⚽ Football Cup"}
                         </span>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1.5">
                           <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-[#9E2A2B] text-white">
                             {t.status}
                           </span>
+                          <button
+                            onClick={() => handleOpenEditTournament(t)}
+                            title="Edit tournament"
+                            className="p-1 text-[#7C6E63] hover:text-[#9E2A2B] hover:bg-[#FAF0E6] rounded-md transition-colors"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
                           <button
                             onClick={() => handleDeleteTournament(t.id, t.name)}
                             title="Delete tournament"
@@ -1312,6 +1470,449 @@ export const AdminDashboard: React.FC = () => {
                 </Button>
                 <Button type="submit" className="w-1/2 bg-[#9E2A2B] hover:bg-[#842021] text-white font-bold rounded-xl text-xs">
                   Grant Organizer Permission
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* EDIT BATCH MODAL */}
+      {editingBatch && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
+          <div className="bg-white border border-[#E5DACB] rounded-3xl shadow-2xl w-full max-w-md p-6 relative">
+            <button onClick={() => setEditingBatch(null)} className="absolute top-4 right-4 text-[#7C6E63] hover:text-[#2C221E]">
+              <X className="w-5 h-5" />
+            </button>
+            
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-xl bg-[#FAF0E6] text-[#9E2A2B] flex items-center justify-center">
+                <Pencil className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-lg font-black text-[#2C221E]">Edit Academic Batch</h3>
+                <p className="text-xs text-[#7C6E63]">Update batch title, academic session, crest, or slogan</p>
+              </div>
+            </div>
+            
+            <form onSubmit={handleSaveEditBatch} className="space-y-3.5 text-xs">
+              <div>
+                <label className="block font-bold text-[#4A3E35] mb-1">Batch Display Name <span className="text-[#9E2A2B]">*</span></label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. 24th Batch"
+                  value={editingBatch.name}
+                  onChange={(e) => setEditingBatch({ ...editingBatch, name: e.target.value })}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-[#D8C7B3] bg-[#FAF7F2] text-[#2C221E] focus:outline-none focus:ring-2 focus:ring-[#9E2A2B]"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-[#4A3E35] mb-1">Session <span className="text-[#9E2A2B]">*</span></label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. 2019-2020"
+                    value={editingBatch.session}
+                    onChange={(e) => setEditingBatch({ ...editingBatch, session: e.target.value })}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-[#D8C7B3] bg-[#FAF7F2] text-[#2C221E] focus:outline-none focus:ring-2 focus:ring-[#9E2A2B]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-[#4A3E35] mb-1">Batch Number <span className="text-[#9E2A2B]">*</span></label>
+                  <input
+                    type="number"
+                    required
+                    placeholder="24"
+                    value={editingBatch.batchNumber}
+                    onChange={(e) => setEditingBatch({ ...editingBatch, batchNumber: e.target.value })}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-[#D8C7B3] bg-[#FAF7F2] text-[#2C221E] focus:outline-none focus:ring-2 focus:ring-[#9E2A2B]"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-[#4A3E35] mb-1">Batch Slogan / Motto</label>
+                <input
+                  type="text"
+                  placeholder="e.g. The Red Brick Champions"
+                  value={editingBatch.slogan}
+                  onChange={(e) => setEditingBatch({ ...editingBatch, slogan: e.target.value })}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-[#D8C7B3] bg-[#FAF7F2] text-[#2C221E] focus:outline-none focus:ring-2 focus:ring-[#9E2A2B]"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-[#4A3E35] mb-1">Crest / Avatar Image URL</label>
+                <input
+                  type="text"
+                  placeholder="https://... or leave blank"
+                  value={editingBatch.avatarUrl}
+                  onChange={(e) => setEditingBatch({ ...editingBatch, avatarUrl: e.target.value })}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-[#D8C7B3] bg-[#FAF7F2] text-[#2C221E] focus:outline-none focus:ring-2 focus:ring-[#9E2A2B]"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-[#4A3E35] mb-1">Class Photo / Banner URL</label>
+                <input
+                  type="text"
+                  placeholder="https://... or leave blank"
+                  value={editingBatch.bannerUrl}
+                  onChange={(e) => setEditingBatch({ ...editingBatch, bannerUrl: e.target.value })}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-[#D8C7B3] bg-[#FAF7F2] text-[#2C221E] focus:outline-none focus:ring-2 focus:ring-[#9E2A2B]"
+                />
+              </div>
+
+              <div className="pt-2 flex gap-2">
+                <Button type="button" variant="outline" onClick={() => setEditingBatch(null)} className="w-1/2 rounded-xl text-xs">
+                  Cancel
+                </Button>
+                <Button type="submit" className="w-1/2 bg-[#9E2A2B] hover:bg-[#842021] text-white font-bold rounded-xl text-xs">
+                  Save Changes
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* EDIT PLAYER MODAL */}
+      {editingPlayer && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
+          <div className="bg-white border border-[#E5DACB] rounded-3xl shadow-2xl w-full max-w-lg p-6 relative max-h-[90vh] overflow-y-auto">
+            <button onClick={() => setEditingPlayer(null)} className="absolute top-4 right-4 text-[#7C6E63] hover:text-[#2C221E]">
+              <X className="w-5 h-5" />
+            </button>
+            
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-xl bg-[#FAF0E6] text-[#9E2A2B] flex items-center justify-center">
+                <Pencil className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-lg font-black text-[#2C221E]">Edit Player Profile</h3>
+                <p className="text-xs text-[#7C6E63]">Update student credentials, department batch, and playing roles</p>
+              </div>
+            </div>
+            
+            <form onSubmit={handleSaveEditPlayer} className="space-y-3.5 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-[#4A3E35] mb-1">Student ID / Roll <span className="text-[#9E2A2B]">*</span></label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. 20701045"
+                    value={editingPlayer.studentId}
+                    onChange={(e) => setEditingPlayer({ ...editingPlayer, studentId: e.target.value })}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-[#D8C7B3] bg-[#FAF7F2] text-[#2C221E] font-mono focus:outline-none focus:ring-2 focus:ring-[#9E2A2B]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-[#4A3E35] mb-1">Full Name <span className="text-[#9E2A2B]">*</span></label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Sanzid Rahman"
+                    value={editingPlayer.name}
+                    onChange={(e) => setEditingPlayer({ ...editingPlayer, name: e.target.value })}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-[#D8C7B3] bg-[#FAF7F2] text-[#2C221E] focus:outline-none focus:ring-2 focus:ring-[#9E2A2B]"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-[#4A3E35] mb-1">Email Address</label>
+                <input
+                  type="email"
+                  placeholder="e.g. 20701045@cse.cu.ac.bd"
+                  value={editingPlayer.email}
+                  onChange={(e) => setEditingPlayer({ ...editingPlayer, email: e.target.value })}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-[#D8C7B3] bg-[#FAF7F2] text-[#2C221E] focus:outline-none focus:ring-2 focus:ring-[#9E2A2B]"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-[#4A3E35] mb-1">Batch Assignment</label>
+                  <select
+                    value={editingPlayer.batchId || ""}
+                    onChange={(e) => setEditingPlayer({ ...editingPlayer, batchId: e.target.value })}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-[#D8C7B3] bg-[#FAF7F2] text-[#2C221E] focus:outline-none focus:ring-2 focus:ring-[#9E2A2B]"
+                  >
+                    <option value="">-- Unassigned --</option>
+                    {batches.map(b => (
+                      <option key={b.id} value={b.id}>{b.name} ({b.session})</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-bold text-[#4A3E35] mb-1">System Role</label>
+                  <select
+                    value={editingPlayer.role}
+                    onChange={(e) => setEditingPlayer({ ...editingPlayer, role: e.target.value as "USER" | "ADMIN" })}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-[#D8C7B3] bg-[#FAF7F2] text-[#2C221E] font-bold focus:outline-none focus:ring-2 focus:ring-[#9E2A2B]"
+                  >
+                    <option value="USER">Standard Player (USER)</option>
+                    <option value="ADMIN">Super Admin (ADMIN)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-[#4A3E35] mb-1">Cricket Role</label>
+                  <select
+                    value={editingPlayer.cricketRole || ""}
+                    onChange={(e) => setEditingPlayer({ ...editingPlayer, cricketRole: e.target.value })}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-[#D8C7B3] bg-[#FAF7F2] text-[#2C221E] focus:outline-none focus:ring-2 focus:ring-[#9E2A2B]"
+                  >
+                    <option value="">-- Not Specified --</option>
+                    <option value="Top-order Batter">🏏 Top-order Batter</option>
+                    <option value="Middle-order Batter">🏏 Middle-order Batter</option>
+                    <option value="Wicketkeeper Batter">🧤 Wicketkeeper Batter</option>
+                    <option value="All-Rounder">⚡ All-Rounder</option>
+                    <option value="Fast Bowler">🎯 Fast Bowler</option>
+                    <option value="Spin Bowler">🌀 Spin Bowler</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-bold text-[#4A3E35] mb-1">Football Position</label>
+                  <select
+                    value={editingPlayer.footballPosition || ""}
+                    onChange={(e) => setEditingPlayer({ ...editingPlayer, footballPosition: e.target.value })}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-[#D8C7B3] bg-[#FAF7F2] text-[#2C221E] focus:outline-none focus:ring-2 focus:ring-[#9E2A2B]"
+                  >
+                    <option value="">-- Not Specified --</option>
+                    <option value="Goalkeeper">🧤 Goalkeeper</option>
+                    <option value="Defender">🛡️ Defender</option>
+                    <option value="Midfielder">🧠 Midfielder</option>
+                    <option value="Winger">⚡ Winger</option>
+                    <option value="Forward / Striker">🎯 Forward / Striker</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="pt-3 flex gap-2">
+                <Button type="button" variant="outline" onClick={() => setEditingPlayer(null)} className="w-1/2 rounded-xl text-xs">
+                  Cancel
+                </Button>
+                <Button type="submit" className="w-1/2 bg-[#9E2A2B] hover:bg-[#842021] text-white font-bold rounded-xl text-xs">
+                  Save Changes
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* EDIT TOURNAMENT MODAL */}
+      {editingTournament && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
+          <div className="bg-white border border-[#E5DACB] rounded-3xl shadow-2xl w-full max-w-lg p-6 relative max-h-[90vh] overflow-y-auto">
+            <button onClick={() => setEditingTournament(null)} className="absolute top-4 right-4 text-[#7C6E63] hover:text-[#2C221E]">
+              <X className="w-5 h-5" />
+            </button>
+            
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-xl bg-[#FAF0E6] text-[#9E2A2B] flex items-center justify-center">
+                <Pencil className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-lg font-black text-[#2C221E]">Edit Tournament Configuration</h3>
+                <p className="text-xs text-[#7C6E63]">Update title, status, sport rules, and branding visuals</p>
+              </div>
+            </div>
+            
+            <form onSubmit={handleSaveEditTournament} className="space-y-3.5 text-xs">
+              <div>
+                <label className="block font-bold text-[#4A3E35] mb-1">Tournament Title <span className="text-[#9E2A2B]">*</span></label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. CSE Premier League 2026"
+                  value={editingTournament.name}
+                  onChange={(e) => setEditingTournament({ ...editingTournament, name: e.target.value })}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-[#D8C7B3] bg-[#FAF7F2] text-[#2C221E] focus:outline-none focus:ring-2 focus:ring-[#9E2A2B]"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="block font-bold text-[#4A3E35] mb-1">Sport</label>
+                  <select
+                    value={editingTournament.sport}
+                    onChange={(e) => setEditingTournament({ ...editingTournament, sport: e.target.value as "CRICKET" | "FOOTBALL" })}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-[#D8C7B3] bg-[#FAF7F2] text-[#2C221E] font-bold focus:outline-none focus:ring-2 focus:ring-[#9E2A2B]"
+                  >
+                    <option value="CRICKET">🏏 Cricket</option>
+                    <option value="FOOTBALL">⚽ Football</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-bold text-[#4A3E35] mb-1">Season</label>
+                  <input
+                    type="text"
+                    value={editingTournament.season}
+                    onChange={(e) => setEditingTournament({ ...editingTournament, season: e.target.value })}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-[#D8C7B3] bg-[#FAF7F2] text-[#2C221E] focus:outline-none focus:ring-2 focus:ring-[#9E2A2B]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-[#4A3E35] mb-1">Status</label>
+                  <select
+                    value={editingTournament.status}
+                    onChange={(e) => setEditingTournament({ ...editingTournament, status: e.target.value })}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-[#D8C7B3] bg-[#FAF7F2] text-[#2C221E] font-bold focus:outline-none focus:ring-2 focus:ring-[#9E2A2B]"
+                  >
+                    <option value="DRAFT">DRAFT</option>
+                    <option value="UPCOMING">UPCOMING</option>
+                    <option value="ONGOING">ONGOING</option>
+                    <option value="COMPLETED">COMPLETED</option>
+                    <option value="CANCELLED">CANCELLED</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Dynamic Sport Rules */}
+              {editingTournament.sport === "CRICKET" ? (
+                <div className="p-3 bg-[#FAF7F2] rounded-2xl border border-[#E8DCCF] space-y-2.5">
+                  <p className="font-bold text-[#7C6E63] text-[10px] uppercase tracking-wider">🏏 Cricket Specifications</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div>
+                      <label className="block text-[11px] font-bold text-[#4A3E35] mb-0.5">Overs / Side</label>
+                      <input
+                        type="number"
+                        value={editingTournament.overs}
+                        onChange={(e) => setEditingTournament({ ...editingTournament, overs: e.target.value })}
+                        className="w-full px-2.5 py-1.5 rounded-lg border border-[#D8C7B3] bg-white text-[#2C221E]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-[#4A3E35] mb-0.5">Max / Bowler</label>
+                      <input
+                        type="number"
+                        value={editingTournament.maxPerBowler}
+                        onChange={(e) => setEditingTournament({ ...editingTournament, maxPerBowler: e.target.value })}
+                        className="w-full px-2.5 py-1.5 rounded-lg border border-[#D8C7B3] bg-white text-[#2C221E]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-[#4A3E35] mb-0.5">Powerplay Ov</label>
+                      <input
+                        type="number"
+                        value={editingTournament.powerplay}
+                        onChange={(e) => setEditingTournament({ ...editingTournament, powerplay: e.target.value })}
+                        className="w-full px-2.5 py-1.5 rounded-lg border border-[#D8C7B3] bg-white text-[#2C221E]"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 pt-1 border-t border-[#EFE8DC]">
+                    <div>
+                      <label className="block text-[11px] font-bold text-[#4A3E35] mb-0.5">Points for Win</label>
+                      <input
+                        type="number"
+                        value={editingTournament.pointsWin}
+                        onChange={(e) => setEditingTournament({ ...editingTournament, pointsWin: e.target.value })}
+                        className="w-full px-2.5 py-1.5 rounded-lg border border-[#D8C7B3] bg-white text-[#2C221E]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-[#4A3E35] mb-0.5">Points for Tie/NR</label>
+                      <input
+                        type="number"
+                        value={editingTournament.pointsTieDraw}
+                        onChange={(e) => setEditingTournament({ ...editingTournament, pointsTieDraw: e.target.value })}
+                        className="w-full px-2.5 py-1.5 rounded-lg border border-[#D8C7B3] bg-white text-[#2C221E]"
+                      />
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="p-3 bg-[#FAF7F2] rounded-2xl border border-[#E8DCCF] space-y-2.5">
+                  <p className="font-bold text-[#7C6E63] text-[10px] uppercase tracking-wider">⚽ Football Specifications</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[11px] font-bold text-[#4A3E35] mb-0.5">Format</label>
+                      <input
+                        type="text"
+                        placeholder="7-a-side"
+                        value={editingTournament.format}
+                        onChange={(e) => setEditingTournament({ ...editingTournament, format: e.target.value })}
+                        className="w-full px-2.5 py-1.5 rounded-lg border border-[#D8C7B3] bg-white text-[#2C221E]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-[#4A3E35] mb-0.5">Half Duration (mins)</label>
+                      <input
+                        type="number"
+                        value={editingTournament.halfMinutes}
+                        onChange={(e) => setEditingTournament({ ...editingTournament, halfMinutes: e.target.value })}
+                        className="w-full px-2.5 py-1.5 rounded-lg border border-[#D8C7B3] bg-white text-[#2C221E]"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 pt-1 border-t border-[#EFE8DC]">
+                    <div>
+                      <label className="block text-[11px] font-bold text-[#4A3E35] mb-0.5">Points for Win</label>
+                      <input
+                        type="number"
+                        value={editingTournament.pointsWin}
+                        onChange={(e) => setEditingTournament({ ...editingTournament, pointsWin: e.target.value })}
+                        className="w-full px-2.5 py-1.5 rounded-lg border border-[#D8C7B3] bg-white text-[#2C221E]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-[#4A3E35] mb-0.5">Points for Draw</label>
+                      <input
+                        type="number"
+                        value={editingTournament.pointsTieDraw}
+                        onChange={(e) => setEditingTournament({ ...editingTournament, pointsTieDraw: e.target.value })}
+                        className="w-full px-2.5 py-1.5 rounded-lg border border-[#D8C7B3] bg-white text-[#2C221E]"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-[#4A3E35] mb-1">Logo / Crest URL</label>
+                  <input
+                    type="text"
+                    placeholder="https://... or leave blank"
+                    value={editingTournament.logoUrl}
+                    onChange={(e) => setEditingTournament({ ...editingTournament, logoUrl: e.target.value })}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-[#D8C7B3] bg-[#FAF7F2] text-[#2C221E] focus:outline-none focus:ring-2 focus:ring-[#9E2A2B]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-[#4A3E35] mb-1">Banner / Cover URL</label>
+                  <input
+                    type="text"
+                    placeholder="https://... or leave blank"
+                    value={editingTournament.bannerUrl}
+                    onChange={(e) => setEditingTournament({ ...editingTournament, bannerUrl: e.target.value })}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-[#D8C7B3] bg-[#FAF7F2] text-[#2C221E] focus:outline-none focus:ring-2 focus:ring-[#9E2A2B]"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-3 flex gap-2">
+                <Button type="button" variant="outline" onClick={() => setEditingTournament(null)} className="w-1/2 rounded-xl text-xs">
+                  Cancel
+                </Button>
+                <Button type="submit" className="w-1/2 bg-[#9E2A2B] hover:bg-[#842021] text-white font-bold rounded-xl text-xs">
+                  Save Changes
                 </Button>
               </div>
             </form>

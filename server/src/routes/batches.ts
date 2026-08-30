@@ -166,20 +166,49 @@ batchesRouter.post("/", requireAuth, requireAdmin, async (req, res) => {
 batchesRouter.put("/:id", requireAuth, requireAdmin, async (req, res) => {
   try {
     const id = Number(req.params.id);
-    const { name, session, slogan, avatarUrl, bannerUrl } = req.body;
+    const { name, session, batchNumber, slogan, avatarUrl, bannerUrl } = req.body;
+
+    let slug: string | undefined = undefined;
+    if (batchNumber !== undefined && Number(batchNumber) > 0) {
+      slug = `batch-${Number(batchNumber)}`;
+    }
 
     const batch = await prisma.batch.update({
       where: { id },
       data: {
         name: name || undefined,
         session: session || undefined,
+        batchNumber: batchNumber !== undefined ? Number(batchNumber) : undefined,
+        slug: slug || undefined,
         slogan: slogan !== undefined ? slogan : undefined,
         avatarUrl: avatarUrl !== undefined ? avatarUrl : undefined,
         bannerUrl: bannerUrl !== undefined ? bannerUrl : undefined,
+      },
+      include: {
+        _count: {
+          select: {
+            users: true,
+            teams: true,
+            mediaAssets: true,
+          }
+        }
       }
     });
 
-    res.json(batch);
+    res.json({
+      id: batch.id,
+      name: batch.name,
+      session: batch.session,
+      batchNumber: batch.batchNumber,
+      slug: batch.slug,
+      slogan: batch.slogan,
+      avatarUrl: batch.avatarUrl,
+      bannerUrl: batch.bannerUrl,
+      studentsCount: batch._count.users,
+      teamsCount: batch._count.teams,
+      photosCount: batch._count.mediaAssets,
+      createdAt: batch.createdAt,
+    });
   } catch (err: any) {
     res.status(500).json({ error: err.message || "Failed to update batch" });
   }

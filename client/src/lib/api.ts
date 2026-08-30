@@ -193,7 +193,7 @@ export const api = {
       return data;
     },
 
-    update: async (id: number, payload: { name?: string; session?: string; slogan?: string; avatarUrl?: string; bannerUrl?: string }) => {
+    update: async (id: number, payload: { name?: string; session?: string; batchNumber?: number; slogan?: string; avatarUrl?: string; bannerUrl?: string }) => {
       const res = await fetch(`${API_BASE}/batches/${id}`, {
         method: "PUT",
         headers: getAuthHeaders(),
@@ -231,6 +231,7 @@ export const api = {
       name: string;
       email?: string;
       batchId?: number | null;
+      role?: "ADMIN" | "USER";
       cricketRole?: string;
       footballPosition?: string;
       temporaryPassword?: string;
@@ -242,6 +243,25 @@ export const api = {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to create user");
+      return data;
+    },
+
+    update: async (userId: number, payload: {
+      studentId?: string;
+      name?: string;
+      email?: string;
+      batchId?: number | null;
+      role?: "ADMIN" | "USER";
+      cricketRole?: string | null;
+      footballPosition?: string | null;
+    }) => {
+      const res = await fetch(`${API_BASE}/users/${userId}`, {
+        method: "PUT",
+        headers: getAuthHeaders(),
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to update user");
       return data;
     },
 
