@@ -37,6 +37,15 @@ export interface BatchItem {
   studentsCount: number;
   teamsCount: number;
   photosCount?: number;
+  moderators?: {
+    id: number;
+    name: string;
+    roll: string;
+    email: string;
+    avatarUrl?: string;
+    cricketRole?: string;
+    footballPosition?: string;
+  }[];
   createdAt: string;
 }
 
@@ -211,6 +220,27 @@ export const api = {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to delete batch");
+      return data;
+    },
+
+    assignModerator: async (batchId: number, userId: number) => {
+      const res = await fetch(`${API_BASE}/batches/${batchId}/moderators`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ userId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to assign moderator");
+      return data;
+    },
+
+    removeModerator: async (batchId: number, userId: number) => {
+      const res = await fetch(`${API_BASE}/batches/${batchId}/moderators/${userId}`, {
+        method: "DELETE",
+        headers: getAuthHeaders(),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to remove moderator");
       return data;
     },
   },

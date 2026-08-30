@@ -33,6 +33,9 @@ export const AdminDashboard: React.FC = () => {
   const [batches, setBatches] = useState<BatchItem[]>([]);
   const [batchSearchQuery, setBatchSearchQuery] = useState("");
   const [showCreateBatchModal, setShowCreateBatchModal] = useState(false);
+  const [showAssignBatchModModal, setShowAssignBatchModModal] = useState(false);
+  const [selectedBatchForMod, setSelectedBatchForMod] = useState<number | null>(null);
+  const [selectedUserForMod, setSelectedUserForMod] = useState<number | null>(null);
   const [newBatchName, setNewBatchName] = useState("");
   const [newBatchSession, setNewBatchSession] = useState("");
   const [newBatchNumber, setNewBatchNumber] = useState("");
@@ -179,6 +182,41 @@ export const AdminDashboard: React.FC = () => {
       triggerNotification(`Batch "${name}" deleted.`);
     } catch (err: any) {
       toast.error(err.message || "Failed to delete batch.");
+    }
+  };
+
+  const handleOpenAssignBatchModModal = (batchId: number) => {
+    setSelectedBatchForMod(batchId);
+    const batchStudents = players.filter(p => p.batchId === batchId);
+    if (batchStudents.length > 0) {
+      setSelectedUserForMod(batchStudents[0].id);
+    } else if (players.length > 0) {
+      setSelectedUserForMod(players[0].id);
+    }
+    setShowAssignBatchModModal(true);
+  };
+
+  const handleAssignBatchModerator = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedBatchForMod || !selectedUserForMod) return;
+    try {
+      const res = await api.batches.assignModerator(selectedBatchForMod, selectedUserForMod);
+      setShowAssignBatchModModal(false);
+      await loadAllData();
+      triggerNotification(res.message || "Assigned batch moderator successfully!");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to assign batch moderator.");
+    }
+  };
+
+  const handleRemoveBatchModerator = async (batchId: number, userId: number, userName: string) => {
+    if (!confirm(`Are you sure you want to remove ${userName} as a batch moderator?`)) return;
+    try {
+      await api.batches.removeModerator(batchId, userId);
+      await loadAllData();
+      triggerNotification(`Removed ${userName} as batch moderator.`);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to remove batch moderator.");
     }
   };
 
@@ -757,6 +795,37 @@ export const AdminDashboard: React.FC = () => {
                     <div className="pt-3 border-t border-[#EFE8DC] flex items-center justify-between text-xs text-[#6B5E53]">
                       <span>👥 {b.studentsCount} Students</span>
                       <span className="font-semibold text-[#842021]">🏆 {b.teamsCount} Teams</span>
+                    </div>
+
+                    {/* Batch Moderators Strip */}
+                    <div className="pt-2.5 border-t border-[#EFE8DC] space-y-1.5">
+                      <div className="flex items-center justify-between text-[11px]">
+                        <span className="font-bold text-[#7C6E63] uppercase">Moderators ({b.moderators?.length || 0}):</span>
+                        <button
+                          onClick={() => handleOpenAssignBatchModModal(b.id)}
+                          className="text-[#9E2A2B] hover:text-[#842021] font-bold text-[10px] bg-[#FAF0E6] hover:bg-[#F5E0D0] px-2 py-0.5 rounded-md border border-[#E8D6C3] transition-colors"
+                        >
+                          + Add Mod
+                        </button>
+                      </div>
+                      {b.moderators && b.moderators.length > 0 ? (
+                        <div className="flex flex-wrap gap-1">
+                          {b.moderators.map((mod) => (
+                            <span key={mod.id} className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md bg-[#FAF0E6] text-[#842021] border border-[#E8D6C3]">
+                              <span>🛡️ {mod.name.split(" ")[0]} ({mod.roll})</span>
+                              <button
+                                onClick={() => handleRemoveBatchModerator(b.id, mod.id, mod.name)}
+                                className="text-[#9E2A2B] hover:text-[#6F1819] p-0.5 rounded hover:bg-[#F5E0D0]"
+                                title="Remove moderator"
+                              >
+                                <X className="w-3 h-3" />
+                              </button>
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-[10px] text-[#7C6E63] italic">No moderator assigned</p>
+                      )}
                     </div>
                   </div>
                 ))
@@ -1913,6 +1982,79 @@ export const AdminDashboard: React.FC = () => {
                 </Button>
                 <Button type="submit" className="w-1/2 bg-[#9E2A2B] hover:bg-[#842021] text-white font-bold rounded-xl text-xs">
                   Save Changes
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ASSIGN BATCH MODERATOR MODAL */}
+      {showAssignBatchModModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
+          <div className="bg-white border border-[#E5DACB] rounded-3xl shadow-2xl w-full max-w-md p-6 relative">
+            <button onClick={() => setShowAssignBatchModModal(false)} className="absolute top-4 right-4 text-[#7C6E63] hover:text-[#2C221E]">
+              <X className="w-5 h-5" />
+            </button>
+            
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 rounded-xl bg-[#FAF0E6] text-[#9E2A2B] flex items-center justify-center">
+                <UserCheck className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-lg font-black text-[#2C221E]">Assign Batch Moderator</h3>
+                <p className="text-xs text-[#7C6E63]">Grant batch photo, banner, and slogan curation permissions</p>
+              </div>
+            </div>
+            
+            <form onSubmit={handleAssignBatchModerator} className="space-y-3.5 text-xs">
+              <div>
+                <label className="block font-bold text-[#4A3E35] mb-1">Target Batch</label>
+                <select
+                  value={selectedBatchForMod || ""}
+                  onChange={(e) => {
+                    const bId = Number(e.target.value);
+                    setSelectedBatchForMod(bId);
+                    const batchStudents = players.filter(p => p.batchId === bId);
+                    if (batchStudents.length > 0) {
+                      setSelectedUserForMod(batchStudents[0].id);
+                    }
+                  }}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-[#D8C7B3] bg-[#FAF7F2] text-[#2C221E] focus:outline-none focus:ring-2 focus:ring-[#9E2A2B]"
+                >
+                  {batches.map(b => (
+                    <option key={b.id} value={b.id}>{b.name} ({b.session})</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block font-bold text-[#4A3E35] mb-1">Select Student / Class Representative</label>
+                <select
+                  value={selectedUserForMod || ""}
+                  onChange={(e) => setSelectedUserForMod(Number(e.target.value))}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-[#D8C7B3] bg-[#FAF7F2] text-[#2C221E] focus:outline-none focus:ring-2 focus:ring-[#9E2A2B]"
+                >
+                  {(selectedBatchForMod 
+                    ? players.filter(p => p.batchId === selectedBatchForMod)
+                    : players
+                  ).map(p => (
+                    <option key={p.id} value={p.id}>
+                      {p.name} (Roll: {p.studentId})
+                    </option>
+                  ))}
+                </select>
+                {selectedBatchForMod && players.filter(p => p.batchId === selectedBatchForMod).length === 0 && (
+                  <p className="text-[11px] text-[#C92A2A] mt-1">No registered students found for this batch yet.</p>
+                )}
+              </div>
+
+              <div className="pt-2 flex gap-2">
+                <Button type="button" variant="outline" onClick={() => setShowAssignBatchModModal(false)} className="w-1/2 rounded-xl text-xs">
+                  Cancel
+                </Button>
+                <Button type="submit" className="w-1/2 bg-[#9E2A2B] hover:bg-[#842021] text-white font-bold rounded-xl text-xs">
+                  Grant Moderator Role
                 </Button>
               </div>
             </form>

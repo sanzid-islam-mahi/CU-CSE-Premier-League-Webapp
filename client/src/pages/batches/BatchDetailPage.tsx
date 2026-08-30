@@ -27,8 +27,13 @@ export const BatchDetailPage: React.FC = () => {
 
   const currentUser = api.auth.getCurrentUser();
   const isAdmin = currentUser?.role === "ADMIN";
-  const isBatchMember = currentUser?.batchId === batch?.id;
-  const canEdit = isAdmin || isBatchMember;
+  const isModerator = Boolean(
+    currentUser && (
+      isAdmin || 
+      batch?.moderators?.some((m: any) => m.id === currentUser.id || m.userId === currentUser.id)
+    )
+  );
+  const canEdit = isModerator;
 
   useEffect(() => {
     fetchBatchDetail();
@@ -268,6 +273,35 @@ export const BatchDetailPage: React.FC = () => {
               </Link>
             </div>
           </div>
+
+          {/* Batch Representatives & Moderators Strip */}
+          {batch.moderators && batch.moderators.length > 0 && (
+            <div className="mx-5 mb-5 p-4 bg-[#FAF7F2] rounded-2xl border border-[#E8DCCF] flex flex-wrap items-center justify-between gap-3 text-xs">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-[#FAF0E6] text-[#9E2A2B] flex items-center justify-center font-bold text-sm shadow-2xs border border-[#E8D6C3]">
+                  🛡️
+                </div>
+                <div>
+                  <p className="font-extrabold text-[#2C221E] text-xs">Batch Representatives & Moderators</p>
+                  <p className="text-[10px] text-[#7C6E63]">Authorized batch showcase curators & album managers</p>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                {batch.moderators.map((mod: any) => (
+                  <Link
+                    key={mod.id}
+                    to={`/players/${mod.roll}`}
+                    className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white border border-[#E5DACB] text-[#2C221E] hover:border-[#9E2A2B] hover:text-[#9E2A2B] transition-colors font-bold text-xs shadow-2xs group"
+                  >
+                    <SmartAvatar src={mod.avatarUrl} alt={mod.name} size="xs" shape="circle" />
+                    <span>{mod.name}</span>
+                    <span className="text-[10px] font-mono text-[#7C6E63] group-hover:text-[#9E2A2B]">({mod.roll})</span>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* TABS NAVIGATION */}
@@ -425,7 +459,8 @@ export const BatchDetailPage: React.FC = () => {
             defaultCategory="BATCH_GALLERY"
             title={`${batch.name} Photo Album & Moments`}
             description="Class photos, sports day memories, celebration highlights, and batch reunions."
-            allowUpload={true}
+            allowUpload={canEdit}
+            canModerate={canEdit}
           />
         )}
 

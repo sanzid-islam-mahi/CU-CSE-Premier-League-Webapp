@@ -20,6 +20,13 @@ batchesRouter.get("/", async (_req, res) => {
     const batches = await prisma.batch.findMany({
       orderBy: { batchNumber: "asc" },
       include: {
+        moderators: {
+          include: {
+            user: {
+              select: { id: true, studentId: true, name: true, email: true, avatarUrl: true }
+            }
+          }
+        },
         _count: {
           select: {
             users: true,
@@ -42,6 +49,13 @@ batchesRouter.get("/", async (_req, res) => {
       studentsCount: b._count.users,
       teamsCount: b._count.teams,
       photosCount: b._count.mediaAssets,
+      moderators: b.moderators.map(m => ({
+        id: m.user.id,
+        name: m.user.name,
+        roll: m.user.studentId,
+        email: m.user.email,
+        avatarUrl: m.user.avatarUrl
+      })),
       createdAt: b.createdAt,
     }));
 
@@ -60,6 +74,13 @@ batchesRouter.get("/:idOrSlug", async (req, res) => {
     const batch = await prisma.batch.findFirst({
       where: isNum ? { id: Number(idOrSlug) } : { slug: idOrSlug },
       include: {
+        moderators: {
+          include: {
+            user: {
+              select: { id: true, studentId: true, name: true, email: true, avatarUrl: true, cricketRole: true, footballPosition: true }
+            }
+          }
+        },
         users: {
           select: {
             id: true,
@@ -96,7 +117,18 @@ batchesRouter.get("/:idOrSlug", async (req, res) => {
       return;
     }
 
-    res.json(batch);
+    res.json({
+      ...batch,
+      moderators: batch.moderators.map(m => ({
+        id: m.user.id,
+        name: m.user.name,
+        roll: m.user.studentId,
+        email: m.user.email,
+        avatarUrl: m.user.avatarUrl,
+        cricketRole: m.user.cricketRole,
+        footballPosition: m.user.footballPosition,
+      }))
+    });
   } catch (err: any) {
     res.status(500).json({ error: err.message || "Failed to fetch batch" });
   }
@@ -155,6 +187,7 @@ batchesRouter.post("/", requireAuth, requireAdmin, async (req, res) => {
       bannerUrl: batch.bannerUrl,
       studentsCount: batch._count.users,
       teamsCount: batch._count.teams,
+      moderators: [],
       createdAt: batch.createdAt,
     });
   } catch (err: any) {
@@ -162,29 +195,107 @@ batchesRouter.post("/", requireAuth, requireAdmin, async (req, res) => {
   }
 });
 
-// UPDATE Batch (Admin Only)
-batchesRouter.put("/:id", requireAuth, requireAdmin, async (req, res) => {
+// ASSIGN Batch Moderator (Admin Only)
+batchesRouter.post("/:id/moderators", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const batchId = Number(req.params.id);
+    const { userId } = req.body;
+
+    if (!userId) {
+      res.status(400).json({ error: "userId is required." });
+      return;
+    }
+
+    const batch = await prisma.batch.findUnique({ where: { id: batchId } });
+    if (!batch) {
+      res.status(404).json({ error: "Batch not found." });
+      return;
+    }
+
+    const user = await prisma.user.findUnique({ where: { id: Number(userId) } });
+    if (!user) {
+      res.status(404).json({ error: "User not found." });
+      return;
+    }
+
+    await prisma.batchModerator.upsert({
+      where: {
+        batchId_userId: { batchId, userId: Number(userId) }
+      },
+      update: {},
+      create: {
+        batchId,
+        userId: Number(userId)
+      }
+    });
+
+    res.status(201).json({ message: `Assigned ${user.name} as Batch Moderator.` });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || "Failed to assign batch moderator." });
+  }
+});
+
+// REMOVE Batch Moderator (Admin Only)
+batchesRouter.delete("/:id/moderators/:userId", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const batchId = Number(req.params.id);
+    const userId = Number(req.params.userId);
+
+    await prisma.batchModerator.deleteMany({
+      where: { batchId, userId }
+    });
+
+    res.json({ message: "Removed batch moderator." });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || "Failed to remove batch moderator." });
+  }
+});
+
+// UPDATE Batch (Admin or Batch Moderator)
+batchesRouter.put("/:id", requireAuth, async (req: any, res) => {
   try {
     const id = Number(req.params.id);
+    const isAdmin = req.user.role === "ADMIN";
+    const isMod = isAdmin || await prisma.batchModerator.findUnique({
+      where: {
+        batchId_userId: {
+          batchId: id,
+          userId: req.user.id,
+        }
+      }
+    });
+
+    if (!isMod) {
+      res.status(403).json({ error: "Access denied. Only Batch Moderators or Admins can update batch details." });
+      return;
+    }
+
     const { name, session, batchNumber, slogan, avatarUrl, bannerUrl } = req.body;
 
     let slug: string | undefined = undefined;
-    if (batchNumber !== undefined && Number(batchNumber) > 0) {
+    if (isAdmin && batchNumber !== undefined && Number(batchNumber) > 0) {
       slug = `batch-${Number(batchNumber)}`;
     }
 
     const batch = await prisma.batch.update({
       where: { id },
       data: {
-        name: name || undefined,
-        session: session || undefined,
-        batchNumber: batchNumber !== undefined ? Number(batchNumber) : undefined,
-        slug: slug || undefined,
+        name: isAdmin ? (name || undefined) : undefined,
+        session: isAdmin ? (session || undefined) : undefined,
+        batchNumber: isAdmin ? (batchNumber !== undefined ? Number(batchNumber) : undefined) : undefined,
+        slug: isAdmin ? (slug || undefined) : undefined,
         slogan: slogan !== undefined ? slogan : undefined,
         avatarUrl: avatarUrl !== undefined ? avatarUrl : undefined,
         bannerUrl: bannerUrl !== undefined ? bannerUrl : undefined,
       },
       include: {
+        moderators: {
+          include: {
+            user: {
+              select: { id: true, studentId: true, name: true, email: true, avatarUrl: true }
+            }
+          }
+        },
         _count: {
           select: {
             users: true,
@@ -207,6 +318,13 @@ batchesRouter.put("/:id", requireAuth, requireAdmin, async (req, res) => {
       studentsCount: batch._count.users,
       teamsCount: batch._count.teams,
       photosCount: batch._count.mediaAssets,
+      moderators: batch.moderators.map(m => ({
+        id: m.user.id,
+        name: m.user.name,
+        roll: m.user.studentId,
+        email: m.user.email,
+        avatarUrl: m.user.avatarUrl
+      })),
       createdAt: batch.createdAt,
     });
   } catch (err: any) {

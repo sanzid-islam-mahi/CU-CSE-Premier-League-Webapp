@@ -106,6 +106,24 @@ mediaRouter.post("/", requireAuth, async (req: AuthenticatedRequest, res) => {
       isFeatured,
     } = parsed.data;
 
+    // If uploading batch media, require Admin or Batch Moderator
+    if (batchId) {
+      const isAdmin = req.user?.role === "ADMIN";
+      const isMod = isAdmin || await prisma.batchModerator.findUnique({
+        where: {
+          batchId_userId: {
+            batchId: Number(batchId),
+            userId: req.user!.id,
+          }
+        }
+      });
+
+      if (!isMod) {
+        res.status(403).json({ error: "Access denied. Only Batch Moderators or Admins can upload photos for this batch." });
+        return;
+      }
+    }
+
     const asset = await prisma.mediaAsset.create({
       data: {
         title: title || null,
@@ -145,11 +163,23 @@ mediaRouter.delete("/:id", requireAuth, async (req: AuthenticatedRequest, res) =
       return;
     }
 
-    // Allow deletion if user is admin or uploader
+    // Allow deletion if user is admin, original uploader, or Batch Moderator for this batch
     const isAdmin = req.user?.role === "ADMIN";
     const isUploader = req.user?.id === existing.uploadedById;
+    let isBatchMod = false;
 
-    if (!isAdmin && !isUploader) {
+    if (existing.batchId && req.user) {
+      isBatchMod = !!(await prisma.batchModerator.findUnique({
+        where: {
+          batchId_userId: {
+            batchId: existing.batchId,
+            userId: req.user.id,
+          }
+        }
+      }));
+    }
+
+    if (!isAdmin && !isUploader && !isBatchMod) {
       res.status(403).json({ error: "You are not authorized to delete this media asset." });
       return;
     }

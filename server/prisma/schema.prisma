@@ -97,8 +97,22 @@ model Batch {
   users       User[]
   teams       Team[]
   mediaAssets MediaAsset[]
+  moderators  BatchModerator[]
 
   @@map("batches")
+}
+
+model BatchModerator {
+  id         Int      @id @default(autoincrement())
+  batchId    Int
+  userId     Int
+  assignedAt DateTime @default(now())
+
+  batch      Batch    @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([batchId, userId])
+  @@map("batch_moderators")
 }
 
 model User {
@@ -129,6 +143,7 @@ model User {
   batch               Batch?   @relation(fields: [batchId], references: [id])
   
   // Permission & Participation relations
+  moderatorBatches     BatchModerator[]
   organizerTournaments TournamentOrganizer[]
   captainTeams         Team[]               @relation("TeamCaptain")
   teamMemberships      TeamMember[]

@@ -44,6 +44,7 @@ interface MediaGalleryViewProps {
   title?: string;
   description?: string;
   allowUpload?: boolean;
+  canModerate?: boolean;
 }
 
 export const MediaGalleryView: React.FC<MediaGalleryViewProps> = ({
@@ -56,6 +57,7 @@ export const MediaGalleryView: React.FC<MediaGalleryViewProps> = ({
   title = "Photo Gallery & Highlights",
   description = "Memories, match action, squad portraits, and celebrations.",
   allowUpload = true,
+  canModerate = false,
 }) => {
   const [mediaList, setMediaList] = useState<MediaItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -318,7 +320,7 @@ export const MediaGalleryView: React.FC<MediaGalleryViewProps> = ({
                   <ExternalLink className="w-4 h-4" />
                 </a>
 
-                {(currentUser?.role === "ADMIN" || currentUser?.id === lightboxItem.uploadedBy?.id) && (
+                {(currentUser?.role === "ADMIN" || currentUser?.id === lightboxItem.uploadedBy?.id || canModerate) && (
                   <button
                     onClick={() => setDeleteCandidateId(lightboxItem.id)}
                     className="p-2 rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-400 transition-colors"
