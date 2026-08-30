@@ -1,6 +1,8 @@
 import React from "react";
 import { Zap } from "lucide-react";
 import { DummyBadge } from "@/components/common/DummyBadge";
+import { SmartAvatar } from "@/components/common/SmartAvatar";
+import { BatchChip } from "@/components/common/BatchChip";
 
 interface TopPerformersSectionProps {
   activeSport: "cricket" | "football";
@@ -33,20 +35,42 @@ export const TopPerformersSection: React.FC<TopPerformersSectionProps> = ({ acti
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             
             {/* Orange Cap (Most Runs) */}
-            <div className="bg-gradient-to-br from-[#FFF5EC] to-white rounded-3xl border-2 border-[#D96B27]/40 p-6 shadow-xs relative overflow-hidden">
-              <div className="flex items-center justify-between mb-4">
-                <span className="px-3 py-1 bg-[#D96B27] text-white text-[11px] font-black rounded-full uppercase tracking-wider flex items-center gap-1">
-                  🧢 ORANGE CAP
-                </span>
-                <span className="text-xs font-bold text-[#D96B27]">Most Runs</span>
+            <div className="bg-gradient-to-br from-[#FFF5EC] to-white rounded-3xl border-2 border-[#D96B27]/40 p-6 shadow-xs relative overflow-hidden flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <span className="px-3 py-1 bg-[#D96B27] text-white text-[11px] font-black rounded-full uppercase tracking-wider flex items-center gap-1">
+                    🧢 ORANGE CAP
+                  </span>
+                  <span className="text-xs font-bold text-[#D96B27]">Most Runs</span>
+                </div>
+
+                <div className="flex items-center gap-3 my-3">
+                  <SmartAvatar
+                    src="/uploads/default-avatars/sanzid.jpg"
+                    alt="Sanzid"
+                    fallbackText="SR"
+                    size="lg"
+                    shape="circle"
+                    className="ring-2 ring-[#D96B27]/30 shadow-xs"
+                  />
+                  <div className="min-w-0">
+                    <h3 className="text-xl font-black text-[#2C221E]">Sanzid Rahman</h3>
+                    <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                      <BatchChip
+                        name="Dwimik 20"
+                        session="2019-2020"
+                        batchNumber={20}
+                        size="xs"
+                        variant="inline"
+                        className="text-[10px]"
+                      />
+                      <span className="text-[10px] text-[#7C6E63]">· Captain</span>
+                    </div>
+                  </div>
+                </div>
               </div>
 
-              <div className="space-y-1 my-3">
-                <h3 className="text-2xl font-black text-[#2C221E]">Sanzid</h3>
-                <p className="text-xs font-bold text-[#9E2A2B]">Batch 20 Titans · Captain</p>
-              </div>
-
-              <div className="my-5 p-4 bg-white/80 rounded-2xl border border-[#E8DCCF] flex items-center justify-between">
+              <div className="mt-4 p-4 bg-white/80 rounded-2xl border border-[#E8DCCF] flex items-center justify-between">
                 <div>
                   <p className="text-3xl font-black text-[#D96B27]">186</p>
                   <p className="text-[11px] font-semibold text-[#7C6E63]">Total Runs (4 Inngs)</p>
@@ -60,20 +84,42 @@ export const TopPerformersSection: React.FC<TopPerformersSectionProps> = ({ acti
             </div>
 
             {/* Purple Cap (Most Wickets) */}
-            <div className="bg-gradient-to-br from-[#FAF0FF] to-white rounded-3xl border-2 border-[#6B4E71]/40 p-6 shadow-xs relative overflow-hidden">
-              <div className="flex items-center justify-between mb-4">
-                <span className="px-3 py-1 bg-[#6B4E71] text-white text-[11px] font-black rounded-full uppercase tracking-wider flex items-center gap-1">
-                  🧢 PURPLE CAP
-                </span>
-                <span className="text-xs font-bold text-[#6B4E71]">Most Wickets</span>
+            <div className="bg-gradient-to-br from-[#FAF0FF] to-white rounded-3xl border-2 border-[#6B4E71]/40 p-6 shadow-xs relative overflow-hidden flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <span className="px-3 py-1 bg-[#6B4E71] text-white text-[11px] font-black rounded-full uppercase tracking-wider flex items-center gap-1">
+                    🧢 PURPLE CAP
+                  </span>
+                  <span className="text-xs font-bold text-[#6B4E71]">Most Wickets</span>
+                </div>
+
+                <div className="flex items-center gap-3 my-3">
+                  <SmartAvatar
+                    src="/uploads/default-avatars/farhan.jpg"
+                    alt="Farhan"
+                    fallbackText="FA"
+                    size="lg"
+                    shape="circle"
+                    className="ring-2 ring-[#6B4E71]/30 shadow-xs"
+                  />
+                  <div className="min-w-0">
+                    <h3 className="text-xl font-black text-[#2C221E]">Farhan Ahmed</h3>
+                    <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                      <BatchChip
+                        name="Anabil 21"
+                        session="2020-2021"
+                        batchNumber={21}
+                        size="xs"
+                        variant="inline"
+                        className="text-[10px]"
+                      />
+                      <span className="text-[10px] text-[#7C6E63]">· Fast Bowler</span>
+                    </div>
+                  </div>
+                </div>
               </div>
 
-              <div className="space-y-1 my-3">
-                <h3 className="text-2xl font-black text-[#2C221E]">Farhan</h3>
-                <p className="text-xs font-bold text-[#9E2A2B]">Batch 21 Warriors · Fast Bowler</p>
-              </div>
-
-              <div className="my-5 p-4 bg-white/80 rounded-2xl border border-[#E8DCCF] flex items-center justify-between">
+              <div className="mt-4 p-4 bg-white/80 rounded-2xl border border-[#E8DCCF] flex items-center justify-between">
                 <div>
                   <p className="text-3xl font-black text-[#6B4E71]">9</p>
                   <p className="text-[11px] font-semibold text-[#7C6E63]">Wickets (8.4 Overs)</p>
@@ -87,20 +133,42 @@ export const TopPerformersSection: React.FC<TopPerformersSectionProps> = ({ acti
             </div>
 
             {/* Maximum Sixes Trophy */}
-            <div className="bg-gradient-to-br from-[#FAF0E6] to-white rounded-3xl border-2 border-[#9E2A2B]/30 p-6 shadow-xs relative overflow-hidden">
-              <div className="flex items-center justify-between mb-4">
-                <span className="px-3 py-1 bg-[#9E2A2B] text-white text-[11px] font-black rounded-full uppercase tracking-wider flex items-center gap-1">
-                  💥 MAXIMUM SIXES
-                </span>
-                <span className="text-xs font-bold text-[#9E2A2B]">Power Striker</span>
+            <div className="bg-gradient-to-br from-[#FAF0E6] to-white rounded-3xl border-2 border-[#9E2A2B]/30 p-6 shadow-xs relative overflow-hidden flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <span className="px-3 py-1 bg-[#9E2A2B] text-white text-[11px] font-black rounded-full uppercase tracking-wider flex items-center gap-1">
+                    💥 MAXIMUM SIXES
+                  </span>
+                  <span className="text-xs font-bold text-[#9E2A2B]">Power Striker</span>
+                </div>
+
+                <div className="flex items-center gap-3 my-3">
+                  <SmartAvatar
+                    src="/uploads/default-avatars/tanvir.jpg"
+                    alt="Tanvir"
+                    fallbackText="TA"
+                    size="lg"
+                    shape="circle"
+                    className="ring-2 ring-[#9E2A2B]/30 shadow-xs"
+                  />
+                  <div className="min-w-0">
+                    <h3 className="text-xl font-black text-[#2C221E]">Tanvir Hasan</h3>
+                    <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                      <BatchChip
+                        name="Anabil 21"
+                        session="2020-2021"
+                        batchNumber={21}
+                        size="xs"
+                        variant="inline"
+                        className="text-[10px]"
+                      />
+                      <span className="text-[10px] text-[#7C6E63]">· All-Rounder</span>
+                    </div>
+                  </div>
+                </div>
               </div>
 
-              <div className="space-y-1 my-3">
-                <h3 className="text-2xl font-black text-[#2C221E]">Tanvir</h3>
-                <p className="text-xs font-bold text-[#9E2A2B]">Batch 21 Warriors · All-Rounder</p>
-              </div>
-
-              <div className="my-5 p-4 bg-white/80 rounded-2xl border border-[#E8DCCF] flex items-center justify-between">
+              <div className="mt-4 p-4 bg-white/80 rounded-2xl border border-[#E8DCCF] flex items-center justify-between">
                 <div>
                   <p className="text-3xl font-black text-[#9E2A2B]">14</p>
                   <p className="text-[11px] font-semibold text-[#7C6E63]">Total Sixes Hit</p>
@@ -120,20 +188,42 @@ export const TopPerformersSection: React.FC<TopPerformersSectionProps> = ({ acti
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             
             {/* Golden Boot (Top Scorer) */}
-            <div className="bg-gradient-to-br from-[#FFF9DB] to-white rounded-3xl border-2 border-[#F59F00]/50 p-6 shadow-xs relative overflow-hidden">
-              <div className="flex items-center justify-between mb-4">
-                <span className="px-3 py-1 bg-[#F59F00] text-white text-[11px] font-black rounded-full uppercase tracking-wider flex items-center gap-1">
-                  👟 GOLDEN BOOT
-                </span>
-                <span className="text-xs font-bold text-[#D97706]">Top Scorer</span>
+            <div className="bg-gradient-to-br from-[#FFF9DB] to-white rounded-3xl border-2 border-[#F59F00]/50 p-6 shadow-xs relative overflow-hidden flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <span className="px-3 py-1 bg-[#F59F00] text-white text-[11px] font-black rounded-full uppercase tracking-wider flex items-center gap-1">
+                    👟 GOLDEN BOOT
+                  </span>
+                  <span className="text-xs font-bold text-[#D97706]">Top Scorer</span>
+                </div>
+
+                <div className="flex items-center gap-3 my-3">
+                  <SmartAvatar
+                    src="/uploads/default-avatars/rafid.jpg"
+                    alt="Rafid"
+                    fallbackText="RA"
+                    size="lg"
+                    shape="circle"
+                    className="ring-2 ring-[#F59F00]/30 shadow-xs"
+                  />
+                  <div className="min-w-0">
+                    <h3 className="text-xl font-black text-[#2C221E]">Rafid Khan</h3>
+                    <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                      <BatchChip
+                        name="Anabil 21"
+                        session="2020-2021"
+                        batchNumber={21}
+                        size="xs"
+                        variant="inline"
+                        className="text-[10px]"
+                      />
+                      <span className="text-[10px] text-[#7C6E63]">· Forward</span>
+                    </div>
+                  </div>
+                </div>
               </div>
 
-              <div className="space-y-1 my-3">
-                <h3 className="text-2xl font-black text-[#2C221E]">Rafid</h3>
-                <p className="text-xs font-bold text-[#9E2A2B]">Batch 21 Strikers · Forward</p>
-              </div>
-
-              <div className="my-5 p-4 bg-white/80 rounded-2xl border border-[#E8DCCF] flex items-center justify-between">
+              <div className="mt-4 p-4 bg-white/80 rounded-2xl border border-[#E8DCCF] flex items-center justify-between">
                 <div>
                   <p className="text-3xl font-black text-[#D97706]">6</p>
                   <p className="text-[11px] font-semibold text-[#7C6E63]">Goals in 3 Matches</p>
@@ -146,20 +236,42 @@ export const TopPerformersSection: React.FC<TopPerformersSectionProps> = ({ acti
             </div>
 
             {/* Top Playmaker (Assists) */}
-            <div className="bg-gradient-to-br from-[#E6FCF5] to-white rounded-3xl border-2 border-[#20C997]/40 p-6 shadow-xs relative overflow-hidden">
-              <div className="flex items-center justify-between mb-4">
-                <span className="px-3 py-1 bg-[#20C997] text-white text-[11px] font-black rounded-full uppercase tracking-wider flex items-center gap-1">
-                  🎯 TOP PLAYMAKER
-                </span>
-                <span className="text-xs font-bold text-[#0CA678]">Most Assists</span>
+            <div className="bg-gradient-to-br from-[#E6FCF5] to-white rounded-3xl border-2 border-[#20C997]/40 p-6 shadow-xs relative overflow-hidden flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <span className="px-3 py-1 bg-[#20C997] text-white text-[11px] font-black rounded-full uppercase tracking-wider flex items-center gap-1">
+                    🎯 TOP PLAYMAKER
+                  </span>
+                  <span className="text-xs font-bold text-[#0CA678]">Most Assists</span>
+                </div>
+
+                <div className="flex items-center gap-3 my-3">
+                  <SmartAvatar
+                    src="/uploads/default-avatars/sami.jpg"
+                    alt="Sami"
+                    fallbackText="SM"
+                    size="lg"
+                    shape="circle"
+                    className="ring-2 ring-[#20C997]/30 shadow-xs"
+                  />
+                  <div className="min-w-0">
+                    <h3 className="text-xl font-black text-[#2C221E]">Samiul Islam</h3>
+                    <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                      <BatchChip
+                        name="Anabil 21"
+                        session="2020-2021"
+                        batchNumber={21}
+                        size="xs"
+                        variant="inline"
+                        className="text-[10px]"
+                      />
+                      <span className="text-[10px] text-[#7C6E63]">· Midfielder</span>
+                    </div>
+                  </div>
+                </div>
               </div>
 
-              <div className="space-y-1 my-3">
-                <h3 className="text-2xl font-black text-[#2C221E]">Sami</h3>
-                <p className="text-xs font-bold text-[#9E2A2B]">Batch 21 Strikers · Midfield Maestro</p>
-              </div>
-
-              <div className="my-5 p-4 bg-white/80 rounded-2xl border border-[#E8DCCF] flex items-center justify-between">
+              <div className="mt-4 p-4 bg-white/80 rounded-2xl border border-[#E8DCCF] flex items-center justify-between">
                 <div>
                   <p className="text-3xl font-black text-[#0CA678]">5</p>
                   <p className="text-[11px] font-semibold text-[#7C6E63]">Assists Provided</p>
@@ -172,20 +284,42 @@ export const TopPerformersSection: React.FC<TopPerformersSectionProps> = ({ acti
             </div>
 
             {/* Golden Glove (Clean Sheets) */}
-            <div className="bg-gradient-to-br from-[#E7F5FF] to-white rounded-3xl border-2 border-[#339AF0]/40 p-6 shadow-xs relative overflow-hidden">
-              <div className="flex items-center justify-between mb-4">
-                <span className="px-3 py-1 bg-[#339AF0] text-white text-[11px] font-black rounded-full uppercase tracking-wider flex items-center gap-1">
-                  🧤 GOLDEN GLOVE
-                </span>
-                <span className="text-xs font-bold text-[#1C7ED6]">Best Goalkeeper</span>
+            <div className="bg-gradient-to-br from-[#E7F5FF] to-white rounded-3xl border-2 border-[#339AF0]/40 p-6 shadow-xs relative overflow-hidden flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <span className="px-3 py-1 bg-[#339AF0] text-white text-[11px] font-black rounded-full uppercase tracking-wider flex items-center gap-1">
+                    🧤 GOLDEN GLOVE
+                  </span>
+                  <span className="text-xs font-bold text-[#1C7ED6]">Best Goalkeeper</span>
+                </div>
+
+                <div className="flex items-center gap-3 my-3">
+                  <SmartAvatar
+                    src="/uploads/default-avatars/nahian.jpg"
+                    alt="Nahian"
+                    fallbackText="NA"
+                    size="lg"
+                    shape="circle"
+                    className="ring-2 ring-[#339AF0]/30 shadow-xs"
+                  />
+                  <div className="min-w-0">
+                    <h3 className="text-xl font-black text-[#2C221E]">Nahian Chowdhury</h3>
+                    <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                      <BatchChip
+                        name="Dwimik 20"
+                        session="2019-2020"
+                        batchNumber={20}
+                        size="xs"
+                        variant="inline"
+                        className="text-[10px]"
+                      />
+                      <span className="text-[10px] text-[#7C6E63]">· Goalkeeper</span>
+                    </div>
+                  </div>
+                </div>
               </div>
 
-              <div className="space-y-1 my-3">
-                <h3 className="text-2xl font-black text-[#2C221E]">Nahian</h3>
-                <p className="text-xs font-bold text-[#9E2A2B]">Batch 20 Tigers · Goalkeeper</p>
-              </div>
-
-              <div className="my-5 p-4 bg-white/80 rounded-2xl border border-[#E8DCCF] flex items-center justify-between">
+              <div className="mt-4 p-4 bg-white/80 rounded-2xl border border-[#E8DCCF] flex items-center justify-between">
                 <div>
                   <p className="text-3xl font-black text-[#1C7ED6]">2</p>
                   <p className="text-[11px] font-semibold text-[#7C6E63]">Clean Sheets</p>

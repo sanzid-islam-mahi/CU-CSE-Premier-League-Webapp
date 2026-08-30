@@ -651,14 +651,40 @@ export const TournamentDetailPage: React.FC = () => {
                     <span className="font-bold bg-[#FAF0E6] text-[#842021] px-2 py-0.5 rounded">
                       {m.stage?.replace("_", " ")} {m.group ? `· ${m.group.name}` : ""}
                     </span>
-                    <span className="font-bold text-[#2A7B54]">{m.status}</span>
+                    <span className={`font-bold ${m.status === "LIVE" ? "text-[#C92A2A] animate-pulse" : m.status === "COMPLETED" ? "text-[#2A7B54]" : "text-[#7C6E63]"}`}>
+                      {m.status}
+                    </span>
                   </div>
 
                   {/* Team A vs Team B Display */}
-                  <div className="grid grid-cols-5 items-center gap-2 py-2">
-                    <div className="col-span-2 text-left">
-                      <p className="font-black text-sm text-[#2C221E]">{m.teamA.name}</p>
-                      <p className="font-mono text-[10px] text-[#7C6E63]">{m.teamA.shortName}</p>
+                  <div className="grid grid-cols-5 items-center gap-3 py-2">
+                    <div className="col-span-2 flex items-center gap-2.5 text-left min-w-0">
+                      <SmartAvatar
+                        src={m.teamA.logoUrl}
+                        alt={m.teamA.name}
+                        fallbackText={m.teamA.shortName || m.teamA.name}
+                        size="sm"
+                        shape="rounded"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p className="font-black text-sm text-[#2C221E] truncate">{m.teamA.name}</p>
+                        {m.teamA.batch ? (
+                          <div className="mt-0.5">
+                            <BatchChip
+                              name={m.teamA.batch.name}
+                              session={m.teamA.batch.session}
+                              slug={m.teamA.batch.slug}
+                              avatarUrl={m.teamA.batch.avatarUrl}
+                              batchNumber={m.teamA.batch.batchNumber}
+                              size="xs"
+                              variant="inline"
+                              className="text-[10px] text-[#7C6E63]"
+                            />
+                          </div>
+                        ) : (
+                          <p className="font-mono text-[10px] text-[#7C6E63]">{m.teamA.shortName}</p>
+                        )}
+                      </div>
                     </div>
 
                     <div className="col-span-1 text-center">
@@ -667,9 +693,33 @@ export const TournamentDetailPage: React.FC = () => {
                       </span>
                     </div>
 
-                    <div className="col-span-2 text-right">
-                      <p className="font-black text-sm text-[#2C221E]">{m.teamB.name}</p>
-                      <p className="font-mono text-[10px] text-[#7C6E63]">{m.teamB.shortName}</p>
+                    <div className="col-span-2 flex items-center justify-end gap-2.5 text-right min-w-0">
+                      <div className="min-w-0 flex-1">
+                        <p className="font-black text-sm text-[#2C221E] truncate">{m.teamB.name}</p>
+                        {m.teamB.batch ? (
+                          <div className="mt-0.5 flex justify-end">
+                            <BatchChip
+                              name={m.teamB.batch.name}
+                              session={m.teamB.batch.session}
+                              slug={m.teamB.batch.slug}
+                              avatarUrl={m.teamB.batch.avatarUrl}
+                              batchNumber={m.teamB.batch.batchNumber}
+                              size="xs"
+                              variant="inline"
+                              className="text-[10px] text-[#7C6E63]"
+                            />
+                          </div>
+                        ) : (
+                          <p className="font-mono text-[10px] text-[#7C6E63]">{m.teamB.shortName}</p>
+                        )}
+                      </div>
+                      <SmartAvatar
+                        src={m.teamB.logoUrl}
+                        alt={m.teamB.name}
+                        fallbackText={m.teamB.shortName || m.teamB.name}
+                        size="sm"
+                        shape="rounded"
+                      />
                     </div>
                   </div>
 
@@ -680,10 +730,19 @@ export const TournamentDetailPage: React.FC = () => {
                       <span>{m.venue || "CU CSE Ground"}</span>
                     </span>
 
-                    <span className="flex items-center gap-1 font-semibold text-[#4A3E35]">
-                      <UserCheck className="w-3.5 h-3.5 text-[#9E2A2B]" />
-                      <span>Scorer: {m.scorers?.length > 0 ? m.scorers[0].user.name : "Unassigned"}</span>
-                    </span>
+                    <div className="flex items-center gap-1.5 font-semibold text-[#4A3E35]">
+                      <span className="text-[10px] text-[#7C6E63]">Scorer:</span>
+                      {m.scorers?.length > 0 ? (
+                        <PlayerChip
+                          name={m.scorers[0].user.name}
+                          studentId={m.scorers[0].user.studentId}
+                          avatarUrl={m.scorers[0].user.avatarUrl}
+                          size="xs"
+                        />
+                      ) : (
+                        <span className="text-[#7C6E63] font-medium">Unassigned</span>
+                      )}
+                    </div>
                   </div>
 
                   {/* Match Center & Scorer Links */}
@@ -760,8 +819,34 @@ export const TournamentDetailPage: React.FC = () => {
                         <tr key={row.teamId} className="hover:bg-[#FAF7F2]">
                           <td className="py-3 px-3 font-bold text-[#7C6E63]">{idx + 1}</td>
                           <td className="py-3 px-3">
-                            <p className="font-extrabold text-[#2C221E]">{row.teamName}</p>
-                            <p className="text-[10px] text-[#7C6E63] font-mono">{row.batchName || row.shortName}</p>
+                            <div className="flex items-center gap-2.5">
+                              <SmartAvatar
+                                src={row.teamLogoUrl}
+                                alt={row.teamName}
+                                fallbackText={row.shortName || row.teamName}
+                                size="sm"
+                                shape="rounded"
+                              />
+                              <div>
+                                <p className="font-extrabold text-[#2C221E]">{row.teamName}</p>
+                                {row.batch ? (
+                                  <div className="mt-0.5">
+                                    <BatchChip
+                                      name={row.batch.name}
+                                      session={row.batch.session}
+                                      slug={row.batch.slug}
+                                      avatarUrl={row.batch.avatarUrl}
+                                      batchNumber={row.batch.batchNumber}
+                                      size="xs"
+                                      variant="inline"
+                                      className="text-[10px] text-[#7C6E63]"
+                                    />
+                                  </div>
+                                ) : (
+                                  <p className="text-[10px] text-[#7C6E63] font-mono">{row.batchName || row.shortName}</p>
+                                )}
+                              </div>
+                            </div>
                           </td>
                           <td className="py-3 px-2 text-center font-bold">{row.played}</td>
                           <td className="py-3 px-2 text-center font-bold text-[#2A7B54]">{row.won}</td>
@@ -836,8 +921,26 @@ export const TournamentDetailPage: React.FC = () => {
                           <tr key={row.player.id} className="hover:bg-[#FAF7F2]">
                             <td className="py-2.5 px-2 font-bold text-[#7C6E63]">{idx + 1}</td>
                             <td className="py-2.5 px-3">
-                              <p className="font-extrabold text-[#2C221E]">{row.player.name}</p>
-                              <p className="text-[10px] text-[#7C6E63]">{row.player.batch?.name || row.player.studentId}</p>
+                              <PlayerChip
+                                name={row.player.name}
+                                studentId={row.player.studentId}
+                                avatarUrl={row.player.avatarUrl}
+                                size="xs"
+                              />
+                              {row.player.batch && (
+                                <div className="mt-0.5">
+                                  <BatchChip
+                                    name={row.player.batch.name}
+                                    session={row.player.batch.session}
+                                    slug={row.player.batch.slug}
+                                    avatarUrl={row.player.batch.avatarUrl}
+                                    batchNumber={row.player.batch.batchNumber}
+                                    size="xs"
+                                    variant="inline"
+                                    className="text-[10px] text-[#7C6E63]"
+                                  />
+                                </div>
+                              )}
                             </td>
                             <td className="py-2.5 px-2 text-right font-black text-[#9E2A2B] bg-[#FAF0E6]/50">{row.runs}</td>
                             <td className="py-2.5 px-2 text-right font-bold">{row.innings}</td>
@@ -881,8 +984,26 @@ export const TournamentDetailPage: React.FC = () => {
                           <tr key={row.player.id} className="hover:bg-[#FAF7F2]">
                             <td className="py-2.5 px-2 font-bold text-[#7C6E63]">{idx + 1}</td>
                             <td className="py-2.5 px-3">
-                              <p className="font-extrabold text-[#2C221E]">{row.player.name}</p>
-                              <p className="text-[10px] text-[#7C6E63]">{row.player.batch?.name || row.player.studentId}</p>
+                              <PlayerChip
+                                name={row.player.name}
+                                studentId={row.player.studentId}
+                                avatarUrl={row.player.avatarUrl}
+                                size="xs"
+                              />
+                              {row.player.batch && (
+                                <div className="mt-0.5">
+                                  <BatchChip
+                                    name={row.player.batch.name}
+                                    session={row.player.batch.session}
+                                    slug={row.player.batch.slug}
+                                    avatarUrl={row.player.batch.avatarUrl}
+                                    batchNumber={row.player.batch.batchNumber}
+                                    size="xs"
+                                    variant="inline"
+                                    className="text-[10px] text-[#7C6E63]"
+                                  />
+                                </div>
+                              )}
                             </td>
                             <td className="py-2.5 px-2 text-right font-black text-[#9E2A2B] bg-[#FAF0E6]/50">{row.wickets}</td>
                             <td className="py-2.5 px-2 text-right font-bold">{row.overs}</td>
@@ -911,15 +1032,35 @@ export const TournamentDetailPage: React.FC = () => {
                   </h3>
                   <div className="space-y-2">
                     {statsData?.goldenBoot?.map((row: any, idx: number) => (
-                      <div key={row.player.id} className="p-3 bg-[#FAF7F2] rounded-xl flex items-center justify-between text-xs">
+                      <div key={row.player.id} className="p-3 bg-[#FAF7F2] rounded-2xl flex items-center justify-between text-xs border border-[#E8DCCF]">
                         <div className="flex items-center gap-3">
-                          <span className="font-black text-[#7C6E63]">#{idx + 1}</span>
+                          <span className="font-black text-[#7C6E63] w-5">#{idx + 1}</span>
                           <div>
-                            <p className="font-extrabold text-[#2C221E]">{row.player.name}</p>
-                            <p className="text-[10px] text-[#7C6E63]">{row.player.batch?.name}</p>
+                            <PlayerChip
+                              name={row.player.name}
+                              studentId={row.player.studentId}
+                              avatarUrl={row.player.avatarUrl}
+                              size="xs"
+                            />
+                            {row.player.batch && (
+                              <div className="mt-0.5">
+                                <BatchChip
+                                  name={row.player.batch.name}
+                                  session={row.player.batch.session}
+                                  slug={row.player.batch.slug}
+                                  avatarUrl={row.player.batch.avatarUrl}
+                                  batchNumber={row.player.batch.batchNumber}
+                                  size="xs"
+                                  variant="inline"
+                                  className="text-[10px] text-[#7C6E63]"
+                                />
+                              </div>
+                            )}
                           </div>
                         </div>
-                        <span className="font-mono text-base font-black text-[#9E2A2B]">{row.goals} Goals</span>
+                        <span className="font-mono text-sm font-black text-[#9E2A2B] bg-[#FAF0E6] px-2.5 py-1 rounded-xl border border-[#E8D6C3]">
+                          {row.goals} Goals
+                        </span>
                       </div>
                     ))}
                     {(!statsData?.goldenBoot || statsData.goldenBoot.length === 0) && (
@@ -936,15 +1077,35 @@ export const TournamentDetailPage: React.FC = () => {
                   </h3>
                   <div className="space-y-2">
                     {statsData?.topPlaymakers?.map((row: any, idx: number) => (
-                      <div key={row.player.id} className="p-3 bg-[#FAF7F2] rounded-xl flex items-center justify-between text-xs">
+                      <div key={row.player.id} className="p-3 bg-[#FAF7F2] rounded-2xl flex items-center justify-between text-xs border border-[#E8DCCF]">
                         <div className="flex items-center gap-3">
-                          <span className="font-black text-[#7C6E63]">#{idx + 1}</span>
+                          <span className="font-black text-[#7C6E63] w-5">#{idx + 1}</span>
                           <div>
-                            <p className="font-extrabold text-[#2C221E]">{row.player.name}</p>
-                            <p className="text-[10px] text-[#7C6E63]">{row.player.batch?.name}</p>
+                            <PlayerChip
+                              name={row.player.name}
+                              studentId={row.player.studentId}
+                              avatarUrl={row.player.avatarUrl}
+                              size="xs"
+                            />
+                            {row.player.batch && (
+                              <div className="mt-0.5">
+                                <BatchChip
+                                  name={row.player.batch.name}
+                                  session={row.player.batch.session}
+                                  slug={row.player.batch.slug}
+                                  avatarUrl={row.player.batch.avatarUrl}
+                                  batchNumber={row.player.batch.batchNumber}
+                                  size="xs"
+                                  variant="inline"
+                                  className="text-[10px] text-[#7C6E63]"
+                                />
+                              </div>
+                            )}
                           </div>
                         </div>
-                        <span className="font-mono text-base font-black text-[#2A7B54]">{row.assists} Assists</span>
+                        <span className="font-mono text-sm font-black text-[#2A7B54] bg-[#E6FCF5] px-2.5 py-1 rounded-xl border border-[#20C997]/30">
+                          {row.assists} Assists
+                        </span>
                       </div>
                     ))}
                     {(!statsData?.topPlaymakers || statsData.topPlaymakers.length === 0) && (

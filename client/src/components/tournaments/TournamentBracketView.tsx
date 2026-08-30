@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
+import { SmartAvatar } from "@/components/common/SmartAvatar";
 
 interface TournamentBracketViewProps {
   tournament: any;
@@ -213,9 +214,13 @@ export const TournamentBracketView: React.FC<TournamentBracketViewProps> = ({
                   : "bg-[#FAF7F2] border-[#E8DCCF] text-[#2C221E]"
               }`}>
                 <div className="flex items-center gap-2 truncate">
-                  <span className="w-5 h-5 rounded-md brick-gradient text-white flex items-center justify-center text-[9px] shrink-0 font-mono">
-                    {semiFinals[0]?.teamA?.shortName || "A1"}
-                  </span>
+                  <SmartAvatar
+                    src={semiFinals[0]?.teamA?.logoUrl}
+                    alt={sf1TeamA}
+                    fallbackText={semiFinals[0]?.teamA?.shortName || "A1"}
+                    size="xs"
+                    shape="rounded"
+                  />
                   <span className="truncate">{sf1TeamA}</span>
                 </div>
                 {semiFinals[0]?.winnerTeamId === semiFinals[0]?.teamAId && <span>👑</span>}
@@ -228,9 +233,13 @@ export const TournamentBracketView: React.FC<TournamentBracketViewProps> = ({
                   : "bg-[#FAF7F2] border-[#E8DCCF] text-[#2C221E]"
               }`}>
                 <div className="flex items-center gap-2 truncate">
-                  <span className="w-5 h-5 rounded-md brick-gradient text-white flex items-center justify-center text-[9px] shrink-0 font-mono">
-                    {semiFinals[0]?.teamB?.shortName || "B2"}
-                  </span>
+                  <SmartAvatar
+                    src={semiFinals[0]?.teamB?.logoUrl}
+                    alt={sf1TeamB}
+                    fallbackText={semiFinals[0]?.teamB?.shortName || "B2"}
+                    size="xs"
+                    shape="rounded"
+                  />
                   <span className="truncate">{sf1TeamB}</span>
                 </div>
                 {semiFinals[0]?.winnerTeamId === semiFinals[0]?.teamBId && <span>👑</span>}
@@ -280,9 +289,13 @@ export const TournamentBracketView: React.FC<TournamentBracketViewProps> = ({
                   : "bg-[#FAF7F2] border-[#E8DCCF] text-[#2C221E]"
               }`}>
                 <div className="flex items-center gap-2 truncate">
-                  <span className="w-5 h-5 rounded-md brick-gradient text-white flex items-center justify-center text-[9px] shrink-0 font-mono">
-                    {semiFinals[1]?.teamA?.shortName || "B1"}
-                  </span>
+                  <SmartAvatar
+                    src={semiFinals[1]?.teamA?.logoUrl}
+                    alt={sf2TeamA}
+                    fallbackText={semiFinals[1]?.teamA?.shortName || "B1"}
+                    size="xs"
+                    shape="rounded"
+                  />
                   <span className="truncate">{sf2TeamA}</span>
                 </div>
                 {semiFinals[1]?.winnerTeamId === semiFinals[1]?.teamAId && <span>👑</span>}
@@ -295,9 +308,13 @@ export const TournamentBracketView: React.FC<TournamentBracketViewProps> = ({
                   : "bg-[#FAF7F2] border-[#E8DCCF] text-[#2C221E]"
               }`}>
                 <div className="flex items-center gap-2 truncate">
-                  <span className="w-5 h-5 rounded-md brick-gradient text-white flex items-center justify-center text-[9px] shrink-0 font-mono">
-                    {semiFinals[1]?.teamB?.shortName || "A2"}
-                  </span>
+                  <SmartAvatar
+                    src={semiFinals[1]?.teamB?.logoUrl}
+                    alt={sf2TeamB}
+                    fallbackText={semiFinals[1]?.teamB?.shortName || "A2"}
+                    size="xs"
+                    shape="rounded"
+                  />
                   <span className="truncate">{sf2TeamB}</span>
                 </div>
                 {semiFinals[1]?.winnerTeamId === semiFinals[1]?.teamBId && <span>👑</span>}
@@ -359,9 +376,13 @@ export const TournamentBracketView: React.FC<TournamentBracketViewProps> = ({
                   : "bg-[#FAF7F2] border-[#E8DCCF] text-[#2C221E]"
               }`}>
                 <div className="flex items-center gap-2 truncate">
-                  <span className="w-6 h-6 rounded-lg brick-gradient text-white flex items-center justify-center text-[10px] font-mono shrink-0">
-                    {finalTeamAShort}
-                  </span>
+                  <SmartAvatar
+                    src={sf1Winner?.logoUrl}
+                    alt={finalTeamA}
+                    fallbackText={finalTeamAShort}
+                    size="xs"
+                    shape="rounded"
+                  />
                   <span className="truncate">
                     {finalTeamA}
                   </span>
@@ -380,9 +401,13 @@ export const TournamentBracketView: React.FC<TournamentBracketViewProps> = ({
                   : "bg-[#FAF7F2] border-[#E8DCCF] text-[#2C221E]"
               }`}>
                 <div className="flex items-center gap-2 truncate">
-                  <span className="w-6 h-6 rounded-lg brick-gradient text-white flex items-center justify-center text-[10px] font-mono shrink-0">
-                    {finalTeamBShort}
-                  </span>
+                  <SmartAvatar
+                    src={sf2Winner?.logoUrl}
+                    alt={finalTeamB}
+                    fallbackText={finalTeamBShort}
+                    size="xs"
+                    shape="rounded"
+                  />
                   <span className="truncate">
                     {finalTeamB}
                   </span>
