@@ -1,5 +1,19 @@
 const API_BASE = "/api";
 
+async function parseResponse<T = any>(res: Response, defaultError = "Request failed"): Promise<T> {
+  const text = await res.text();
+  let data: any = {};
+  try {
+    data = text ? JSON.parse(text) : {};
+  } catch {
+    data = { error: text || `Server Error (${res.status} ${res.statusText})` };
+  }
+  if (!res.ok) {
+    throw new Error(data.error || data.message || defaultError);
+  }
+  return data;
+}
+
 function getAuthHeaders(): HeadersInit {
   const token = localStorage.getItem("csepl_token");
   const headers: HeadersInit = {
@@ -293,9 +307,7 @@ export const api = {
         headers,
         body: formData,
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to upload image");
-      return data as { url: string; filename: string; originalName: string; size: number; mimeType: string };
+      return parseResponse<{ url: string; filename: string; originalName: string; size: number; mimeType: string }>(res, "Failed to upload image");
     },
 
     multiple: async (files: File[]) => {
@@ -313,9 +325,7 @@ export const api = {
         headers,
         body: formData,
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to upload images");
-      return data as { count: number; files: { url: string; filename: string; originalName: string; size: number }[] };
+      return parseResponse<{ count: number; files: { url: string; filename: string; originalName: string; size: number }[] }>(res, "Failed to upload images");
     },
   },
 
@@ -341,9 +351,7 @@ export const api = {
       if (params?.limit) query.append("limit", params.limit.toString());
 
       const res = await fetch(`${API_BASE}/media?${query.toString()}`);
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to fetch media assets");
-      return data;
+      return parseResponse(res, "Failed to fetch media assets");
     },
 
     create: async (payload: {
@@ -364,9 +372,7 @@ export const api = {
         headers: getAuthHeaders(),
         body: JSON.stringify(payload),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to save media");
-      return data;
+      return parseResponse(res, "Failed to save media");
     },
 
     delete: async (id: number) => {
@@ -374,18 +380,14 @@ export const api = {
         method: "DELETE",
         headers: getAuthHeaders(),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to delete media asset");
-      return data;
+      return parseResponse(res, "Failed to delete media asset");
     },
   },
 
   tournaments: {
     getAll: async (): Promise<TournamentItem[]> => {
       const res = await fetch(`${API_BASE}/tournaments`);
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to fetch tournaments");
-      return data;
+      return parseResponse(res, "Failed to fetch tournaments");
     },
 
     create: async (tournament: {
@@ -401,9 +403,7 @@ export const api = {
         headers: getAuthHeaders(),
         body: JSON.stringify(tournament),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to create tournament");
-      return data;
+      return parseResponse(res, "Failed to create tournament");
     },
 
     update: async (tournamentId: number, payload: {
@@ -422,9 +422,7 @@ export const api = {
         headers: getAuthHeaders(),
         body: JSON.stringify(payload),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to update tournament");
-      return data;
+      return parseResponse(res, "Failed to update tournament");
     },
 
     delete: async (tournamentId: number) => {
@@ -432,9 +430,7 @@ export const api = {
         method: "DELETE",
         headers: getAuthHeaders(),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to delete tournament");
-      return data;
+      return parseResponse(res, "Failed to delete tournament");
     },
 
     assignOrganizer: async (tournamentId: number, userId: number) => {

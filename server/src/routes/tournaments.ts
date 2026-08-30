@@ -17,6 +17,18 @@ const createTournamentSchema = z.object({
   endDate: z.string().optional(),
 });
 
+const updateTournamentSchema = z.object({
+  name: z.string().min(1).optional(),
+  sport: z.enum(["CRICKET", "FOOTBALL"]).optional(),
+  season: z.string().min(1).optional(),
+  status: z.enum(["DRAFT", "UPCOMING", "ONGOING", "COMPLETED", "CANCELLED"]).optional(),
+  rules: z.any().optional(),
+  bannerUrl: z.string().nullable().optional(),
+  logoUrl: z.string().nullable().optional(),
+  startDate: z.string().nullable().optional(),
+  endDate: z.string().nullable().optional(),
+});
+
 const assignOrganizerSchema = z.object({
   userId: z.number().int().positive("Valid user ID is required"),
 });
@@ -187,6 +199,77 @@ tournamentsRouter.get("/:idOrSlug", async (req, res) => {
     res.json(tournament);
   } catch (err: any) {
     res.status(500).json({ error: err.message || "Failed to fetch tournament" });
+  }
+});
+
+// UPDATE Tournament Details, Logo, Banner & Rules (Admin or Assigned Organizer)
+tournamentsRouter.put("/:idOrSlug", requireAuth, async (req: any, res) => {
+  try {
+    const { idOrSlug } = req.params;
+    const isNum = !isNaN(Number(idOrSlug));
+
+    const tournament = await prisma.tournament.findFirst({
+      where: isNum ? { id: Number(idOrSlug) } : { slug: idOrSlug },
+    });
+
+    if (!tournament) {
+      res.status(404).json({ error: "Tournament not found" });
+      return;
+    }
+
+    const isOrg = req.user.role === "ADMIN" || await prisma.tournamentOrganizer.findUnique({
+      where: {
+        tournamentId_userId: {
+          tournamentId: tournament.id,
+          userId: req.user.id,
+        }
+      }
+    });
+
+    if (!isOrg) {
+      res.status(403).json({ error: "Access denied. Only Tournament Organizers or Admins can update tournament details." });
+      return;
+    }
+
+    const parsed = updateTournamentSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.issues[0]?.message || "Invalid tournament update data." });
+      return;
+    }
+
+    const {
+      name,
+      sport,
+      season,
+      status,
+      rules,
+      bannerUrl,
+      logoUrl,
+      startDate,
+      endDate,
+    } = parsed.data;
+
+    const updated = await prisma.tournament.update({
+      where: { id: tournament.id },
+      data: {
+        name: name !== undefined ? name : undefined,
+        sport: sport !== undefined ? sport : undefined,
+        season: season !== undefined ? season : undefined,
+        status: status !== undefined ? status : undefined,
+        rules: rules !== undefined ? rules : undefined,
+        bannerUrl: bannerUrl !== undefined ? bannerUrl : undefined,
+        logoUrl: logoUrl !== undefined ? logoUrl : undefined,
+        startDate: startDate !== undefined ? (startDate ? new Date(startDate) : null) : undefined,
+        endDate: endDate !== undefined ? (endDate ? new Date(endDate) : null) : undefined,
+      },
+    });
+
+    res.json({
+      message: "Tournament updated successfully",
+      tournament: updated,
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || "Failed to update tournament" });
   }
 });
 
