@@ -14,11 +14,10 @@ import {
   Loader2, 
   Settings, 
   Sparkles, 
-  UserCheck,
-  GitFork,
-  Flame,
-  Activity,
-  Camera,
+  GitFork, 
+  Flame, 
+  Activity, 
+  Camera, 
   Upload
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
