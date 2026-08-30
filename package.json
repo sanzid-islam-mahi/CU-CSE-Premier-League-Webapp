@@ -7,6 +7,7 @@
     "postinstall": "npm run db:generate -w server",
     "db:push": "npm run db:push -w server",
     "db:migrate": "npm run db:migrate -w server",
+    "db:seed": "npm run db:seed -w server",
     "build": "npm run build -w client && npm run build -w server"
   },
   "workspaces": [
