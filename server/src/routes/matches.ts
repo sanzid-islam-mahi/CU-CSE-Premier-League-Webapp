@@ -32,6 +32,109 @@ const updateMatchSchema = z.object({
   stage: z.enum(["GROUP_STAGE", "ROUND_OF_16", "QUARTER_FINAL", "SEMI_FINAL", "THIRD_PLACE", "FINAL"]).optional(),
 });
 
+// GET matches with optional filters
+matchesRouter.get("/", async (req, res) => {
+  try {
+    const { sport, status, tournamentId, limit } = req.query;
+
+    const where: any = {};
+
+    if (tournamentId) {
+      where.tournamentId = Number(tournamentId);
+    }
+
+    if (sport) {
+      where.tournament = {
+        sport: String(sport).toUpperCase() as "CRICKET" | "FOOTBALL",
+      };
+    }
+
+    if (status) {
+      const statusStr = String(status);
+      if (statusStr.includes(",")) {
+        where.status = { in: statusStr.split(",").map(s => s.trim()) };
+      } else if (statusStr !== "ALL") {
+        where.status = statusStr;
+      }
+    }
+
+    const takeLimit = limit ? Math.min(Number(limit), 50) : 20;
+
+    const matches = await prisma.match.findMany({
+      where,
+      take: takeLimit,
+      orderBy: [
+        { status: "asc" }, // LIVE usually prioritized by specific query or custom sort
+        { startTime: "asc" },
+        { id: "desc" },
+      ],
+      include: {
+        tournament: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            sport: true,
+            season: true,
+            status: true,
+            rules: true,
+            bannerUrl: true,
+            logoUrl: true,
+          }
+        },
+        group: { select: { id: true, name: true } },
+        teamA: {
+          include: {
+            batch: true,
+            captain: { select: { id: true, name: true, studentId: true, avatarUrl: true } }
+          }
+        },
+        teamB: {
+          include: {
+            batch: true,
+            captain: { select: { id: true, name: true, studentId: true, avatarUrl: true } }
+          }
+        },
+        winnerTeam: { select: { id: true, name: true, shortName: true, logoUrl: true } },
+        playerOfTheMatch: { select: { id: true, name: true, studentId: true, avatarUrl: true } },
+        cricketInnings: {
+          include: {
+            battingScorecards: {
+              include: { player: { select: { id: true, name: true, studentId: true, avatarUrl: true, cricketRole: true } } },
+              orderBy: { battingOrder: "asc" }
+            },
+            bowlingScorecards: {
+              include: { player: { select: { id: true, name: true, studentId: true, avatarUrl: true, bowlingStyle: true } } },
+              orderBy: { bowlingOrder: "asc" }
+            },
+            balls: {
+              take: 6,
+              orderBy: { id: "desc" },
+              include: {
+                bowler: { select: { id: true, name: true } },
+                striker: { select: { id: true, name: true } },
+              }
+            }
+          },
+          orderBy: { inningsNumber: "asc" }
+        },
+        footballDetail: true,
+        footballEvents: {
+          include: {
+            primaryPlayer: { select: { id: true, name: true, studentId: true, avatarUrl: true } },
+            secondaryPlayer: { select: { id: true, name: true, studentId: true, avatarUrl: true } },
+          },
+          orderBy: { minute: "asc" }
+        }
+      }
+    });
+
+    res.json(matches);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || "Failed to fetch matches" });
+  }
+});
+
 // GET single match
 matchesRouter.get("/:id", async (req, res) => {
   try {

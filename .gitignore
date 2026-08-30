@@ -1,4 +1,14 @@
 node_modules/
 dist/
 .env
+.env.local
+.env.*.local
+*.log
+.DS_Store
 private/
+uploads/*
+!uploads/.gitkeep
+server/uploads/*
+!server/uploads/.gitkeep
+server/dist/
+client/dist/

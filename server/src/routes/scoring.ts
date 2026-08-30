@@ -1132,3 +1132,214 @@ scoringRouter.get("/tournament/:idOrSlug/stats", async (req, res) => {
     res.status(500).json({ error: err.message || "Failed to fetch tournament stats" });
   }
 });
+
+// 11. OVERALL / DEPARTMENT-WIDE LEADERBOARD STATS
+scoringRouter.get("/stats/overall", async (req, res) => {
+  try {
+    const { sport, tournamentId } = req.query;
+
+    const tournamentWhere: any = {};
+    if (tournamentId) {
+      tournamentWhere.id = Number(tournamentId);
+    }
+    if (sport) {
+      tournamentWhere.sport = String(sport).toUpperCase() as "CRICKET" | "FOOTBALL";
+    }
+
+    const tournaments = await prisma.tournament.findMany({
+      where: tournamentWhere,
+      include: {
+        teams: {
+          include: {
+            batch: true,
+            members: {
+              include: { user: { include: { batch: true } } }
+            }
+          }
+        },
+        matches: {
+          include: {
+            teamA: { include: { batch: true, members: { include: { user: true } } } },
+            teamB: { include: { batch: true, members: { include: { user: true } } } },
+            cricketInnings: {
+              include: {
+                battingScorecards: { include: { player: { include: { batch: true } } } },
+                bowlingScorecards: { include: { player: { include: { batch: true } } } },
+              }
+            },
+            footballEvents: {
+              include: {
+                primaryPlayer: { include: { batch: true } },
+                secondaryPlayer: { include: { batch: true } },
+              }
+            },
+            footballDetail: true,
+          }
+        }
+      }
+    });
+
+    // 1. Cricket Aggregations
+    const battingMap = new Map<number, any>();
+    const bowlingMap = new Map<number, any>();
+
+    // 2. Football Aggregations
+    const goalScorersMap = new Map<number, any>();
+    const assistMap = new Map<number, any>();
+    const cleanSheetsMap = new Map<number, any>();
+
+    for (const t of tournaments) {
+      if (t.sport === "CRICKET") {
+        for (const m of t.matches) {
+          for (const inn of m.cricketInnings) {
+            for (const bat of inn.battingScorecards) {
+              if (!battingMap.has(bat.playerId)) {
+                battingMap.set(bat.playerId, {
+                  player: bat.player,
+                  runs: 0,
+                  balls: 0,
+                  fours: 0,
+                  sixes: 0,
+                  innings: 0,
+                  highestScore: 0,
+                  fifties: 0,
+                  hundreds: 0,
+                  outs: 0,
+                });
+              }
+              const stat = battingMap.get(bat.playerId);
+              stat.innings += 1;
+              stat.runs += bat.runs;
+              stat.balls += bat.balls;
+              stat.fours += bat.fours;
+              stat.sixes += bat.sixes;
+              if (bat.runs > stat.highestScore) stat.highestScore = bat.runs;
+              if (bat.runs >= 100) stat.hundreds += 1;
+              else if (bat.runs >= 50) stat.fifties += 1;
+              if (bat.isOut) stat.outs += 1;
+            }
+
+            for (const bowl of inn.bowlingScorecards) {
+              if (!bowlingMap.has(bowl.playerId)) {
+                bowlingMap.set(bowl.playerId, {
+                  player: bowl.player,
+                  overs: 0.0,
+                  maidens: 0,
+                  runs: 0,
+                  wickets: 0,
+                  wides: 0,
+                  noBalls: 0,
+                  innings: 0,
+                  bestWickets: 0,
+                  bestRuns: 999,
+                });
+              }
+              const stat = bowlingMap.get(bowl.playerId);
+              stat.innings += 1;
+              stat.overs += bowl.overs;
+              stat.maidens += bowl.maidens;
+              stat.runs += bowl.runs;
+              stat.wickets += bowl.wickets;
+              stat.wides += bowl.wides;
+              stat.noBalls += bowl.noBalls;
+              if (bowl.wickets > stat.bestWickets || (bowl.wickets === stat.bestWickets && bowl.runs < stat.bestRuns)) {
+                stat.bestWickets = bowl.wickets;
+                stat.bestRuns = bowl.runs;
+              }
+            }
+          }
+        }
+      } else if (t.sport === "FOOTBALL") {
+        for (const m of t.matches) {
+          for (const ev of m.footballEvents) {
+            if (ev.eventType === "GOAL" || ev.eventType === "PENALTY_GOAL") {
+              if (!goalScorersMap.has(ev.primaryPlayerId)) {
+                goalScorersMap.set(ev.primaryPlayerId, { player: ev.primaryPlayer, goals: 0, matches: 0 });
+              }
+              goalScorersMap.get(ev.primaryPlayerId).goals += 1;
+
+              if (ev.secondaryPlayerId && ev.secondaryPlayer) {
+                if (!assistMap.has(ev.secondaryPlayerId)) {
+                  assistMap.set(ev.secondaryPlayerId, { player: ev.secondaryPlayer, assists: 0 });
+                }
+                assistMap.get(ev.secondaryPlayerId).assists += 1;
+              }
+            }
+          }
+
+          // Clean sheets calculation for completed football matches
+          if (m.status === "COMPLETED" && m.footballDetail) {
+            if (m.footballDetail.teamBScore === 0 && m.teamA?.members) {
+              const gk = m.teamA.members.find(mem => mem.user);
+              if (gk) {
+                if (!cleanSheetsMap.has(gk.userId)) {
+                  cleanSheetsMap.set(gk.userId, { player: gk.user, cleanSheets: 0, matches: 0 });
+                }
+                cleanSheetsMap.get(gk.userId).cleanSheets += 1;
+              }
+            }
+            if (m.footballDetail.teamAScore === 0 && m.teamB?.members) {
+              const gk = m.teamB.members.find(mem => mem.user);
+              if (gk) {
+                if (!cleanSheetsMap.has(gk.userId)) {
+                  cleanSheetsMap.set(gk.userId, { player: gk.user, cleanSheets: 0, matches: 0 });
+                }
+                cleanSheetsMap.get(gk.userId).cleanSheets += 1;
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // Cricket processed arrays
+    const orangeCap = Array.from(battingMap.values())
+      .map(b => ({
+        ...b,
+        average: b.outs > 0 ? (b.runs / b.outs).toFixed(2) : b.runs.toFixed(2),
+        strikeRate: b.balls > 0 ? ((b.runs / b.balls) * 100).toFixed(2) : "0.00",
+      }))
+      .sort((a, b) => b.runs - a.runs || Number(b.strikeRate) - Number(a.strikeRate));
+
+    const purpleCap = Array.from(bowlingMap.values())
+      .map(b => ({
+        ...b,
+        economy: b.overs > 0 ? (b.runs / Math.max(1, Math.floor(b.overs) + (b.overs % 1) * (10 / 6))).toFixed(2) : "0.00",
+        bestFigures: b.bestWickets > 0 ? `${b.bestWickets}/${b.bestRuns}` : "-",
+      }))
+      .sort((a, b) => b.wickets - a.wickets || Number(a.economy) - Number(b.economy));
+
+    const maxSixes = Array.from(battingMap.values())
+      .filter(b => b.sixes > 0)
+      .map(b => ({
+        ...b,
+        strikeRate: b.balls > 0 ? ((b.runs / b.balls) * 100).toFixed(2) : "0.00",
+      }))
+      .sort((a, b) => b.sixes - a.sixes || (b.sixes * 6 + b.fours * 4) - (a.sixes * 6 + a.fours * 4));
+
+    // Football processed arrays
+    const goldenBoot = Array.from(goalScorersMap.values())
+      .sort((a, b) => b.goals - a.goals);
+
+    const topPlaymakers = Array.from(assistMap.values())
+      .sort((a, b) => b.assists - a.assists);
+
+    const goldenGlove = Array.from(cleanSheetsMap.values())
+      .sort((a, b) => b.cleanSheets - a.cleanSheets);
+
+    res.json({
+      cricket: {
+        orangeCap: orangeCap.slice(0, 10),
+        purpleCap: purpleCap.slice(0, 10),
+        maxSixes: maxSixes.slice(0, 10),
+      },
+      football: {
+        goldenBoot: goldenBoot.slice(0, 10),
+        topPlaymakers: topPlaymakers.slice(0, 10),
+        goldenGlove: goldenGlove.slice(0, 10),
+      }
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || "Failed to fetch overall leaderboards" });
+  }
+});

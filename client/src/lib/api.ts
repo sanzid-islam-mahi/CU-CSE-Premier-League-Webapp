@@ -604,6 +604,22 @@ export const api = {
   },
 
   matches: {
+    list: async (params?: {
+      sport?: string;
+      status?: string;
+      tournamentId?: number;
+      limit?: number;
+    }) => {
+      const query = new URLSearchParams();
+      if (params?.sport) query.append("sport", params.sport);
+      if (params?.status) query.append("status", params.status);
+      if (params?.tournamentId) query.append("tournamentId", params.tournamentId.toString());
+      if (params?.limit) query.append("limit", params.limit.toString());
+
+      const res = await fetch(`${API_BASE}/matches?${query.toString()}`);
+      return parseResponse(res, "Failed to fetch matches");
+    },
+
     get: async (id: number) => {
       const res = await fetch(`${API_BASE}/matches/${id}`);
       const data = await res.json();
@@ -874,6 +890,15 @@ export const api = {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to fetch tournament stats");
       return data;
+    },
+
+    getOverallStats: async (params?: { sport?: string; tournamentId?: number }) => {
+      const query = new URLSearchParams();
+      if (params?.sport) query.append("sport", params.sport);
+      if (params?.tournamentId) query.append("tournamentId", params.tournamentId.toString());
+
+      const res = await fetch(`${API_BASE}/scoring/stats/overall?${query.toString()}`);
+      return parseResponse(res, "Failed to fetch overall leaderboards");
     },
   },
 };
