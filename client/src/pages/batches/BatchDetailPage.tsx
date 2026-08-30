@@ -110,10 +110,12 @@ export const BatchDetailPage: React.FC = () => {
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Link
-              to="/"
-              className="p-2 rounded-xl text-[#7C6E63] hover:text-[#2C221E] hover:bg-[#FAF7F2] transition-colors"
+              to="/batches"
+              className="p-2 rounded-xl text-[#7C6E63] hover:text-[#2C221E] hover:bg-[#FAF7F2] transition-colors flex items-center gap-1.5 text-xs font-bold"
+              title="Back to All Batches"
             >
-              <ArrowLeft className="w-5 h-5" />
+              <ArrowLeft className="w-4 h-4" />
+              <span className="hidden sm:inline">All Batches</span>
             </Link>
             <div>
               <div className="flex items-center gap-2">

@@ -42,7 +42,7 @@ export const BatchHallOfFameTeaser: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Section Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
           <div>
             <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#9E2A2B] mb-1">
               <Award className="w-4 h-4" />
@@ -51,11 +51,18 @@ export const BatchHallOfFameTeaser: React.FC = () => {
             <h2 className="text-2xl sm:text-3xl font-black text-[#2C221E] tracking-tight">
               Batch Showcase & Hall of Fame
             </h2>
+            <p className="text-xs text-[#6B5E53] max-w-lg mt-1">
+              Explore department batch rosters, class memories, and championship glory across all academic sessions.
+            </p>
           </div>
 
-          <p className="text-xs text-[#6B5E53] max-w-sm">
-            Explore department batch rosters, class memories, and championship glory across all academic sessions.
-          </p>
+          <Link
+            to="/batches"
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white border border-[#D8C7B3] hover:border-[#9E2A2B] text-xs font-bold text-[#842021] hover:text-[#9E2A2B] hover:bg-[#FAF0E6] transition-all shadow-xs shrink-0 self-start sm:self-auto"
+          >
+            <span>View All Batches ({batches.length})</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
         </div>
 
         {/* Batches Showcase Grid */}

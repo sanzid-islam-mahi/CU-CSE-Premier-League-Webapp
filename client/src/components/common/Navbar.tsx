@@ -61,7 +61,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeSport, onSelectSport }) =>
   const navItems = [
     { label: "Matches", icon: Calendar, href: "/#matches" },
     { label: "Tournaments", icon: Trophy, href: "/tournaments" },
-    { label: "Batches", icon: Layers, href: "/#batches" },
+    { label: "Batches", icon: Layers, href: "/batches" },
     { label: "Hall of Fame", icon: Award, href: "/#hall-of-fame" },
   ];
 

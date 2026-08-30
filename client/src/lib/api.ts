@@ -33,8 +33,10 @@ export interface BatchItem {
   slug: string;
   slogan?: string;
   avatarUrl?: string;
+  bannerUrl?: string | null;
   studentsCount: number;
   teamsCount: number;
+  photosCount?: number;
   createdAt: string;
 }
 
