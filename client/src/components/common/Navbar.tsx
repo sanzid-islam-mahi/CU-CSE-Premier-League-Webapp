@@ -59,11 +59,28 @@ export const Navbar: React.FC<NavbarProps> = ({ activeSport, onSelectSport }) =>
   };
 
   const navItems = [
-    { label: "Matches", icon: Calendar, href: "/tournaments" },
+    { label: "Matches", icon: Calendar, href: "/#matches" },
     { label: "Tournaments", icon: Trophy, href: "/tournaments" },
-    { label: "Batches", icon: Layers, href: "/" },
-    { label: "Hall of Fame", icon: Award, href: "/" },
+    { label: "Batches", icon: Layers, href: "/#batches" },
+    { label: "Hall of Fame", icon: Award, href: "/#hall-of-fame" },
   ];
+
+  const handleNavClick = (e: React.MouseEvent, href: string) => {
+    if (href.startsWith("/#")) {
+      const elementId = href.replace("/#", "");
+      if (window.location.pathname === "/") {
+        e.preventDefault();
+        const el = document.getElementById(elementId);
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth" });
+        }
+        window.history.pushState(null, "", href);
+      } else {
+        navigate(href);
+      }
+    }
+    setMobileMenuOpen(false);
+  };
 
   return (
     <>
@@ -125,6 +142,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeSport, onSelectSport }) =>
                 <Link
                   key={item.label}
                   to={item.href}
+                  onClick={(e) => handleNavClick(e, item.href)}
                   className="inline-flex items-center gap-1.5 px-3.5 py-2 text-sm font-semibold text-[#66584C] hover:text-[#9E2A2B] transition-colors rounded-lg hover:bg-[#F1E8DC]"
                 >
                   <item.icon className="w-4 h-4 opacity-70 text-[#9E2A2B]" />
@@ -229,13 +247,15 @@ export const Navbar: React.FC<NavbarProps> = ({ activeSport, onSelectSport }) =>
           <div className="lg:hidden border-t border-[#E8DCCF] bg-[#FAF7F2] px-4 pt-3 pb-5 space-y-2">
             <div className="grid grid-cols-2 gap-2 pb-2">
               {navItems.map((item) => (
-                <div
+                <Link
                   key={item.label}
-                  className="flex items-center gap-2 p-2.5 rounded-lg bg-[#F3ECE2] text-[#2C221E] font-medium text-xs cursor-default"
+                  to={item.href}
+                  onClick={(e) => handleNavClick(e, item.href)}
+                  className="flex items-center gap-2 p-2.5 rounded-lg bg-[#F3ECE2] hover:bg-[#EFE5D7] text-[#2C221E] font-medium text-xs transition-colors"
                 >
                   <item.icon className="w-4 h-4 text-[#9E2A2B]" />
-                  {item.label}
-                </div>
+                  <span>{item.label}</span>
+                </Link>
               ))}
             </div>
 
