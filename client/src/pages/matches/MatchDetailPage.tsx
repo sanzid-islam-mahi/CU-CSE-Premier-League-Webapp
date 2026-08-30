@@ -639,6 +639,56 @@ export const MatchDetailPage: React.FC = () => {
             </div>
           )}
 
+          {/* CRICKET 2ND INNINGS TARGET & LIVE CHASE EQUATION BAR */}
+          {isCricket && innings2 && innings1 && matchData.status === "LIVE" && (
+            <div className="bg-linear-to-r from-[#FAF0E6] via-[#FFF5F5] to-[#FAF0E6] rounded-2xl border-2 border-[#9E2A2B]/30 p-4 space-y-2">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div className="flex items-center gap-2.5">
+                  <span className="text-2xl">🎯</span>
+                  <div>
+                    <h3 className="font-black text-xs sm:text-sm text-[#2C221E]">
+                      Chase Target: <strong className="text-[#9E2A2B]">{innings1.totalRuns + 1} runs</strong>
+                    </h3>
+                    <p className="text-[11px] font-bold text-[#7C6E63]">
+                      {innings2.battingTeamId === matchData.teamAId ? matchData.teamA.name : matchData.teamB.name} needs{" "}
+                      <span className="text-[#9E2A2B] font-black">{Math.max(0, (innings1.totalRuns + 1) - (innings2.totalRuns || 0))} runs</span> from{" "}
+                      <span className="text-[#2C221E] font-black">{Math.max(0, (matchData.tournament?.rules?.maxOversPerInnings || 10) * 6 - (innings2.balls?.filter((b: any) => b.extraType !== "WIDE" && b.extraType !== "NO_BALL").length || 0))} balls</span>
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 text-xs">
+                  <div className="bg-white px-3 py-1.5 rounded-xl border border-[#E8D6C3] text-center shadow-xs">
+                    <span className="text-[10px] text-[#7C6E63] font-bold uppercase block">RRR</span>
+                    <span className="font-mono font-black text-[#9E2A2B]">
+                      {(() => {
+                        const maxOvers = matchData.tournament?.rules?.maxOversPerInnings || 10;
+                        const legalBalls = (innings2.balls || []).filter((b: any) => b.extraType !== "WIDE" && b.extraType !== "NO_BALL").length;
+                        const ballsLeft = Math.max(0, maxOvers * 6 - legalBalls);
+                        const needed = Math.max(0, (innings1.totalRuns + 1) - (innings2.totalRuns || 0));
+                        return ballsLeft > 0 ? (needed / (ballsLeft / 6)).toFixed(2) : "0.00";
+                      })()}
+                    </span>
+                  </div>
+
+                  <div className="bg-white px-3 py-1.5 rounded-xl border border-[#E8D6C3] text-center shadow-xs">
+                    <span className="text-[10px] text-[#7C6E63] font-bold uppercase block">CRR</span>
+                    <span className="font-mono font-black text-[#2C221E]">
+                      {innings2.totalOvers > 0 ? (innings2.totalRuns / innings2.totalOvers).toFixed(2) : "0.00"}
+                    </span>
+                  </div>
+
+                  <div className="bg-white px-3 py-1.5 rounded-xl border border-[#E8D6C3] text-center shadow-xs">
+                    <span className="text-[10px] text-[#7C6E63] font-bold uppercase block">Wickets In Hand</span>
+                    <span className="font-mono font-black text-[#2A7B54]">
+                      {Math.max(0, 10 - (innings2.totalWickets || 0))}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Result Note or Toss Outcome */}
           <div className="pt-3 border-t border-[#EFE8DC] flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
             {matchData.resultSummary ? (
@@ -826,25 +876,63 @@ export const MatchDetailPage: React.FC = () => {
                         </span>
 
                         {ev.eventType === "SUBSTITUTION" ? (
-                          <div className="space-y-0.5">
-                            <p className="font-bold text-[#2C221E] flex items-center gap-1.5 flex-wrap">
-                              <span>🔄 Substitution:</span>
-                              <span className="text-[#2A7B54] font-black">{ev.primaryPlayer?.name} (IN)</span>
-                              {ev.secondaryPlayer && <span className="text-[#C92A2A] font-semibold">for {ev.secondaryPlayer.name} (OUT)</span>}
-                            </p>
+                          <div className="space-y-1">
+                            <div className="font-bold text-[#2C221E] flex items-center gap-1.5 flex-wrap">
+                              <span className="text-xs font-black text-[#1864AB]">🔄 Sub:</span>
+                              <div className="flex items-center gap-1 text-[#2A7B54]">
+                                <PlayerChip
+                                  name={ev.primaryPlayer?.name || "Player"}
+                                  studentId={ev.primaryPlayer?.studentId}
+                                  avatarUrl={ev.primaryPlayer?.avatarUrl}
+                                  size="xs"
+                                />
+                                <span className="font-bold text-[10px] bg-[#E6FCF5] px-1.5 py-0.5 rounded text-[#0CA678] uppercase font-mono">ON</span>
+                              </div>
+                              {ev.secondaryPlayer && (
+                                <div className="flex items-center gap-1 text-[#C92A2A]">
+                                  <PlayerChip
+                                    name={ev.secondaryPlayer?.name || "Player"}
+                                    studentId={ev.secondaryPlayer?.studentId}
+                                    avatarUrl={ev.secondaryPlayer?.avatarUrl}
+                                    size="xs"
+                                  />
+                                  <span className="font-bold text-[10px] bg-[#FFF5F5] px-1.5 py-0.5 rounded text-[#C92A2A] uppercase font-mono">OFF</span>
+                                </div>
+                              )}
+                            </div>
                             <p className="text-[11px] font-semibold text-[#7C6E63]">{ev.teamId === matchData.teamAId ? matchData.teamA.name : matchData.teamB.name}</p>
                           </div>
                         ) : (
-                          <div className="space-y-0.5">
-                            <p className="font-bold text-[#2C221E] flex items-center gap-1.5">
-                              <span>
+                          <div className="space-y-1">
+                            <div className="font-bold text-[#2C221E] flex items-center gap-2 flex-wrap">
+                              <span className="font-black text-xs">
                                 {ev.eventType === "GOAL" ? "⚽ GOAL!" : ev.eventType === "YELLOW_CARD" ? "🟨 Yellow Card" : "🟥 Red Card (Sent Off)"}
                               </span>
-                              <span className="font-black text-[#2C221E]">{ev.primaryPlayer?.name}</span>
-                            </p>
+                              <PlayerChip
+                                name={ev.primaryPlayer?.name || "Player"}
+                                studentId={ev.primaryPlayer?.studentId}
+                                avatarUrl={ev.primaryPlayer?.avatarUrl}
+                                size="xs"
+                              />
+                              {ev.description && (
+                                <span className="text-[10px] font-bold bg-[#FAF0E6] text-[#842021] px-2 py-0.5 rounded-full border border-[#E8D6C3]">
+                                  {ev.description}
+                                </span>
+                              )}
+                            </div>
                             <div className="flex items-center gap-2 text-[11px] text-[#7C6E63]">
                               <span className="font-semibold">{ev.teamId === matchData.teamAId ? matchData.teamA.name : matchData.teamB.name}</span>
-                              {ev.secondaryPlayer && <span>· Assist by <strong className="text-[#4A3E35]">{ev.secondaryPlayer.name}</strong></span>}
+                              {ev.secondaryPlayer && (
+                                <span className="flex items-center gap-1">
+                                  <span>· Assist:</span>
+                                  <PlayerChip
+                                    name={ev.secondaryPlayer?.name}
+                                    studentId={ev.secondaryPlayer?.studentId}
+                                    avatarUrl={ev.secondaryPlayer?.avatarUrl}
+                                    size="xs"
+                                  />
+                                </span>
+                              )}
                             </div>
                           </div>
                         )}

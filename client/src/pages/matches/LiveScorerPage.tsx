@@ -2,19 +2,22 @@ import React, { useState, useEffect, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
 import { 
   ArrowLeft, 
-  CheckCircle2, 
   AlertCircle, 
   RotateCcw, 
   Play, 
   Pause, 
-  Award,
-  RefreshCw,
-  Flame,
-  Trash2,
-  Sparkles
+  Award, 
+  RefreshCw, 
+  Flame, 
+  Trash2, 
+  Sparkles,
+  ArrowLeftRight,
+  Zap
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
+import { toast } from "@/context/ToastContext";
+import { ConfirmModal } from "@/components/common/ConfirmModal";
 import { CricketLiveAnalytics } from "@/components/matches/CricketLiveAnalytics";
 import { MatchStoryCardModal } from "@/components/matches/MatchStoryCardModal";
 
@@ -26,14 +29,30 @@ export const LiveScorerPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [notification, setNotification] = useState<string | null>(null);
   const [showStoryModal, setShowStoryModal] = useState(false);
+
+  // Accessible Confirmation Modal state
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    confirmLabel?: string;
+    cancelLabel?: string;
+    variant?: "danger" | "warning" | "info";
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    onConfirm: () => {},
+  });
 
   // Active Innings (Cricket)
   const [activeInningsNumber, setActiveInningsNumber] = useState<1 | 2>(1);
   const [strikerId, setStrikerId] = useState<number | null>(null);
   const [nonStrikerId, setNonStrikerId] = useState<number | null>(null);
   const [currentBowlerId, setCurrentBowlerId] = useState<number | null>(null);
+  const [isFreeHitNext, setIsFreeHitNext] = useState(false);
 
   // Cricket Wicket Modal
   const [showWicketModal, setShowWicketModal] = useState(false);
@@ -65,6 +84,7 @@ export const LiveScorerPage: React.FC = () => {
   const [footballCurrentHalf, setFootballCurrentHalf] = useState(1);
   const [showFootballEventModal, setShowFootballEventModal] = useState(false);
   const [footballEventType, setFootballEventType] = useState("GOAL");
+  const [footballGoalType, setFootballGoalType] = useState("Open Play");
   const [footballEventTeamId, setFootballEventTeamId] = useState<number | "">("");
   const [footballEventMinute, setFootballEventMinute] = useState<number>(1);
   const [footballEventPrimaryPlayerId, setFootballEventPrimaryPlayerId] = useState<number | "">("");
@@ -102,8 +122,7 @@ export const LiveScorerPage: React.FC = () => {
   const timerRef = useRef<any>(null);
 
   const triggerToast = (msg: string) => {
-    setNotification(msg);
-    setTimeout(() => setNotification(null), 3500);
+    toast.success(msg);
   };
 
   useEffect(() => {
@@ -167,15 +186,28 @@ export const LiveScorerPage: React.FC = () => {
     }
   };
 
+  // Quick Strike Swap Handler
+  const handleSwapStrike = () => {
+    if (!strikerId || !nonStrikerId) {
+      toast.warning("Both striker and non-striker must be selected to swap strike.");
+      return;
+    }
+    const temp = strikerId;
+    setStrikerId(nonStrikerId);
+    setNonStrikerId(temp);
+    const newStriker = matchData?.matchSquads?.find((s: any) => s.userId === nonStrikerId)?.user?.name || "Batter";
+    toast.info(`Strike swapped! Now on strike: ${newStriker} 🏏`);
+  };
+
   // 1. Setup / Toss Handler
   const handleSaveSetup = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!tossWinnerTeamId) {
-      alert("Please select the toss winner team.");
+      toast.error("Please select the toss winner team.");
       return;
     }
     if (selectedTeamAPlayers.length === 0 || selectedTeamBPlayers.length === 0) {
-      alert("Please select playing lineup members for both teams.");
+      toast.error("Please select playing lineup members for both teams.");
       return;
     }
 
@@ -206,7 +238,7 @@ export const LiveScorerPage: React.FC = () => {
 
       fetchMatchData();
     } catch (err: any) {
-      alert(err.message || "Failed to save match setup.");
+      toast.error(err.message || "Failed to save match setup.");
     } finally {
       setActionLoading(false);
     }
@@ -215,11 +247,11 @@ export const LiveScorerPage: React.FC = () => {
   // 2. Cricket: Start Innings Handler
   const handleStartInnings = async (inningsNum: 1 | 2) => {
     if (!strikerId || !nonStrikerId || !currentBowlerId) {
-      alert("Please select Striker, Non-Striker, and Opening Bowler.");
+      toast.error("Please select Striker, Non-Striker, and Opening Bowler.");
       return;
     }
     if (strikerId === nonStrikerId) {
-      alert("Striker and Non-Striker cannot be the same player.");
+      toast.error("Striker and Non-Striker cannot be the same player.");
       return;
     }
 
@@ -243,9 +275,10 @@ export const LiveScorerPage: React.FC = () => {
       });
       triggerToast(`Innings #${inningsNum} started!`);
       setActiveInningsNumber(inningsNum);
+      setIsFreeHitNext(false);
       fetchMatchData();
     } catch (err: any) {
-      alert(err.message || "Failed to start innings.");
+      toast.error(err.message || "Failed to start innings.");
     } finally {
       setActionLoading(false);
     }
@@ -255,11 +288,11 @@ export const LiveScorerPage: React.FC = () => {
   const handleRecordBall = async (runsBat: number, extraType = "NONE", extraRuns = 0) => {
     const currentInnings = matchData?.cricketInnings?.find((x: any) => x.inningsNumber === activeInningsNumber);
     if (!currentInnings) {
-      alert("Please start the innings first.");
+      toast.error("Please start the innings first.");
       return;
     }
     if (!strikerId || !nonStrikerId || !currentBowlerId) {
-      alert("Please ensure Striker, Non-Striker, and Bowler are selected.");
+      toast.error("Please ensure Striker, Non-Striker, and Bowler are selected.");
       return;
     }
 
@@ -277,15 +310,50 @@ export const LiveScorerPage: React.FC = () => {
 
       setStrikerId(res.nextStrikerId);
       setNonStrikerId(res.nextNonStrikerId);
+      setIsFreeHitNext(res.isFreeHitNext || extraType === "NO_BALL");
 
       if (res.isOverEnd) {
-        triggerToast(`End of Over ${res.overNumber}! Choose next bowler.`);
+        toast.info(`End of Over ${res.overNumber}! Choose next bowler.`);
         setShowChangeBowlerModal(true);
+      }
+
+      // Check 2nd Innings Win Condition automatically
+      if (activeInningsNumber === 2 && targetRuns) {
+        const extraAdd = extraType === "WIDE" || extraType === "NO_BALL" ? 1 + Number(extraRuns) : Number(extraRuns);
+        const newRuns = (currentInnings.totalRuns || 0) + Number(runsBat) + extraAdd;
+        const maxOvers = matchData.tournament?.rules?.maxOversPerInnings || 10;
+        const currentLegal = (currentInnings.balls || []).filter((b: any) => b.extraType !== "WIDE" && b.extraType !== "NO_BALL").length;
+        const newLegal = currentLegal + (extraType !== "WIDE" && extraType !== "NO_BALL" ? 1 : 0);
+        const ballsLeft = Math.max(0, maxOvers * 6 - newLegal);
+
+        if (newRuns >= targetRuns) {
+          const wicketsDown = currentInnings.totalWickets || 0;
+          const wicketsLeft = Math.max(1, 10 - wicketsDown);
+          const autoSummary = `${battingTeam?.name || "Chasing Team"} won by ${wicketsLeft} wicket${wicketsLeft > 1 ? "s" : ""} (${ballsLeft} balls left)`;
+          setMatchWinnerTeamId(battingTeam?.id || "");
+          setMatchResultSummary(autoSummary);
+          toast.success(`🎯 Target Reached! ${autoSummary}`);
+          setShowCompleteModal(true);
+        } else if (ballsLeft === 0) {
+          if (newRuns < targetRuns - 1) {
+            const margin = targetRuns - 1 - newRuns;
+            const autoSummary = `${bowlingTeam?.name || "Defending Team"} won by ${margin} run${margin > 1 ? "s" : ""}`;
+            setMatchWinnerTeamId(bowlingTeam?.id || "");
+            setMatchResultSummary(autoSummary);
+            toast.success(`🏁 Match Ended! ${autoSummary}`);
+            setShowCompleteModal(true);
+          } else if (newRuns === targetRuns - 1) {
+            const autoSummary = `Match Tied (${newRuns} - ${innings1?.totalRuns})`;
+            setMatchResultSummary(autoSummary);
+            toast.warning(`⚖️ Match Tied!`);
+            setShowCompleteModal(true);
+          }
+        }
       }
 
       fetchMatchData();
     } catch (err: any) {
-      alert(err.message || "Failed to record ball delivery.");
+      toast.error(err.message || "Failed to record ball delivery.");
     } finally {
       setActionLoading(false);
     }
@@ -320,6 +388,7 @@ export const LiveScorerPage: React.FC = () => {
       setWicketPlayerOutId("");
       setWicketFielderId("");
       setWicketNewBatterId("");
+      setIsFreeHitNext(false);
 
       setStrikerId(res.nextStrikerId);
       setNonStrikerId(res.nextNonStrikerId);
@@ -328,30 +397,52 @@ export const LiveScorerPage: React.FC = () => {
         setShowChangeBowlerModal(true);
       }
 
+      // Check All-Out condition on 2nd innings
+      if (activeInningsNumber === 2 && targetRuns) {
+        const newWickets = (currentInnings.totalWickets || 0) + 1;
+        if (newWickets >= 10) {
+          const margin = targetRuns - 1 - (currentInnings.totalRuns || 0);
+          const autoSummary = `${bowlingTeam?.name || "Defending Team"} won by ${margin} run${margin > 1 ? "s" : ""} (All Out)`;
+          setMatchWinnerTeamId(bowlingTeam?.id || "");
+          setMatchResultSummary(autoSummary);
+          toast.success(`🏁 All Out! ${autoSummary}`);
+          setShowCompleteModal(true);
+        }
+      }
+
       fetchMatchData();
     } catch (err: any) {
-      alert(err.message || "Failed to record wicket.");
+      toast.error(err.message || "Failed to record wicket.");
     } finally {
       setActionLoading(false);
     }
   };
 
   // 5. Cricket: Undo Last Ball Handler
-  const handleUndoBall = async () => {
+  const handleUndoBall = () => {
     const currentInnings = matchData?.cricketInnings?.find((x: any) => x.inningsNumber === activeInningsNumber);
     if (!currentInnings) return;
-    if (!confirm("Are you sure you want to undo the last delivery?")) return;
 
-    setActionLoading(true);
-    try {
-      await api.scoring.undoBall(matchId, currentInnings.id);
-      triggerToast("Last delivery undone.");
-      fetchMatchData();
-    } catch (err: any) {
-      alert(err.message || "Failed to undo ball.");
-    } finally {
-      setActionLoading(false);
-    }
+    setConfirmModal({
+      isOpen: true,
+      title: "Undo Last Delivery",
+      message: "Are you sure you want to undo the last delivery in this innings?",
+      variant: "warning",
+      confirmLabel: "Undo Delivery",
+      onConfirm: async () => {
+        setConfirmModal(prev => ({ ...prev, isOpen: false }));
+        setActionLoading(true);
+        try {
+          await api.scoring.undoBall(matchId, currentInnings.id);
+          toast.success("Last delivery undone.");
+          fetchMatchData();
+        } catch (err: any) {
+          toast.error(err.message || "Failed to undo ball.");
+        } finally {
+          setActionLoading(false);
+        }
+      }
+    });
   };
 
   // 6. Cricket: Change Bowler
@@ -385,7 +476,7 @@ export const LiveScorerPage: React.FC = () => {
       triggerToast("Match Started! 1st Half LIVE ▶");
       fetchMatchData();
     } catch (err: any) {
-      alert(err.message || "Failed to start match.");
+      toast.error(err.message || "Failed to start match.");
     }
   };
 
@@ -401,31 +492,40 @@ export const LiveScorerPage: React.FC = () => {
         currentHalf: footballCurrentHalf,
         status: nextRunning ? "LIVE" : "PAUSED",
       });
-      triggerToast(nextRunning ? "Timer Resumed ▶" : "Timer Paused ⏸");
+      toast.info(nextRunning ? "Timer Resumed ▶" : "Timer Paused ⏸");
     } catch (err: any) {
       console.error(err);
     }
   };
 
   // Football: Lifecycle - Mark Half Time
-  const handleMarkHalfTime = async () => {
-    if (!confirm("Conclude 1st Half and mark Half-Time?")) return;
-    setIsFootballTimerRunning(false);
-    const halfDur = (matchData?.footballDetail?.halfDurationMinutes || 20) * 60;
-    const finalHalfSeconds = Math.max(footballTimerSeconds, halfDur);
-    setFootballTimerSeconds(finalHalfSeconds);
-    try {
-      await api.scoring.updateFootballTimer(matchId, {
-        clockSeconds: finalHalfSeconds,
-        isClockRunning: false,
-        currentHalf: 1,
-        status: "HALFTIME",
-      });
-      triggerToast("1st Half Concluded (HALFTIME ⏸)");
-      fetchMatchData();
-    } catch (err: any) {
-      alert(err.message || "Failed to mark halftime.");
-    }
+  const handleMarkHalfTime = () => {
+    setConfirmModal({
+      isOpen: true,
+      title: "Mark Half-Time",
+      message: "Conclude 1st Half and mark Half-Time break?",
+      variant: "warning",
+      confirmLabel: "Mark Half-Time",
+      onConfirm: async () => {
+        setConfirmModal(prev => ({ ...prev, isOpen: false }));
+        setIsFootballTimerRunning(false);
+        const halfDur = (matchData?.footballDetail?.halfDurationMinutes || 20) * 60;
+        const finalHalfSeconds = Math.max(footballTimerSeconds, halfDur);
+        setFootballTimerSeconds(finalHalfSeconds);
+        try {
+          await api.scoring.updateFootballTimer(matchId, {
+            clockSeconds: finalHalfSeconds,
+            isClockRunning: false,
+            currentHalf: 1,
+            status: "HALFTIME",
+          });
+          toast.success("1st Half Concluded (HALFTIME ⏸)");
+          fetchMatchData();
+        } catch (err: any) {
+          toast.error(err.message || "Failed to mark halftime.");
+        }
+      }
+    });
   };
 
   // Football: Lifecycle - Start 2nd Half
@@ -445,43 +545,63 @@ export const LiveScorerPage: React.FC = () => {
       triggerToast("2nd Half Started! LIVE ▶");
       fetchMatchData();
     } catch (err: any) {
-      alert(err.message || "Failed to start 2nd half.");
+      toast.error(err.message || "Failed to start 2nd half.");
     }
   };
 
   // Football: Lifecycle - Mark Full Time
-  const handleMarkFullTime = async () => {
-    if (!confirm("Conclude 2nd Half and mark Full Time?")) return;
-    setIsFootballTimerRunning(false);
+  const handleMarkFullTime = () => {
+    setConfirmModal({
+      isOpen: true,
+      title: "Mark Full Time",
+      message: "Conclude 2nd Half and finalize match scoreline?",
+      variant: "danger",
+      confirmLabel: "Conclude Match",
+      onConfirm: async () => {
+        setConfirmModal(prev => ({ ...prev, isOpen: false }));
+        setIsFootballTimerRunning(false);
 
-    const isKnockout = matchData.stage !== "GROUP_STAGE";
-    const isTied = (matchData.footballDetail?.teamAScore || 0) === (matchData.footballDetail?.teamBScore || 0);
+        const isKnockout = matchData.stage !== "GROUP_STAGE";
+        const isTied = (matchData.footballDetail?.teamAScore || 0) === (matchData.footballDetail?.teamBScore || 0);
 
-    try {
-      if (isKnockout && isTied) {
-        // Leave match in LIVE status with currentHalf = 5 (PENALTIES)
-        await api.scoring.updateFootballTimer(matchId, {
-          clockSeconds: footballTimerSeconds,
-          isClockRunning: false,
-          currentHalf: 5,
-          status: "LIVE",
-        });
-        triggerToast("Full Time tied! Advancing to Knockout Penalty Shootout 🥅");
-        fetchMatchData();
-        handleOpenPenaltyShootoutModal();
-      } else {
-        await api.scoring.updateFootballTimer(matchId, {
-          clockSeconds: footballTimerSeconds,
-          isClockRunning: false,
-          currentHalf: 2,
-          status: "COMPLETED",
-        });
-        fetchMatchData();
-        setShowCompleteModal(true);
+        try {
+          if (isKnockout && isTied) {
+            // Leave match in LIVE status with currentHalf = 5 (PENALTIES)
+            await api.scoring.updateFootballTimer(matchId, {
+              clockSeconds: footballTimerSeconds,
+              isClockRunning: false,
+              currentHalf: 5,
+              status: "LIVE",
+            });
+            toast.info("Full Time tied! Advancing to Knockout Penalty Shootout 🥅");
+            fetchMatchData();
+            handleOpenPenaltyShootoutModal();
+          } else {
+            await api.scoring.updateFootballTimer(matchId, {
+              clockSeconds: footballTimerSeconds,
+              isClockRunning: false,
+              currentHalf: 2,
+              status: "COMPLETED",
+            });
+            const scoreA = matchData.footballDetail?.teamAScore || 0;
+            const scoreB = matchData.footballDetail?.teamBScore || 0;
+            if (scoreA > scoreB) {
+              setMatchWinnerTeamId(matchData.teamAId);
+              setMatchResultSummary(`${matchData.teamA.name} won ${scoreA}-${scoreB}`);
+            } else if (scoreB > scoreA) {
+              setMatchWinnerTeamId(matchData.teamBId);
+              setMatchResultSummary(`${matchData.teamB.name} won ${scoreB}-${scoreA}`);
+            } else {
+              setMatchResultSummary(`Match Drawn (${scoreA}-${scoreB})`);
+            }
+            fetchMatchData();
+            setShowCompleteModal(true);
+          }
+        } catch (err: any) {
+          toast.error(err.message || "Failed to mark full time.");
+        }
       }
-    } catch (err: any) {
-      alert(err.message || "Failed to mark full time.");
-    }
+    });
   };
 
   // Football Helpers: Identify players who have received a RED CARD (or 2 Yellow Cards)
@@ -541,12 +661,13 @@ export const LiveScorerPage: React.FC = () => {
   };
 
   // 8. Football: Open Event Modal (Auto-captures current match minute)
-  const handleOpenFootballEventModal = (type: string, teamId: number) => {
+  const handleOpenFootballEventModal = (type: string, teamId: number, playerId?: number) => {
     const currentMinute = Math.max(1, Math.floor(footballTimerSeconds / 60) + 1);
     setFootballEventType(type);
+    setFootballGoalType("Open Play");
     setFootballEventTeamId(teamId);
     setFootballEventMinute(currentMinute);
-    setFootballEventPrimaryPlayerId("");
+    setFootballEventPrimaryPlayerId(playerId ? Number(playerId) : "");
     setFootballEventSecondaryPlayerId("");
     setShowFootballEventModal(true);
   };
@@ -555,36 +676,41 @@ export const LiveScorerPage: React.FC = () => {
   const handleSaveFootballEvent = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!footballEventTeamId || !footballEventPrimaryPlayerId) {
-      alert("Please select a player.");
+      toast.error("Please select a player.");
       return;
     }
 
     setActionLoading(true);
     try {
+      const description = footballEventType === "GOAL" 
+        ? `${footballGoalType}` 
+        : undefined;
+
       await api.scoring.logFootballEvent(matchId, {
         teamId: Number(footballEventTeamId),
         minute: Number(footballEventMinute),
         eventType: footballEventType,
         primaryPlayerId: Number(footballEventPrimaryPlayerId),
         secondaryPlayerId: footballEventSecondaryPlayerId ? Number(footballEventSecondaryPlayerId) : null,
+        description,
         currentClockSeconds: footballTimerSeconds,
       });
       triggerToast(`Event logged at ${footballEventMinute}'!`);
       setShowFootballEventModal(false);
       fetchMatchData();
     } catch (err: any) {
-      alert(err.message || "Failed to log event.");
+      toast.error(err.message || "Failed to log event.");
     } finally {
       setActionLoading(false);
     }
   };
 
   // 10. Football: Open Substitution Modal
-  const handleOpenSubModal = (teamId: number) => {
+  const handleOpenSubModal = (teamId: number, playerOutId?: number) => {
     const currentMinute = Math.max(1, Math.floor(footballTimerSeconds / 60) + 1);
     setSubTeamId(teamId);
     setSubMinute(currentMinute);
-    setSubPlayerOutId("");
+    setSubPlayerOutId(playerOutId ? Number(playerOutId) : "");
     setSubPlayerInId("");
     setShowSubModal(true);
   };
@@ -593,11 +719,11 @@ export const LiveScorerPage: React.FC = () => {
   const handleSaveSubstitution = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!subTeamId || !subPlayerOutId || !subPlayerInId) {
-      alert("Please select both player leaving the pitch (OUT) and player entering (IN).");
+      toast.error("Please select both player leaving the pitch (OUT) and player entering (IN).");
       return;
     }
     if (Number(subPlayerOutId) === Number(subPlayerInId)) {
-      alert("Cannot substitute a player for themselves.");
+      toast.error("Cannot substitute a player for themselves.");
       return;
     }
 
@@ -615,7 +741,7 @@ export const LiveScorerPage: React.FC = () => {
       setShowSubModal(false);
       fetchMatchData();
     } catch (err: any) {
-      alert(err.message || "Failed to record substitution.");
+      toast.error(err.message || "Failed to record substitution.");
     } finally {
       setActionLoading(false);
     }
@@ -719,7 +845,7 @@ export const LiveScorerPage: React.FC = () => {
 
   const handleRecordPenaltyKick = (isGoal: boolean) => {
     if (!currentKickerId) {
-      alert("Please select the penalty kicker.");
+      toast.error("Please select the penalty kicker.");
       return;
     }
 
@@ -762,7 +888,7 @@ export const LiveScorerPage: React.FC = () => {
   const handleSavePenaltyShootout = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!penWinnerId) {
-      alert("Please confirm the penalty shootout winner.");
+      toast.error("Please confirm the penalty shootout winner.");
       return;
     }
     setActionLoading(true);
@@ -777,22 +903,31 @@ export const LiveScorerPage: React.FC = () => {
       setShowPenaltyShootoutModal(false);
       fetchMatchData();
     } catch (err: any) {
-      alert(err.message || "Failed to record shootout.");
+      toast.error(err.message || "Failed to record shootout.");
     } finally {
       setActionLoading(false);
     }
   };
 
   // 13. Football: Delete Event Handler
-  const handleDeleteFootballEvent = async (eventId: number) => {
-    if (!confirm("Are you sure you want to delete this event?")) return;
-    try {
-      await api.scoring.deleteFootballEvent(matchId, eventId);
-      triggerToast("Event deleted.");
-      fetchMatchData();
-    } catch (err: any) {
-      alert(err.message || "Failed to delete event.");
-    }
+  const handleDeleteFootballEvent = (eventId: number) => {
+    setConfirmModal({
+      isOpen: true,
+      title: "Delete Match Event",
+      message: "Are you sure you want to delete this recorded event from the match timeline?",
+      variant: "danger",
+      confirmLabel: "Delete Event",
+      onConfirm: async () => {
+        setConfirmModal(prev => ({ ...prev, isOpen: false }));
+        try {
+          await api.scoring.deleteFootballEvent(matchId, eventId);
+          toast.success("Event deleted.");
+          fetchMatchData();
+        } catch (err: any) {
+          toast.error(err.message || "Failed to delete event.");
+        }
+      }
+    });
   };
 
   // 14. Complete Match Handler
@@ -809,7 +944,7 @@ export const LiveScorerPage: React.FC = () => {
       setShowCompleteModal(false);
       fetchMatchData();
     } catch (err: any) {
-      alert(err.message || "Failed to complete match.");
+      toast.error(err.message || "Failed to complete match.");
     } finally {
       setActionLoading(false);
     }
@@ -929,14 +1064,6 @@ export const LiveScorerPage: React.FC = () => {
 
       {/* Main Container */}
       <main className="max-w-5xl mx-auto px-4 py-6 space-y-6">
-        
-        {/* Toast / Notification */}
-        {notification && (
-          <div className="p-3.5 rounded-2xl bg-[#E6FCF5] border border-[#20C997] text-[#0CA678] text-xs font-bold flex items-center gap-2 animate-in fade-in">
-            <CheckCircle2 className="w-4 h-4 shrink-0" />
-            <span>{notification}</span>
-          </div>
-        )}
 
         {/* Pre-Match Toss & Squad Setup Required Hero Card */}
         {!matchData.tossWinnerTeamId && (
@@ -1038,6 +1165,77 @@ export const LiveScorerPage: React.FC = () => {
             {/* Live Cricket Scorecard Ticker Card */}
             {currentInnings && (
               <div className="bg-white rounded-3xl border-2 border-[#E5DACB] p-6 shadow-sm space-y-4">
+                
+                {/* 2nd Innings Target & Live Chase Equation Bar */}
+                {activeInningsNumber === 2 && targetRuns && (
+                  <div className="p-4 rounded-2xl bg-linear-to-r from-[#FAF0E6] via-[#FFF5F5] to-[#FAF0E6] border-2 border-[#9E2A2B]/30 space-y-2 shadow-xs">
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-xl bg-[#9E2A2B] text-white flex items-center justify-center font-black text-sm">
+                          🎯
+                        </div>
+                        <div>
+                          <p className="text-xs font-black text-[#2C221E] uppercase tracking-wider">
+                            Chase Target: <strong className="text-[#9E2A2B] text-sm">{targetRuns} runs</strong>
+                          </p>
+                          <p className="text-[11px] font-bold text-[#7C6E63]">
+                            {battingTeam?.name} needs <span className="text-[#9E2A2B] font-black">{Math.max(0, targetRuns - (currentInnings.totalRuns || 0))} runs</span> from <span className="text-[#2C221E] font-black">{Math.max(0, (matchData.tournament?.rules?.maxOversPerInnings || 10) * 6 - (currentInnings.balls?.filter((b: any) => b.extraType !== "WIDE" && b.extraType !== "NO_BALL").length || 0))} balls</span>
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 text-xs">
+                        <div className="bg-white px-3 py-1.5 rounded-xl border border-[#E8D6C3] text-center shadow-xs">
+                          <span className="text-[10px] text-[#7C6E63] font-bold uppercase block">RRR</span>
+                          <span className="font-mono font-black text-[#9E2A2B]">
+                            {(() => {
+                              const maxOvers = matchData.tournament?.rules?.maxOversPerInnings || 10;
+                              const legalBalls = (currentInnings.balls || []).filter((b: any) => b.extraType !== "WIDE" && b.extraType !== "NO_BALL").length;
+                              const ballsLeft = Math.max(0, maxOvers * 6 - legalBalls);
+                              const needed = Math.max(0, targetRuns - (currentInnings.totalRuns || 0));
+                              return ballsLeft > 0 ? (needed / (ballsLeft / 6)).toFixed(2) : "0.00";
+                            })()}
+                          </span>
+                        </div>
+
+                        <div className="bg-white px-3 py-1.5 rounded-xl border border-[#E8D6C3] text-center shadow-xs">
+                          <span className="text-[10px] text-[#7C6E63] font-bold uppercase block">CRR</span>
+                          <span className="font-mono font-black text-[#2C221E]">
+                            {currentInnings.totalOvers > 0 ? (currentInnings.totalRuns / currentInnings.totalOvers).toFixed(2) : "0.00"}
+                          </span>
+                        </div>
+
+                        <div className="bg-white px-3 py-1.5 rounded-xl border border-[#E8D6C3] text-center shadow-xs">
+                          <span className="text-[10px] text-[#7C6E63] font-bold uppercase block">Wickets In Hand</span>
+                          <span className="font-mono font-black text-[#2A7B54]">
+                            {Math.max(0, 10 - (currentInnings.totalWickets || 0))}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Free Hit Pulsating Alert Banner */}
+                {isFreeHitNext && (
+                  <div className="p-3 rounded-2xl bg-[#FFF9DB] border-2 border-[#F59F00] flex items-center justify-between gap-3 animate-pulse">
+                    <div className="flex items-center gap-2">
+                      <Zap className="w-5 h-5 text-[#F59F00] shrink-0" />
+                      <div>
+                        <p className="text-xs font-black text-[#7E4D00] uppercase tracking-wider">
+                          🎯 FREE HIT ON THIS BALL!
+                        </p>
+                        <p className="text-[11px] font-bold text-[#8C5800]">
+                          Previous ball was a No-Ball. Batter cannot be dismissed Bowled, Caught, LBW, or Stumped.
+                        </p>
+                      </div>
+                    </div>
+                    <span className="text-[10px] font-black bg-[#F59F00] text-white px-2.5 py-1 rounded-xl shrink-0 uppercase">
+                      FREE HIT ⚡
+                    </span>
+                  </div>
+                )}
+
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#EFE8DC]">
                   <div>
                     <div className="flex items-center gap-2">
@@ -1071,21 +1269,32 @@ export const LiveScorerPage: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Batters & Bowler Mini Stats */}
+                {/* Batters & Bowler Mini Stats with Swap Strike Button */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
                   {/* Striker Card */}
-                  <div className="p-3 bg-[#FAF7F2] rounded-2xl border-2 border-[#9E2A2B]/40 space-y-1 relative">
-                    <span className="absolute top-2 right-2 text-[10px] font-black uppercase bg-[#9E2A2B] text-white px-2 py-0.5 rounded-full">
-                      Striker 🏏
-                    </span>
-                    <p className="font-extrabold text-[#2C221E] truncate">{strikerUser?.name || "Striker Batter"}</p>
+                  <div className="p-3.5 bg-[#FAF7F2] rounded-2xl border-2 border-[#9E2A2B]/40 space-y-1 relative shadow-xs">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-black uppercase bg-[#9E2A2B] text-white px-2 py-0.5 rounded-full">
+                        Striker 🏏
+                      </span>
+                      <button
+                        type="button"
+                        onClick={handleSwapStrike}
+                        className="text-[10px] font-black text-[#9E2A2B] hover:text-[#842021] bg-white border border-[#E8D6C3] px-2 py-0.5 rounded-lg flex items-center gap-1 hover:bg-[#FAF0E6] transition-all shadow-xs active:scale-95"
+                        title="Swap strike with Non-Striker"
+                      >
+                        <ArrowLeftRight className="w-3 h-3" />
+                        <span>⇄ Swap Strike</span>
+                      </button>
+                    </div>
+                    <p className="font-extrabold text-[#2C221E] truncate mt-1">{strikerUser?.name || "Striker Batter"}</p>
                     <p className="font-mono text-xs font-bold text-[#7C6E63]">
                       {currentStrikerScore?.runs || 0} runs ({currentStrikerScore?.balls || 0}b) · {currentStrikerScore?.fours || 0}x4, {currentStrikerScore?.sixes || 0}x6
                     </p>
                   </div>
 
                   {/* Non-Striker Card */}
-                  <div className="p-3 bg-[#FAF7F2] rounded-2xl border border-[#E8DCCF] space-y-1">
+                  <div className="p-3.5 bg-[#FAF7F2] rounded-2xl border border-[#E8DCCF] space-y-1">
                     <span className="text-[10px] font-bold text-[#7C6E63] uppercase">Non-Striker</span>
                     <p className="font-extrabold text-[#2C221E] truncate">{nonStrikerUser?.name || "Non-Striker"}</p>
                     <p className="font-mono text-xs font-bold text-[#7C6E63]">
@@ -1094,14 +1303,14 @@ export const LiveScorerPage: React.FC = () => {
                   </div>
 
                   {/* Bowler Card */}
-                  <div className="p-3 bg-[#FAF7F2] rounded-2xl border border-[#E8DCCF] space-y-1">
+                  <div className="p-3.5 bg-[#FAF7F2] rounded-2xl border border-[#E8DCCF] space-y-1">
                     <div className="flex items-center justify-between">
                       <span className="text-[10px] font-bold text-[#7C6E63] uppercase">Bowler</span>
                       <button
                         onClick={() => setShowChangeBowlerModal(true)}
-                        className="text-[10px] font-bold text-[#9E2A2B] hover:underline"
+                        className="text-[10px] font-black text-[#9E2A2B] bg-white border border-[#E8D6C3] px-2 py-0.5 rounded-lg hover:bg-[#FAF0E6] transition-all shadow-xs"
                       >
-                        Change
+                        Change Bowler 🔄
                       </button>
                     </div>
                     <p className="font-extrabold text-[#2C221E] truncate">{bowlerUser?.name || "Bowler"}</p>
@@ -1114,7 +1323,7 @@ export const LiveScorerPage: React.FC = () => {
                 {/* Over Ball Trail & Undo */}
                 <div className="pt-2 border-t border-[#EFE8DC] flex items-center justify-between gap-2">
                   <div className="flex items-center gap-1.5 overflow-x-auto py-1">
-                    <span className="text-[11px] font-bold text-[#7C6E63] mr-1 shrink-0">Recent:</span>
+                    <span className="text-[11px] font-bold text-[#7C6E63] mr-1 shrink-0">Recent Deliveries:</span>
                     {recentBalls.map((b: any) => (
                       <span
                         key={b.id}
@@ -1203,7 +1412,7 @@ export const LiveScorerPage: React.FC = () => {
                     disabled={actionLoading}
                     className="h-11 rounded-xl border-[#F59F00] bg-[#FFF9DB] text-[#7E4D00] hover:bg-[#FFF3BF] font-black text-xs"
                   >
-                    No Ball (+1)
+                    No Ball (+1) ⚡
                   </Button>
 
                   <Button
@@ -1233,12 +1442,21 @@ export const LiveScorerPage: React.FC = () => {
                     <Button
                       type="button"
                       onClick={() => {
-                        if (confirm("Switch to 2nd Innings? Ensure 1st innings is complete.")) {
-                          setActiveInningsNumber(2);
-                          setStrikerId(null);
-                          setNonStrikerId(null);
-                          setCurrentBowlerId(null);
-                        }
+                        setConfirmModal({
+                          isOpen: true,
+                          title: "Switch to 2nd Innings",
+                          message: "Are you sure you want to switch to the 2nd Innings? Ensure 1st innings is complete.",
+                          variant: "info",
+                          confirmLabel: "Begin 2nd Innings",
+                          onConfirm: () => {
+                            setConfirmModal(prev => ({ ...prev, isOpen: false }));
+                            setActiveInningsNumber(2);
+                            setStrikerId(null);
+                            setNonStrikerId(null);
+                            setCurrentBowlerId(null);
+                            toast.info("Switched to 2nd Innings. Choose opening batters and bowler.");
+                          }
+                        });
                       }}
                       className="bg-[#9E2A2B] text-white font-bold text-xs h-9 px-4 rounded-xl"
                     >
@@ -1799,21 +2017,39 @@ export const LiveScorerPage: React.FC = () => {
               </div>
 
               {footballEventType === "GOAL" && (
-                <div>
-                  <label className="block font-bold mb-1">Assist Provider (Optional)</label>
-                  <select
-                    value={footballEventSecondaryPlayerId}
-                    onChange={(e) => setFootballEventSecondaryPlayerId(e.target.value === "" ? "" : Number(e.target.value))}
-                    className="w-full px-3 py-2 rounded-xl border border-[#D8C7B3] bg-[#FAF7F2]"
-                  >
-                    <option value="">-- None (Solo Goal) --</option>
-                    {getOnFieldPlayers(Number(footballEventTeamId))
-                      .filter((m: any) => m.userId !== Number(footballEventPrimaryPlayerId))
-                      .map((m: any) => (
-                        <option key={m.userId} value={m.userId}>{m.user.name} ({m.user.studentId})</option>
-                      ))}
-                  </select>
-                </div>
+                <>
+                  <div>
+                    <label className="block font-bold mb-1">Goal Type</label>
+                    <select
+                      value={footballGoalType}
+                      onChange={(e) => setFootballGoalType(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-[#D8C7B3] bg-[#FAF7F2] font-semibold"
+                    >
+                      <option value="Open Play">⚽ Open Play Goal</option>
+                      <option value="Header">🗣️ Header</option>
+                      <option value="Free Kick">🎯 Free Kick</option>
+                      <option value="Penalty">🥅 Penalty</option>
+                      <option value="Volley">⚡ Volley / Long Range</option>
+                      <option value="Own Goal">⚠️ Own Goal</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block font-bold mb-1">Assist Provider (Optional)</label>
+                    <select
+                      value={footballEventSecondaryPlayerId}
+                      onChange={(e) => setFootballEventSecondaryPlayerId(e.target.value === "" ? "" : Number(e.target.value))}
+                      className="w-full px-3 py-2 rounded-xl border border-[#D8C7B3] bg-[#FAF7F2]"
+                    >
+                      <option value="">-- None (Solo / Unassisted) --</option>
+                      {getOnFieldPlayers(Number(footballEventTeamId))
+                        .filter((m: any) => m.userId !== Number(footballEventPrimaryPlayerId))
+                        .map((m: any) => (
+                          <option key={m.userId} value={m.userId}>{m.user.name} ({m.user.studentId})</option>
+                        ))}
+                    </select>
+                  </div>
+                </>
               )}
 
               <div className="pt-2 flex justify-end gap-2">
@@ -2327,6 +2563,19 @@ export const LiveScorerPage: React.FC = () => {
         isOpen={showStoryModal}
         onClose={() => setShowStoryModal(false)}
         match={matchData}
+      />
+
+      {/* Accessible Confirmation Modal */}
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        confirmLabel={confirmModal.confirmLabel}
+        cancelLabel={confirmModal.cancelLabel}
+        variant={confirmModal.variant}
+        isLoading={actionLoading}
+        onConfirm={confirmModal.onConfirm}
+        onClose={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
       />
 
     </div>

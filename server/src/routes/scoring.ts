@@ -478,6 +478,7 @@ scoringRouter.post("/:id/cricket/ball", requireAuth, async (req: AuthenticatedRe
       isOverEnd,
       overNumber: Math.floor(newLegalCount / 6),
       ballInOver: newLegalCount % 6,
+      isFreeHitNext: extraType === "NO_BALL",
     });
   } catch (err: any) {
     res.status(500).json({ error: err.message || "Failed to record ball delivery" });
@@ -770,6 +771,13 @@ scoringRouter.post("/:id/football/events", requireAuth, async (req: Authenticate
         where: { matchId, userId: Number(primaryPlayerId) },
         data: { isPlayingXI: false }
       });
+    } else if ((eventType === "GOAL" || eventType === "PENALTY_GOAL" || eventType === "OWN_GOAL") && !finalDescription) {
+      if (secondaryPlayerId) {
+        const assistUser = await prisma.user.findUnique({ where: { id: Number(secondaryPlayerId) }, select: { name: true } });
+        if (assistUser?.name) {
+          finalDescription = `Assist: ${assistUser.name}`;
+        }
+      }
     }
 
     const createdEvent = await prisma.footballMatchEvent.create({

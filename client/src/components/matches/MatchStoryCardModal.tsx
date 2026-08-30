@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useState } from "react";
 import { Download, Share2, Copy, Check, Sparkles, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { toast } from "@/context/ToastContext";
 
 interface MatchStoryCardModalProps {
   isOpen: boolean;
@@ -250,9 +251,10 @@ export const MatchStoryCardModal: React.FC<MatchStoryCardModalProps> = ({
             new ClipboardItem({ "image/png": blob })
           ]);
           setCopied(true);
+          toast.success("Story card copied to clipboard!");
           setTimeout(() => setCopied(false), 2500);
         } catch (e) {
-          alert("Clipboard copy not supported on this browser. Please use Download.");
+          toast.warning("Direct clipboard image copy not supported on this browser. Please use Download.");
         }
       }
     });
