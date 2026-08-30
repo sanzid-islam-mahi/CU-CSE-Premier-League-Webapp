@@ -2,10 +2,7 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { 
   ArrowLeft, 
-  Loader2, 
-  Calendar, 
-  Users, 
-  ArrowRight
+  Loader2
 } from "lucide-react";
 import { api, type TournamentItem } from "@/lib/api";
 import { TournamentCard } from "@/components/tournaments/TournamentCard";

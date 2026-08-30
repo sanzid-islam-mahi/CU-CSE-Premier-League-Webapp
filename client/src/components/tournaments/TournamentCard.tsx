@@ -1,6 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { Users, Calendar, ArrowRight, Trophy } from "lucide-react";
+import { Users, Calendar, ArrowRight } from "lucide-react";
 import { SmartAvatar } from "@/components/common/SmartAvatar";
 import type { TournamentItem } from "@/lib/api";
 

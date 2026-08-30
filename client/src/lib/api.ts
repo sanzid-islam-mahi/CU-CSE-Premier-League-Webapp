@@ -61,6 +61,8 @@ export interface TournamentItem {
   sport: "CRICKET" | "FOOTBALL";
   season: string;
   status: string;
+  bannerUrl?: string | null;
+  logoUrl?: string | null;
   rules?: any;
   teamsCount: number;
   matchesCount: number;
