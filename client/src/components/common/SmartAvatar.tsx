@@ -5,7 +5,7 @@ interface SmartAvatarProps {
   alt: string;
   className?: string;
   fallbackText?: string;
-  size?: "sm" | "md" | "lg" | "xl" | "2xl";
+  size?: "xs" | "sm" | "md" | "lg" | "xl" | "2xl";
   shape?: "circle" | "rounded" | "square";
   badge?: string;
 }
@@ -26,7 +26,8 @@ export const SmartAvatar: React.FC<SmartAvatarProps> = ({
   }, [src]);
 
   const sizeClasses = {
-    sm: "w-8 h-8 text-xs",
+    xs: "w-5 h-5 text-[9px] font-black",
+    sm: "w-7 h-7 text-[10px] font-bold",
     md: "w-10 h-10 text-sm",
     lg: "w-14 h-14 text-base",
     xl: "w-20 h-20 text-xl",

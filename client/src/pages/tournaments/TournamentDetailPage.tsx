@@ -28,6 +28,8 @@ import { TournamentBracketView } from "@/components/tournaments/TournamentBracke
 import { SmartAvatar } from "@/components/common/SmartAvatar";
 import { ImageUploadModal } from "@/components/common/ImageUploadModal";
 import { MediaGalleryView } from "@/components/common/MediaGalleryView";
+import { PlayerChip } from "@/components/common/PlayerChip";
+import { BatchChip } from "@/components/common/BatchChip";
 
 export const TournamentDetailPage: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
@@ -326,12 +328,27 @@ export const TournamentDetailPage: React.FC = () => {
 
             {/* Organizers Ribbon */}
             <div className="pt-4 border-t border-[#EFE8DC] flex flex-wrap items-center justify-between gap-3 text-xs">
-              <div className="flex items-center gap-2">
-                <Shield className="w-4 h-4 text-[#9E2A2B]" />
-                <span className="font-bold text-[#4A3E35]">Organizing Committee:</span>
-                <span className="text-[#6B5E53]">
-                  {tournament.organizers?.map((o: any) => `${o.user.name} (${o.user.studentId})`).join(", ") || "Department Appointees"}
-                </span>
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="flex items-center gap-1.5 font-bold text-[#4A3E35] shrink-0">
+                  <Shield className="w-4 h-4 text-[#9E2A2B]" />
+                  <span>Organizing Committee:</span>
+                </div>
+                {tournament.organizers && tournament.organizers.length > 0 ? (
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {tournament.organizers.map((o: any) => (
+                      <PlayerChip
+                        key={o.user.id}
+                        name={o.user.name}
+                        studentId={o.user.studentId}
+                        avatarUrl={o.user.avatarUrl}
+                        size="xs"
+                        variant="badge"
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <span className="text-[#7C6E63]">Department Appointees</span>
+                )}
               </div>
 
               <div className="flex items-center gap-2">
@@ -530,15 +547,28 @@ export const TournamentDetailPage: React.FC = () => {
                             </span>
                           )}
                         </div>
-                        <p className="text-xs text-[#7C6E63]">
-                          {team.batch ? `🏛️ ${team.batch.name} (${team.batch.session})` : "Independent Squad"} · {team.members?.length || 0} Players
-                        </p>
+                        <div className="flex items-center gap-2 mt-1">
+                          {team.batch ? (
+                            <BatchChip
+                              name={team.batch.name}
+                              session={team.batch.session}
+                              slug={team.batch.slug}
+                              avatarUrl={team.batch.avatarUrl}
+                              batchNumber={team.batch.batchNumber}
+                              size="xs"
+                              variant="pill"
+                            />
+                          ) : (
+                            <span className="text-xs text-[#7C6E63]">Independent Squad</span>
+                          )}
+                          <span className="text-xs text-[#7C6E63]">· {team.members?.length || 0} Players</span>
+                        </div>
                       </div>
                     </div>
 
                     <Link
                       to={`/teams/${team.id}`}
-                      className="text-xs font-bold text-[#9E2A2B] hover:underline"
+                      className="text-xs font-bold text-[#9E2A2B] hover:underline shrink-0"
                     >
                       Team Page →
                     </Link>
@@ -548,11 +578,14 @@ export const TournamentDetailPage: React.FC = () => {
                   {team.captain && (
                     <div className="p-3 bg-[#FAF0E6] rounded-2xl border border-[#E8D6C3] flex items-center justify-between text-xs">
                       <div className="flex items-center gap-2">
-                        <span className="text-sm">👑</span>
-                        <div>
-                          <p className="font-extrabold text-[#842021]">{team.captain.name}</p>
-                          <p className="text-[10px] text-[#7C6E63] font-mono">Captain · Roll: {team.captain.studentId}</p>
-                        </div>
+                        <PlayerChip
+                          name={team.captain.name}
+                          studentId={team.captain.studentId}
+                          avatarUrl={team.captain.avatarUrl}
+                          isCaptain={true}
+                          size="sm"
+                          variant="inline"
+                        />
                       </div>
                       <Link
                         to={`/players/${team.captain.studentId}`}
@@ -576,25 +609,27 @@ export const TournamentDetailPage: React.FC = () => {
                     {expandedTeamId === team.id && (
                       <div className="mt-3 pt-3 border-t border-[#EFE8DC] space-y-1.5 animate-in fade-in">
                         {team.members?.map((m: any) => (
-                          <Link
+                          <div
                             key={m.userId}
-                            to={`/players/${m.user.studentId}`}
-                            className="p-2.5 bg-[#FAF7F2] hover:bg-[#FAF0E6] rounded-xl border border-[#E8DCCF] flex items-center justify-between text-xs transition-colors group"
+                            className="p-2.5 bg-[#FAF7F2] hover:bg-[#FAF0E6] rounded-xl border border-[#E8DCCF] flex items-center justify-between text-xs transition-colors"
                           >
                             <div className="flex items-center gap-2.5">
                               <span className="font-mono text-[10px] font-bold text-[#9E2A2B] bg-white px-1.5 py-0.5 rounded border border-[#E8D6C3]">
                                 #{m.jerseyNumber || m.user.preferredJerseyNo || "—"}
                               </span>
-                              <span className="font-bold text-[#2C221E] group-hover:text-[#9E2A2B]">
-                                {m.user.name}
-                              </span>
-                              {m.isCaptain && <span className="text-[10px]">👑</span>}
+                              <PlayerChip
+                                name={m.user.name}
+                                studentId={m.user.studentId}
+                                avatarUrl={m.user.avatarUrl}
+                                isCaptain={m.isCaptain}
+                                size="xs"
+                              />
                             </div>
 
                             <span className="text-[11px] text-[#7C6E63]">
                               {tournament.sport === "CRICKET" ? (m.user.cricketRole || "Player") : (m.user.footballPosition || "Player")}
                             </span>
-                          </Link>
+                          </div>
                         ))}
                       </div>
                     )}

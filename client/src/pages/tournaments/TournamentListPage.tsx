@@ -8,6 +8,7 @@ import {
   ArrowRight
 } from "lucide-react";
 import { api, type TournamentItem } from "@/lib/api";
+import { TournamentCard } from "@/components/tournaments/TournamentCard";
 
 export const TournamentListPage: React.FC = () => {
   const [tournaments, setTournaments] = useState<TournamentItem[]>([]);
@@ -145,85 +146,9 @@ export const TournamentListPage: React.FC = () => {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {filteredTournaments.map((t) => {
-              const rules = t.rules || {};
-              return (
-                <div
-                  key={t.id}
-                  className="bg-white rounded-3xl border-2 border-[#E5DACB] hover:border-[#9E2A2B] p-6 shadow-xs hover:shadow-lg transition-all space-y-4 flex flex-col justify-between group"
-                >
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-2xl">
-                        {t.sport === "CRICKET" ? "🏏" : "⚽"}
-                      </span>
-                      <span className="text-xs font-black uppercase px-2.5 py-1 rounded-full bg-[#FAF0E6] text-[#842021] border border-[#E8D6C3]">
-                        {t.status}
-                      </span>
-                    </div>
-
-                    <div>
-                      <h2 className="text-xl font-black text-[#2C221E] group-hover:text-[#9E2A2B] transition-colors">
-                        {t.name}
-                      </h2>
-                      <p className="text-xs text-[#7C6E63]">
-                        Season {t.season} · {t.sport === "CRICKET" ? "Cricket Championship" : "Football League"}
-                      </p>
-                    </div>
-
-                    {/* Rules Badges */}
-                    <div className="flex flex-wrap gap-1.5 pt-1">
-                      {t.sport === "CRICKET" ? (
-                        <>
-                          <span className="text-[11px] font-bold bg-[#FAF7F2] text-[#842021] px-2 py-0.5 rounded-lg border border-[#E8D6C3]">
-                            🏏 {rules.overs || 10} Overs
-                          </span>
-                          <span className="text-[11px] font-bold bg-[#FAF7F2] text-[#6B5E53] px-2 py-0.5 rounded-lg border border-[#E8D6C3]">
-                            ⚡ {rules.powerplay || 2} Ov Powerplay
-                          </span>
-                          <span className="text-[11px] font-bold bg-[#FAF7F2] text-[#6B5E53] px-2 py-0.5 rounded-lg border border-[#E8D6C3]">
-                            🏆 Win: {rules.pointsWin || 2} pts
-                          </span>
-                        </>
-                      ) : (
-                        <>
-                          <span className="text-[11px] font-bold bg-[#FAF7F2] text-[#842021] px-2 py-0.5 rounded-lg border border-[#E8D6C3]">
-                            ⚽ {rules.halfMinutes || 20} Mins / Half
-                          </span>
-                          <span className="text-[11px] font-bold bg-[#FAF7F2] text-[#6B5E53] px-2 py-0.5 rounded-lg border border-[#E8D6C3]">
-                            👥 {rules.format || "7-a-side"}
-                          </span>
-                          <span className="text-[11px] font-bold bg-[#FAF7F2] text-[#6B5E53] px-2 py-0.5 rounded-lg border border-[#E8D6C3]">
-                            🏆 Win: {rules.pointsWin || 3} pts
-                          </span>
-                        </>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="pt-4 border-t border-[#EFE8DC] flex items-center justify-between">
-                    <div className="flex items-center gap-4 text-xs font-bold text-[#7C6E63]">
-                      <span className="flex items-center gap-1">
-                        <Users className="w-4 h-4 text-[#9E2A2B]" />
-                        <span>{t.teamsCount || 0} Teams</span>
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Calendar className="w-4 h-4 text-[#9E2A2B]" />
-                        <span>{t.matchesCount || 0} Matches</span>
-                      </span>
-                    </div>
-
-                    <Link
-                      to={`/tournaments/${t.slug}`}
-                      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#9E2A2B] hover:bg-[#842021] text-white font-bold text-xs shadow-md shadow-[#9E2A2B]/20 transition-all"
-                    >
-                      <span>Enter Arena</span>
-                      <ArrowRight className="w-4 h-4" />
-                    </Link>
-                  </div>
-                </div>
-              );
-            })}
+            {filteredTournaments.map((t) => (
+              <TournamentCard key={t.id} tournament={t} />
+            ))}
           </div>
         )}
 

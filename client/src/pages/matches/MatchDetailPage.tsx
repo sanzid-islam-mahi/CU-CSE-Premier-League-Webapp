@@ -21,6 +21,8 @@ import { api } from "@/lib/api";
 import { CricketLiveAnalytics } from "@/components/matches/CricketLiveAnalytics";
 import { MatchStoryCardModal } from "@/components/matches/MatchStoryCardModal";
 import { MediaGalleryView } from "@/components/common/MediaGalleryView";
+import { PlayerChip } from "@/components/common/PlayerChip";
+import { BatchChip } from "@/components/common/BatchChip";
 
 export const MatchDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -462,7 +464,22 @@ export const MatchDetailPage: React.FC = () => {
                       <span>{matchData.teamA.name}</span>
                       {matchData.winnerTeamId === matchData.teamAId && <span className="text-sm">👑</span>}
                     </h2>
-                    <p className="text-xs text-[#7C6E63]">{matchData.teamA.batch ? matchData.teamA.batch.name : "CU CSE"}</p>
+                    <div className="mt-0.5">
+                      {matchData.teamA.batch ? (
+                        <BatchChip
+                          name={matchData.teamA.batch.name}
+                          session={matchData.teamA.batch.session}
+                          slug={matchData.teamA.batch.slug}
+                          avatarUrl={matchData.teamA.batch.avatarUrl}
+                          batchNumber={matchData.teamA.batch.batchNumber}
+                          size="xs"
+                          variant="inline"
+                          className="text-xs text-[#7C6E63]"
+                        />
+                      ) : (
+                        <span className="text-xs text-[#7C6E63]">CU CSE Squad</span>
+                      )}
+                    </div>
                   </div>
                 </div>
 
@@ -498,10 +515,15 @@ export const MatchDetailPage: React.FC = () => {
               {!isCricket && teamAGoalscorers.length > 0 && (
                 <div className="pt-2 border-t border-[#EFE8DC]/90 flex flex-wrap items-center gap-1.5 text-[11px] text-[#2C221E]">
                   {teamAGoalscorers.map((g: any) => (
-                    <span key={g.id} className="font-semibold bg-white/90 px-2 py-0.5 rounded-lg border border-[#E8DCCF]/60 flex items-center gap-1">
+                    <span key={g.id} className="bg-white/90 px-2 py-0.5 rounded-lg border border-[#E8DCCF]/60 flex items-center gap-1">
                       <span>⚽</span>
-                      <span className="font-bold">{g.playerName}</span>
-                      <span className="text-[#7C6E63] font-mono">{g.minute}'</span>
+                      <PlayerChip
+                        name={g.playerName}
+                        studentId={g.playerStudentId}
+                        avatarUrl={g.playerAvatarUrl}
+                        size="xs"
+                      />
+                      <span className="text-[#7C6E63] font-mono font-bold">{g.minute}'</span>
                     </span>
                   ))}
                 </div>
@@ -524,7 +546,22 @@ export const MatchDetailPage: React.FC = () => {
                       <span>{matchData.teamB.name}</span>
                       {matchData.winnerTeamId === matchData.teamBId && <span className="text-sm">👑</span>}
                     </h2>
-                    <p className="text-xs text-[#7C6E63]">{matchData.teamB.batch ? matchData.teamB.batch.name : "CU CSE"}</p>
+                    <div className="mt-0.5">
+                      {matchData.teamB.batch ? (
+                        <BatchChip
+                          name={matchData.teamB.batch.name}
+                          session={matchData.teamB.batch.session}
+                          slug={matchData.teamB.batch.slug}
+                          avatarUrl={matchData.teamB.batch.avatarUrl}
+                          batchNumber={matchData.teamB.batch.batchNumber}
+                          size="xs"
+                          variant="inline"
+                          className="text-xs text-[#7C6E63]"
+                        />
+                      ) : (
+                        <span className="text-xs text-[#7C6E63]">CU CSE Squad</span>
+                      )}
+                    </div>
                   </div>
                 </div>
 
@@ -560,10 +597,15 @@ export const MatchDetailPage: React.FC = () => {
               {!isCricket && teamBGoalscorers.length > 0 && (
                 <div className="pt-2 border-t border-[#EFE8DC]/90 flex flex-wrap items-center gap-1.5 text-[11px] text-[#2C221E]">
                   {teamBGoalscorers.map((g: any) => (
-                    <span key={g.id} className="font-semibold bg-white/90 px-2 py-0.5 rounded-lg border border-[#E8DCCF]/60 flex items-center gap-1">
+                    <span key={g.id} className="bg-white/90 px-2 py-0.5 rounded-lg border border-[#E8DCCF]/60 flex items-center gap-1">
                       <span>⚽</span>
-                      <span className="font-bold">{g.playerName}</span>
-                      <span className="text-[#7C6E63] font-mono">{g.minute}'</span>
+                      <PlayerChip
+                        name={g.playerName}
+                        studentId={g.playerStudentId}
+                        avatarUrl={g.playerAvatarUrl}
+                        size="xs"
+                      />
+                      <span className="text-[#7C6E63] font-mono font-bold">{g.minute}'</span>
                     </span>
                   ))}
                 </div>
@@ -905,7 +947,14 @@ export const MatchDetailPage: React.FC = () => {
                         <tbody className="divide-y divide-[#FAF0E6]">
                           {inn.battingScorecards?.map((b: any) => (
                             <tr key={b.id} className="hover:bg-[#FAF7F2]">
-                              <td className="py-2.5 px-3 font-bold text-[#2C221E]">{b.player?.name}</td>
+                              <td className="py-2.5 px-3 font-bold text-[#2C221E]">
+                                <PlayerChip
+                                  name={b.player?.name || "Batter"}
+                                  studentId={b.player?.studentId}
+                                  avatarUrl={b.player?.avatarUrl}
+                                  size="xs"
+                                />
+                              </td>
                               <td className="py-2.5 px-3 text-[11px] text-[#7C6E63]">
                                 {b.isOut ? `${b.wicketType?.replace("_", " ")} ${b.bowlerName ? `b ${b.bowlerName}` : ""}` : "not out"}
                               </td>
@@ -940,7 +989,14 @@ export const MatchDetailPage: React.FC = () => {
                           <tbody className="divide-y divide-[#FAF0E6]">
                             {inn.bowlingScorecards?.map((bw: any) => (
                               <tr key={bw.id} className="hover:bg-[#FAF7F2]">
-                                <td className="py-2.5 px-3 font-bold text-[#2C221E]">{bw.player?.name}</td>
+                                <td className="py-2.5 px-3 font-bold text-[#2C221E]">
+                                  <PlayerChip
+                                    name={bw.player?.name || "Bowler"}
+                                    studentId={bw.player?.studentId}
+                                    avatarUrl={bw.player?.avatarUrl}
+                                    size="xs"
+                                  />
+                                </td>
                                 <td className="py-2.5 px-2 text-right font-bold">{bw.overs}</td>
                                 <td className="py-2.5 px-2 text-right font-bold">{bw.maidens}</td>
                                 <td className="py-2.5 px-2 text-right font-bold">{bw.runs}</td>
@@ -1012,7 +1068,12 @@ export const MatchDetailPage: React.FC = () => {
                 {teamASquad.onPitch.map((p: any) => (
                   <div key={p.userId} className="p-2.5 bg-[#FAF7F2] rounded-xl flex items-center justify-between text-xs border border-[#E8DCCF]/60">
                     <div className="flex items-center gap-2">
-                      <span className="font-bold text-[#2C221E]">{p.user?.name}</span>
+                      <PlayerChip
+                        name={p.user?.name || "Player"}
+                        studentId={p.user?.studentId}
+                        avatarUrl={p.user?.avatarUrl}
+                        size="xs"
+                      />
                       {p.subbedIn && (
                         <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-[#E7F5FF] text-[#1864AB] border border-[#339AF0]/30">
                           🔄 Sub IN ({p.subbedIn.minute}')
@@ -1035,7 +1096,13 @@ export const MatchDetailPage: React.FC = () => {
                   {teamASquad.subbedOut.map((p: any) => (
                     <div key={p.userId} className="p-2.5 bg-[#FFF5F5] rounded-xl flex items-center justify-between text-xs border border-[#FFC9C9]">
                       <div className="flex items-center gap-2">
-                        <span className="font-bold text-[#495057] line-through">{p.user?.name}</span>
+                        <PlayerChip
+                          name={p.user?.name || "Player"}
+                          studentId={p.user?.studentId}
+                          avatarUrl={p.user?.avatarUrl}
+                          size="xs"
+                          className="opacity-60 line-through"
+                        />
                         <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#FFE3E3] text-[#C92A2A] border border-[#FFA8A8]">
                           Sub OUT ({p.subbedOut?.minute}')
                         </span>
@@ -1057,7 +1124,12 @@ export const MatchDetailPage: React.FC = () => {
                   {teamASquad.sentOff.map((p: any) => (
                     <div key={p.userId} className="p-2.5 bg-[#FFE3E3] rounded-xl flex items-center justify-between text-xs border border-[#FF8787]">
                       <div className="flex items-center gap-2">
-                        <span className="font-black text-[#C92A2A]">{p.user?.name}</span>
+                        <PlayerChip
+                          name={p.user?.name || "Player"}
+                          studentId={p.user?.studentId}
+                          avatarUrl={p.user?.avatarUrl}
+                          size="xs"
+                        />
                         <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-[#C92A2A] text-white">
                           🟥 Red Card ({p.minute}')
                         </span>
@@ -1095,7 +1167,12 @@ export const MatchDetailPage: React.FC = () => {
                 {teamBSquad.onPitch.map((p: any) => (
                   <div key={p.userId} className="p-2.5 bg-[#FAF7F2] rounded-xl flex items-center justify-between text-xs border border-[#E8DCCF]/60">
                     <div className="flex items-center gap-2">
-                      <span className="font-bold text-[#2C221E]">{p.user?.name}</span>
+                      <PlayerChip
+                        name={p.user?.name || "Player"}
+                        studentId={p.user?.studentId}
+                        avatarUrl={p.user?.avatarUrl}
+                        size="xs"
+                      />
                       {p.subbedIn && (
                         <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-[#E7F5FF] text-[#1864AB] border border-[#339AF0]/30">
                           🔄 Sub IN ({p.subbedIn.minute}')
@@ -1118,7 +1195,13 @@ export const MatchDetailPage: React.FC = () => {
                   {teamBSquad.subbedOut.map((p: any) => (
                     <div key={p.userId} className="p-2.5 bg-[#FFF5F5] rounded-xl flex items-center justify-between text-xs border border-[#FFC9C9]">
                       <div className="flex items-center gap-2">
-                        <span className="font-bold text-[#495057] line-through">{p.user?.name}</span>
+                        <PlayerChip
+                          name={p.user?.name || "Player"}
+                          studentId={p.user?.studentId}
+                          avatarUrl={p.user?.avatarUrl}
+                          size="xs"
+                          className="opacity-60 line-through"
+                        />
                         <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#FFE3E3] text-[#C92A2A] border border-[#FFA8A8]">
                           Sub OUT ({p.subbedOut?.minute}')
                         </span>
@@ -1140,7 +1223,12 @@ export const MatchDetailPage: React.FC = () => {
                   {teamBSquad.sentOff.map((p: any) => (
                     <div key={p.userId} className="p-2.5 bg-[#FFE3E3] rounded-xl flex items-center justify-between text-xs border border-[#FF8787]">
                       <div className="flex items-center gap-2">
-                        <span className="font-black text-[#C92A2A]">{p.user?.name}</span>
+                        <PlayerChip
+                          name={p.user?.name || "Player"}
+                          studentId={p.user?.studentId}
+                          avatarUrl={p.user?.avatarUrl}
+                          size="xs"
+                        />
                         <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-[#C92A2A] text-white">
                           🟥 Red Card ({p.minute}')
                         </span>

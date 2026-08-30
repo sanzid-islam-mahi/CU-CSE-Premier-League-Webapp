@@ -14,6 +14,8 @@ import { api } from "@/lib/api";
 import { SmartAvatar } from "@/components/common/SmartAvatar";
 import { ImageUploadModal } from "@/components/common/ImageUploadModal";
 import { MediaGalleryView } from "@/components/common/MediaGalleryView";
+import { PlayerChip } from "@/components/common/PlayerChip";
+import { BatchChip } from "@/components/common/BatchChip";
 
 export const TeamDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -182,9 +184,22 @@ export const TeamDetailPage: React.FC = () => {
                     </span>
                   </div>
 
-                  <p className="text-xs text-[#7C6E63]">
-                    {team.batch ? `🏛️ ${team.batch.name} · Session ${team.batch.session}` : "Independent Campus Team"} · {team.members?.length || 0} Registered Players
-                  </p>
+                  <div className="flex items-center gap-2 pt-1 flex-wrap">
+                    {team.batch ? (
+                      <BatchChip
+                        name={team.batch.name}
+                        session={team.batch.session}
+                        slug={team.batch.slug}
+                        avatarUrl={team.batch.avatarUrl}
+                        batchNumber={team.batch.batchNumber}
+                        size="xs"
+                        variant="pill"
+                      />
+                    ) : (
+                      <span className="text-xs text-[#7C6E63]">Independent Campus Team</span>
+                    )}
+                    <span className="text-xs text-[#7C6E63]">· {team.members?.length || 0} Registered Players</span>
+                  </div>
 
                   {team.tournament && (
                     <p className="text-xs text-[#9E2A2B] font-extrabold pt-1">
@@ -200,13 +215,14 @@ export const TeamDetailPage: React.FC = () => {
                   <span className="text-xl">👑</span>
                   <div>
                     <p className="text-[10px] font-bold text-[#7C6E63] uppercase">Team Captain</p>
-                    <p className="font-extrabold text-sm text-[#842021]">{team.captain.name}</p>
-                    <Link
-                      to={`/players/${team.captain.studentId}`}
-                      className="text-[10px] text-[#9E2A2B] hover:underline font-bold"
-                    >
-                      Roll: {team.captain.studentId} →
-                    </Link>
+                    <PlayerChip
+                      name={team.captain.name}
+                      studentId={team.captain.studentId}
+                      avatarUrl={team.captain.avatarUrl}
+                      size="sm"
+                      variant="inline"
+                    />
+                    <p className="text-[10px] text-[#7C6E63] font-mono mt-0.5">Roll: {team.captain.studentId}</p>
                   </div>
                 </div>
               )}
@@ -227,23 +243,23 @@ export const TeamDetailPage: React.FC = () => {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
             {team.members?.map((m: any, idx: number) => (
-              <Link
+              <div
                 key={m.userId}
-                to={`/players/${m.user.studentId}`}
-                className="p-3.5 bg-[#FAF7F2] hover:bg-[#FAF0E6] rounded-2xl border border-[#E8DCCF] hover:border-[#E8D6C3] flex items-center justify-between transition-colors group text-xs"
+                className="p-3.5 bg-[#FAF7F2] hover:bg-[#FAF0E6] rounded-2xl border border-[#E8DCCF] hover:border-[#E8D6C3] flex items-center justify-between transition-colors text-xs"
               >
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-xl bg-white text-[#9E2A2B] font-mono font-black text-xs flex items-center justify-center border border-[#E8D6C3] shrink-0">
                     #{m.jerseyNumber || m.user.preferredJerseyNo || (idx + 1)}
                   </div>
                   <div>
-                    <div className="flex items-center gap-1.5">
-                      <p className="font-extrabold text-[#2C221E] group-hover:text-[#9E2A2B]">
-                        {m.user.name}
-                      </p>
-                      {m.isCaptain && <span className="text-[11px]" title="Captain">👑</span>}
-                    </div>
-                    <p className="text-[10px] text-[#7C6E63] font-mono">Roll: {m.user.studentId}</p>
+                    <PlayerChip
+                      name={m.user.name}
+                      studentId={m.user.studentId}
+                      avatarUrl={m.user.avatarUrl}
+                      isCaptain={m.isCaptain}
+                      size="xs"
+                    />
+                    <p className="text-[10px] text-[#7C6E63] font-mono mt-0.5">Roll: {m.user.studentId}</p>
                   </div>
                 </div>
 
@@ -252,7 +268,7 @@ export const TeamDetailPage: React.FC = () => {
                     {team.tournament?.sport === "CRICKET" ? (m.user.cricketRole || "Player") : (m.user.footballPosition || "Player")}
                   </span>
                 </div>
-              </Link>
+              </div>
             ))}
           </div>
         </div>

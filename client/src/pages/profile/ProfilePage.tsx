@@ -17,6 +17,7 @@ import { api } from "@/lib/api";
 import { SmartAvatar } from "@/components/common/SmartAvatar";
 import { ImageUploadModal } from "@/components/common/ImageUploadModal";
 import { MediaGalleryView } from "@/components/common/MediaGalleryView";
+import { BatchChip } from "@/components/common/BatchChip";
 
 export const ProfilePage: React.FC = () => {
   const navigate = useNavigate();
@@ -307,12 +308,15 @@ export const ProfilePage: React.FC = () => {
 
               <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2.5 text-xs text-[#7C6E63] font-semibold pt-0.5">
                 {user?.batch && (
-                  <Link
-                    to={`/batches/${user.batch.slug || `batch-${user.batch.id}`}`}
-                    className="hover:underline font-bold text-[#842021] bg-[#FAF0E6] px-2.5 py-1 rounded-lg border border-[#E8D6C3] transition-colors"
-                  >
-                    🏛️ {user.batch.name} ({user.batch.session})
-                  </Link>
+                  <BatchChip
+                    name={user.batch.name}
+                    session={user.batch.session}
+                    slug={user.batch.slug}
+                    avatarUrl={user.batch.avatarUrl}
+                    batchNumber={user.batch.batchNumber}
+                    size="xs"
+                    variant="pill"
+                  />
                 )}
                 <span>•</span>
                 <span className="flex items-center gap-1 bg-white px-2.5 py-1 rounded-lg border border-[#E8DCCF]">

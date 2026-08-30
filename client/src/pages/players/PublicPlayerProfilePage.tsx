@@ -10,6 +10,7 @@ import {
 import { api } from "@/lib/api";
 import { SmartAvatar } from "@/components/common/SmartAvatar";
 import { MediaGalleryView } from "@/components/common/MediaGalleryView";
+import { BatchChip } from "@/components/common/BatchChip";
 
 export const PublicPlayerProfilePage: React.FC = () => {
   const { idOrRoll } = useParams<{ idOrRoll: string }>();
@@ -150,12 +151,15 @@ export const PublicPlayerProfilePage: React.FC = () => {
 
               <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2.5 text-xs text-[#7C6E63] font-semibold pt-0.5">
                 {player.batch && (
-                  <Link
-                    to={`/batches/${player.batch.slug || `batch-${player.batch.id}`}`}
-                    className="hover:underline font-bold text-[#842021] bg-[#FAF0E6] px-2.5 py-1 rounded-lg border border-[#E8D6C3] transition-colors"
-                  >
-                    🏛️ {player.batch.name} ({player.batch.session})
-                  </Link>
+                  <BatchChip
+                    name={player.batch.name}
+                    session={player.batch.session}
+                    slug={player.batch.slug}
+                    avatarUrl={player.batch.avatarUrl}
+                    batchNumber={player.batch.batchNumber}
+                    size="xs"
+                    variant="pill"
+                  />
                 )}
                 <span>•</span>
                 <span className="flex items-center gap-1 bg-white px-2.5 py-1 rounded-lg border border-[#E8DCCF]">
