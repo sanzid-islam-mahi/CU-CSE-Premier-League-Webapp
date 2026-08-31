@@ -3,6 +3,7 @@ import { prisma } from "../db.js";
 import { requireAuth, type AuthenticatedRequest } from "../middleware/auth.js";
 import { z } from "zod";
 import { advanceTournamentKnockouts } from "../lib/knockoutProgression.js";
+import { canManageTeam } from "./teams.js";
 
 export const scoringRouter = Router();
 
@@ -157,47 +158,141 @@ scoringRouter.post("/:id/setup", requireAuth, async (req: AuthenticatedRequest, 
       }
     });
 
-    // Clear old squads if resetting
-    await prisma.matchSquad.deleteMany({ where: { matchId } });
-
-    // Fetch all members of Team A and Team B
+    // Fetch all members and existing squads of Team A and Team B
     const matchWithTeams = await prisma.match.findUnique({
       where: { id: matchId },
       include: {
         teamA: { include: { members: true } },
-        teamB: { include: { members: true } }
+        teamB: { include: { members: true } },
+        matchSquads: true,
       }
     });
 
     if (matchWithTeams) {
-      const selectedASet = new Set((teamAPlayerIds || []).map(Number));
-      const selectedBSet = new Set((teamBPlayerIds || []).map(Number));
-
-      const squadData = [
-        ...matchWithTeams.teamA.members.map((m, idx) => ({
+      // Handle Team A Lineup
+      if (Array.isArray(teamAPlayerIds) && teamAPlayerIds.length > 0) {
+        await prisma.matchSquad.deleteMany({ where: { matchId, teamId: matchWithTeams.teamAId } });
+        const selectedASet = new Set(teamAPlayerIds.map(Number));
+        const squadA = matchWithTeams.teamA.members.map((m, idx) => ({
           matchId,
           teamId: matchWithTeams.teamAId,
           userId: m.userId,
           isPlayingXI: selectedASet.has(m.userId),
           battingOrder: idx + 1,
-        })),
-        ...matchWithTeams.teamB.members.map((m, idx) => ({
+        }));
+        if (squadA.length > 0) {
+          await prisma.matchSquad.createMany({ data: squadA });
+        }
+      } else {
+        const existingA = matchWithTeams.matchSquads.filter(s => s.teamId === matchWithTeams.teamAId);
+        if (existingA.length === 0) {
+          const squadA = matchWithTeams.teamA.members.map((m, idx) => ({
+            matchId,
+            teamId: matchWithTeams.teamAId,
+            userId: m.userId,
+            isPlayingXI: idx < 11,
+            battingOrder: idx + 1,
+          }));
+          if (squadA.length > 0) {
+            await prisma.matchSquad.createMany({ data: squadA });
+          }
+        }
+      }
+
+      // Handle Team B Lineup
+      if (Array.isArray(teamBPlayerIds) && teamBPlayerIds.length > 0) {
+        await prisma.matchSquad.deleteMany({ where: { matchId, teamId: matchWithTeams.teamBId } });
+        const selectedBSet = new Set(teamBPlayerIds.map(Number));
+        const squadB = matchWithTeams.teamB.members.map((m, idx) => ({
           matchId,
           teamId: matchWithTeams.teamBId,
           userId: m.userId,
           isPlayingXI: selectedBSet.has(m.userId),
           battingOrder: idx + 1,
-        }))
-      ];
-
-      if (squadData.length > 0) {
-        await prisma.matchSquad.createMany({ data: squadData });
+        }));
+        if (squadB.length > 0) {
+          await prisma.matchSquad.createMany({ data: squadB });
+        }
+      } else {
+        const existingB = matchWithTeams.matchSquads.filter(s => s.teamId === matchWithTeams.teamBId);
+        if (existingB.length === 0) {
+          const squadB = matchWithTeams.teamB.members.map((m, idx) => ({
+            matchId,
+            teamId: matchWithTeams.teamBId,
+            userId: m.userId,
+            isPlayingXI: idx < 11,
+            battingOrder: idx + 1,
+          }));
+          if (squadB.length > 0) {
+            await prisma.matchSquad.createMany({ data: squadB });
+          }
+        }
       }
     }
 
     res.json({ message: "Toss and lineups configured successfully." });
   } catch (err: any) {
     res.status(500).json({ error: err.message || "Failed to setup match" });
+  }
+});
+
+// 2b. TEAM MANAGER: PRE-SET MATCH-DAY LINEUP
+scoringRouter.post("/:id/lineup", requireAuth, async (req: AuthenticatedRequest, res) => {
+  try {
+    const matchId = Number(req.params.id);
+    const { teamId, playerIds } = req.body;
+
+    if (!teamId || !Array.isArray(playerIds)) {
+      res.status(400).json({ error: "teamId and playerIds[] are required." });
+      return;
+    }
+
+    const match = await prisma.match.findUnique({ where: { id: matchId } });
+    if (!match) {
+      res.status(404).json({ error: "Match not found" });
+      return;
+    }
+
+    // Can only set lineup before match goes LIVE
+    if (!["SCHEDULED", "TOSS"].includes(match.status)) {
+      res.status(400).json({ error: "Lineup can only be set before the match starts." });
+      return;
+    }
+
+    // Verify team is part of this match
+    if (teamId !== match.teamAId && teamId !== match.teamBId) {
+      res.status(400).json({ error: "Team is not part of this match." });
+      return;
+    }
+
+    // Permission: Manager of this team, Organizer, or Admin
+    const allowed = await canManageTeam(req.user!.id, req.user!.role, teamId);
+    if (!allowed) {
+      res.status(403).json({ error: "Only team manager, organizer, or admin can set lineup." });
+      return;
+    }
+
+    // Upsert MatchSquad for THIS team only (preserve other team's lineup)
+    await prisma.matchSquad.deleteMany({ where: { matchId, teamId } });
+
+    const teamMembers = await prisma.teamMember.findMany({
+      where: { teamId, isActiveInSquad: true }
+    });
+    const selectedSet = new Set(playerIds as number[]);
+
+    await prisma.matchSquad.createMany({
+      data: teamMembers.map((m: any, idx: number) => ({
+        matchId,
+        teamId,
+        userId: m.userId,
+        isPlayingXI: selectedSet.has(m.userId),
+        battingOrder: idx + 1,
+      }))
+    });
+
+    res.json({ message: "Lineup saved successfully." });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || "Failed to set lineup" });
   }
 });
 

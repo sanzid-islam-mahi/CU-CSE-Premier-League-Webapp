@@ -8,7 +8,8 @@ import {
   MapPin, 
   Shirt,
   Camera,
-  Upload
+  Upload,
+  Save
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { toast } from "@/context/ToastContext";
@@ -27,8 +28,13 @@ export const TeamDetailPage: React.FC = () => {
 
   const currentUser = api.auth.getCurrentUser();
   const isAdmin = currentUser?.role === "ADMIN";
-  const isCaptain = currentUser?.id === team?.captainId;
-  const canEdit = isAdmin || isCaptain;
+  const isManager = currentUser?.id === team?.managerId;
+  const canEdit = isAdmin || isManager;
+
+  // Manager Match Lineup Pre-Configuration State
+  const [selectedMatchForLineup, setSelectedMatchForLineup] = useState<number | null>(null);
+  const [selectedLineupPlayers, setSelectedLineupPlayers] = useState<number[]>([]);
+  const [isSavingLineup, setIsSavingLineup] = useState(false);
 
   useEffect(() => {
     loadTeam();
@@ -40,12 +46,59 @@ export const TeamDetailPage: React.FC = () => {
       setLoading(true);
       const data = await api.teams.get(Number(id));
       setTeam(data);
+
+      // Auto-select first upcoming match if available
+      const upcoming = [...(data.homeMatches || []), ...(data.awayMatches || [])]
+        .filter((m: any) => m.status === "SCHEDULED" || m.status === "TOSS");
+      if (upcoming.length > 0) {
+        const firstMatch = upcoming[0];
+        setSelectedMatchForLineup(firstMatch.id);
+        const existing = firstMatch.matchSquads
+          ?.filter((s: any) => s.teamId === data.id && s.isPlayingXI)
+          ?.map((s: any) => s.userId) || [];
+        setSelectedLineupPlayers(existing.length > 0 ? existing : data.members?.slice(0, 11).map((m: any) => m.userId) || []);
+      }
     } catch (err: any) {
       console.error("Failed to load team", err);
     } finally {
       setLoading(false);
     }
   };
+
+  const handleSelectMatchForLineup = (m: any) => {
+    setSelectedMatchForLineup(m.id);
+    const existing = m.matchSquads
+      ?.filter((s: any) => s.teamId === team.id && s.isPlayingXI)
+      ?.map((s: any) => s.userId) || [];
+    setSelectedLineupPlayers(existing.length > 0 ? existing : team.members?.slice(0, 11).map((mem: any) => mem.userId) || []);
+  };
+
+  const handleSaveLineup = async () => {
+    if (!selectedMatchForLineup || !team?.id) return;
+    if (selectedLineupPlayers.length === 0) {
+      toast.warning("Please select at least one player for the playing squad.");
+      return;
+    }
+
+    setIsSavingLineup(true);
+    try {
+      await api.scoring.setLineup(selectedMatchForLineup, {
+        teamId: team.id,
+        playerIds: selectedLineupPlayers,
+      });
+      toast.success(`Match #${allMatches.find((m: any) => m.id === selectedMatchForLineup)?.matchNumber} lineup saved! The scorer will see your pre-selected squad.`);
+      await loadTeam();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to save lineup.");
+    } finally {
+      setIsSavingLineup(false);
+    }
+  };
+
+  const allMatches = [...(team?.homeMatches || []), ...(team?.awayMatches || [])];
+  const upcomingMatches = allMatches.filter((m: any) => m.status === "SCHEDULED" || m.status === "TOSS");
+  const selectedMatch = allMatches.find((m: any) => m.id === selectedMatchForLineup);
+  const selectedOpponent = selectedMatch ? (selectedMatch.teamAId === team?.id ? selectedMatch.teamB : selectedMatch.teamA) : null;
 
   const handleUpdateBanner = async (url: string) => {
     try {
@@ -212,26 +265,172 @@ export const TeamDetailPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Captain Pill */}
-              {team.captain && (
-                <div className="p-4 bg-[#FAF0E6] rounded-2xl border border-[#E8D6C3] flex items-center gap-3 self-center sm:self-end">
-                  <span className="text-xl">👑</span>
-                  <div>
-                    <p className="text-[10px] font-bold text-[#7C6E63] uppercase">Team Captain</p>
-                    <PlayerChip
-                      name={team.captain.name}
-                      studentId={team.captain.studentId}
-                      avatarUrl={team.captain.avatarUrl}
-                      size="sm"
-                      variant="inline"
-                    />
-                    <p className="text-[10px] text-[#7C6E63] font-mono mt-0.5">Roll: {team.captain.studentId}</p>
+              {/* Captain and Manager Pills */}
+              <div className="flex flex-col sm:flex-row gap-3 self-center sm:self-end">
+                {team.captain && (
+                  <div className="p-3.5 bg-[#FAF0E6] rounded-2xl border border-[#E8D6C3] flex items-center gap-3">
+                    <span className="text-xl">👑</span>
+                    <div>
+                      <p className="text-[10px] font-bold text-[#7C6E63] uppercase">Team Captain</p>
+                      <PlayerChip
+                        name={team.captain.name}
+                        studentId={team.captain.studentId}
+                        avatarUrl={team.captain.avatarUrl}
+                        size="sm"
+                        variant="inline"
+                      />
+                      <p className="text-[10px] text-[#7C6E63] font-mono mt-0.5">Roll: {team.captain.studentId}</p>
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
+
+                {team.manager && (
+                  <div className="p-3.5 bg-[#F0F7FF] rounded-2xl border border-[#D0E2FF] flex items-center gap-3">
+                    <span className="text-xl">👔</span>
+                    <div>
+                      <p className="text-[10px] font-bold text-[#0043CE] uppercase">Team Manager</p>
+                      <PlayerChip
+                        name={team.manager.name}
+                        studentId={team.manager.studentId}
+                        avatarUrl={team.manager.avatarUrl}
+                        size="sm"
+                        variant="inline"
+                      />
+                      {team.manager.studentId && (
+                        <p className="text-[10px] text-[#525252] font-mono mt-0.5">Roll: {team.manager.studentId}</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
+
+        {/* UPCOMING MATCH LINEUP PRE-CONFIGURATION (TEAM MANAGER CONSOLE) */}
+        {canEdit && upcomingMatches.length > 0 && (
+          <div className="bg-white rounded-3xl border-2 border-[#1864AB]/30 p-6 sm:p-8 shadow-xs space-y-6">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 pb-3 border-b border-[#EFE8DC]">
+              <div className="flex items-center gap-2.5">
+                <span className="text-xl">👔</span>
+                <div>
+                  <h2 className="text-base font-black text-[#2C221E]">
+                    Match Lineup Pre-Configuration (Manager Console)
+                  </h2>
+                  <p className="text-xs text-[#7C6E63]">
+                    Pre-select your team's playing squad for upcoming matches. The match scorer will automatically see these players pre-filled.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Match Selector Tabs */}
+            <div className="flex flex-wrap gap-2">
+              {upcomingMatches.map((m: any) => {
+                const opponent = m.teamAId === team.id ? m.teamB : m.teamA;
+                const isSelected = selectedMatchForLineup === m.id;
+                const existingSquad = m.matchSquads?.filter((s: any) => s.teamId === team.id && s.isPlayingXI);
+                const hasSavedLineup = existingSquad && existingSquad.length > 0;
+
+                return (
+                  <button
+                    key={m.id}
+                    type="button"
+                    onClick={() => handleSelectMatchForLineup(m)}
+                    className={`px-4 py-2.5 rounded-2xl border text-xs font-bold transition-all text-left flex items-center gap-2 ${
+                      isSelected
+                        ? "bg-[#1864AB] text-white border-[#1864AB] shadow-sm"
+                        : "bg-[#FAF7F2] text-[#4A3E35] border-[#E8DCCF] hover:bg-[#FAF0E6]"
+                    }`}
+                  >
+                    <span>Match #{m.matchNumber} vs {opponent?.shortName || opponent?.name}</span>
+                    {hasSavedLineup && (
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
+                        isSelected ? "bg-white text-[#1864AB]" : "bg-[#EBFBEE] text-[#2B8A3E]"
+                      }`}>
+                        ✓ {existingSquad.length} Set
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Lineup Picker for Selected Match */}
+            {selectedMatch && (
+              <div className="p-5 bg-[#FAF7F2] rounded-2xl border border-[#E8DCCF] space-y-4">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 pb-2 border-b border-[#EFE8DC]">
+                  <div>
+                    <h3 className="font-extrabold text-sm text-[#2C221E]">
+                      Playing Lineup for Match #{selectedMatch.matchNumber} vs {selectedOpponent?.name}
+                    </h3>
+                    <p className="text-xs text-[#7C6E63]">
+                      Selected: <strong className="text-[#1864AB]">{selectedLineupPlayers.length}</strong> players
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedLineupPlayers(team.members?.slice(0, 11).map((m: any) => m.userId) || [])}
+                      className="px-3 py-1.5 bg-white border border-[#D8C7B3] hover:bg-[#FAF0E6] rounded-xl text-xs font-bold text-[#4A3E35] transition-colors cursor-pointer"
+                    >
+                      First 11
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleSaveLineup}
+                      disabled={isSavingLineup || selectedLineupPlayers.length === 0}
+                      className="px-4 py-1.5 bg-[#2A7B54] hover:bg-[#206042] text-white rounded-xl text-xs font-extrabold shadow-sm transition-all flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
+                    >
+                      {isSavingLineup ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                      <span>Save Match Lineup</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5 max-h-72 overflow-y-auto pr-1">
+                  {team.members?.map((m: any, idx: number) => {
+                    const isChecked = selectedLineupPlayers.includes(m.userId);
+                    return (
+                      <label
+                        key={m.userId}
+                        className={`p-2.5 rounded-xl border flex items-center justify-between cursor-pointer transition-colors ${
+                          isChecked
+                            ? "bg-[#EBFBEE] border-[#B2F2BB] text-[#2B8A3E]"
+                            : "bg-white border-[#E8DCCF] text-[#4A3E35] hover:bg-[#FAF0E6]"
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedLineupPlayers(prev => [...prev, m.userId]);
+                              } else {
+                                setSelectedLineupPlayers(prev => prev.filter(uid => uid !== m.userId));
+                              }
+                            }}
+                            className="rounded text-[#2A7B54] focus:ring-[#2A7B54] w-4 h-4"
+                          />
+                          <span className="font-mono text-xs font-black shrink-0">
+                            #{m.jerseyNumber || m.user.preferredJerseyNo || (idx + 1)}
+                          </span>
+                          <span className="font-bold text-xs truncate text-[#2C221E]">{m.user.name}</span>
+                          {m.isCaptain && <span className="text-[10px]" title="Team Captain">👑</span>}
+                        </div>
+                        <span className="text-[10px] font-bold text-[#7C6E63] shrink-0">
+                          {team.tournament?.sport === "CRICKET" ? (m.user.cricketRole || "Player") : (m.user.footballPosition || "Player")}
+                        </span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Squad Roster Grid */}
         <div className="bg-white rounded-3xl border border-[#E5DACB] p-6 sm:p-8 shadow-xs space-y-6">

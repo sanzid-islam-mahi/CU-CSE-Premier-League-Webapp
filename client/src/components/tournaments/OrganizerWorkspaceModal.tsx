@@ -72,6 +72,7 @@ export const OrganizerWorkspaceModal: React.FC<OrganizerWorkspaceModalProps> = (
   const [editTeamShortName, setEditTeamShortName] = useState("");
   const [editTeamGroupId, setEditTeamGroupId] = useState<number | "">("");
   const [editTeamCaptainId, setEditTeamCaptainId] = useState<number | "">("");
+  const [editTeamManagerId, setEditTeamManagerId] = useState<number | "">("");
   const [editTeamLogoUrl, setEditTeamLogoUrl] = useState("");
 
   // Form states: Edit Match
@@ -101,6 +102,7 @@ export const OrganizerWorkspaceModal: React.FC<OrganizerWorkspaceModalProps> = (
     setEditTeamShortName(team.shortName || "");
     setEditTeamGroupId(team.groupId !== null && team.groupId !== undefined ? team.groupId : "");
     setEditTeamCaptainId(team.captainId !== null && team.captainId !== undefined ? team.captainId : "");
+    setEditTeamManagerId(team.managerId !== null && team.managerId !== undefined ? team.managerId : "");
     setEditTeamLogoUrl(team.logoUrl || "");
   };
 
@@ -116,6 +118,7 @@ export const OrganizerWorkspaceModal: React.FC<OrganizerWorkspaceModalProps> = (
         shortName: editTeamShortName.trim() || undefined,
         groupId: editTeamGroupId !== "" ? Number(editTeamGroupId) : null,
         captainId: editTeamCaptainId !== "" ? Number(editTeamCaptainId) : null,
+        managerId: editTeamManagerId !== "" ? Number(editTeamManagerId) : null,
         logoUrl: editTeamLogoUrl.trim() || null,
       });
       triggerToast(`Team "${editTeamName}" updated successfully!`);
@@ -226,6 +229,17 @@ export const OrganizerWorkspaceModal: React.FC<OrganizerWorkspaceModalProps> = (
       onRefresh();
     } catch (err: any) {
       alert(err.message || "Failed to update captain.");
+    }
+  };
+
+  // 4b. Update Manager Handler
+  const handleSetManager = async (teamId: number, managerId: number | null) => {
+    try {
+      await api.teams.update(teamId, { managerId });
+      triggerToast(managerId ? "Team manager assigned successfully." : "Team manager removed.");
+      onRefresh();
+    } catch (err: any) {
+      alert(err.message || "Failed to update team manager.");
     }
   };
 
@@ -768,6 +782,24 @@ export const OrganizerWorkspaceModal: React.FC<OrganizerWorkspaceModalProps> = (
                             {team.members?.map((m: any) => (
                               <option key={m.userId} value={m.userId}>
                                 {m.user.name} ({m.user.studentId})
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block font-bold text-[#7C6E63] text-[11px] mb-1">
+                            👔 Team Manager:
+                          </label>
+                          <select
+                            value={team.managerId || ""}
+                            onChange={(e) => handleSetManager(team.id, e.target.value === "" ? null : Number(e.target.value))}
+                            className="w-full px-2.5 py-1.5 rounded-lg border border-[#D8C7B3] bg-[#FAF7F2] text-[#2C221E] font-medium text-xs focus:outline-none focus:ring-2 focus:ring-[#9E2A2B]"
+                          >
+                            <option value="">-- Assign Manager --</option>
+                            {allStudents.map((st) => (
+                              <option key={st.id} value={st.id}>
+                                {st.name} ({st.studentId})
                               </option>
                             ))}
                           </select>
@@ -1490,6 +1522,23 @@ export const OrganizerWorkspaceModal: React.FC<OrganizerWorkspaceModalProps> = (
                     ))
                   )}
                 </select>
+              </div>
+
+              <div>
+                <label className="block font-bold text-[#4A3E35] mb-1">👔 Team Manager (Roster & Lineup Admin)</label>
+                <select
+                  value={editTeamManagerId}
+                  onChange={(e) => setEditTeamManagerId(e.target.value === "" ? "" : Number(e.target.value))}
+                  className="w-full px-3.5 py-2 rounded-xl border border-[#D8C7B3] bg-[#FAF7F2] text-[#2C221E] focus:outline-none focus:ring-2 focus:ring-[#9E2A2B]"
+                >
+                  <option value="">-- No Manager (Organizer managed) --</option>
+                  {allStudents.map((st) => (
+                    <option key={st.id} value={st.id}>
+                      👔 {st.name} (Roll: {st.studentId})
+                    </option>
+                  ))}
+                </select>
+                <p className="text-[11px] text-[#7C6E63] mt-1">Team Managers can pre-set match-day lineups and manage squad info directly from the team page.</p>
               </div>
 
               <div>

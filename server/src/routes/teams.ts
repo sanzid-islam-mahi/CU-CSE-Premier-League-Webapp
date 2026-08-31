@@ -6,6 +6,26 @@ import { isOrganizerOrAdmin } from "../middleware/organizerAuth.js";
 
 const teamsRouter = Router();
 
+// Helper: Check if user can manage this team (Admin, Tournament Organizer, or Team Manager)
+export async function canManageTeam(userId: number, role: string, teamId: number): Promise<boolean> {
+  if (role === "ADMIN") return true;
+
+  const team = await prisma.team.findUnique({
+    where: { id: teamId },
+    select: { managerId: true, tournamentId: true }
+  });
+  if (!team) return false;
+
+  // Team Manager (does NOT need to be a team member)
+  if (team.managerId === userId) return true;
+
+  // Tournament Organizer
+  const isOrganizer = await prisma.tournamentOrganizer.findUnique({
+    where: { tournamentId_userId: { tournamentId: team.tournamentId, userId } }
+  });
+  return !!isOrganizer;
+}
+
 const createTeamSchema = z.object({
   tournamentId: z.number().int().positive(),
   name: z.string().min(1, "Team name is required"),
@@ -15,6 +35,7 @@ const createTeamSchema = z.object({
   logoUrl: z.string().optional().nullable(),
   bannerUrl: z.string().optional().nullable(),
   captainId: z.number().int().positive().optional().nullable(),
+  managerId: z.number().int().positive().optional().nullable(),
 });
 
 const updateTeamSchema = z.object({
@@ -25,6 +46,7 @@ const updateTeamSchema = z.object({
   bannerUrl: z.string().optional().nullable(),
   captainId: z.number().int().positive().optional().nullable(),
   viceCaptainId: z.number().int().positive().optional().nullable(),
+  managerId: z.number().int().positive().optional().nullable(),
 });
 
 const addMemberSchema = z.object({
@@ -48,6 +70,9 @@ teamsRouter.get("/:id", async (req, res) => {
         group: true,
         captain: {
           select: { id: true, name: true, studentId: true, email: true, phone: true, avatarUrl: true, cricketRole: true, footballPosition: true }
+        },
+        manager: {
+          select: { id: true, name: true, studentId: true, email: true, phone: true, avatarUrl: true }
         },
         mediaAssets: {
           orderBy: { createdAt: "desc" }
@@ -77,15 +102,21 @@ teamsRouter.get("/:id", async (req, res) => {
         },
         homeMatches: {
           include: {
+            teamA: { select: { id: true, name: true, shortName: true } },
             teamB: { select: { id: true, name: true, shortName: true } },
             winnerTeam: { select: { id: true, name: true } },
-          }
+            matchSquads: { select: { userId: true, teamId: true, isPlayingXI: true } },
+          },
+          orderBy: { matchNumber: "asc" }
         },
         awayMatches: {
           include: {
             teamA: { select: { id: true, name: true, shortName: true } },
+            teamB: { select: { id: true, name: true, shortName: true } },
             winnerTeam: { select: { id: true, name: true } },
-          }
+            matchSquads: { select: { userId: true, teamId: true, isPlayingXI: true } },
+          },
+          orderBy: { matchNumber: "asc" }
         }
       }
     });
@@ -110,7 +141,7 @@ teamsRouter.post("/", requireAuth, async (req: AuthenticatedRequest, res) => {
       return;
     }
 
-    const { tournamentId, name, shortName, batchId, groupId, logoUrl, captainId } = parsed.data;
+    const { tournamentId, name, shortName, batchId, groupId, logoUrl, captainId, managerId } = parsed.data;
 
     // Check organizer permission
     const allowed = await isOrganizerOrAdmin(req.user!.id, req.user!.role, tournamentId);
@@ -130,11 +161,13 @@ teamsRouter.post("/", requireAuth, async (req: AuthenticatedRequest, res) => {
         groupId: groupId || null,
         logoUrl: logoUrl || null,
         captainId: captainId || null,
+        managerId: managerId || null,
       },
       include: {
         batch: true,
         group: true,
         captain: true,
+        manager: { select: { id: true, name: true, studentId: true, avatarUrl: true } },
       }
     });
 
@@ -159,7 +192,7 @@ teamsRouter.post("/", requireAuth, async (req: AuthenticatedRequest, res) => {
   }
 });
 
-// UPDATE Team (Organizer or Admin or Team Captain)
+// UPDATE Team (Organizer, Admin, or Team Manager)
 teamsRouter.put("/:id", requireAuth, async (req: AuthenticatedRequest, res) => {
   try {
     const id = Number(req.params.id);
@@ -169,10 +202,9 @@ teamsRouter.put("/:id", requireAuth, async (req: AuthenticatedRequest, res) => {
       return;
     }
 
-    const isOrg = await isOrganizerOrAdmin(req.user!.id, req.user!.role, team.tournamentId);
-    const isCaptain = team.captainId === req.user!.id;
-    if (!isOrg && !isCaptain) {
-      res.status(403).json({ error: "Access denied. Only Organizers or Team Captain can edit this team." });
+    const allowed = await canManageTeam(req.user!.id, req.user!.role, id);
+    if (!allowed) {
+      res.status(403).json({ error: "Access denied. Only Team Manager, Organizers, or Admin can edit this team." });
       return;
     }
 
@@ -182,7 +214,7 @@ teamsRouter.put("/:id", requireAuth, async (req: AuthenticatedRequest, res) => {
       return;
     }
 
-    const { name, shortName, groupId, logoUrl, bannerUrl, captainId, viceCaptainId } = parsed.data;
+    const { name, shortName, groupId, logoUrl, bannerUrl, captainId, viceCaptainId, managerId } = parsed.data;
 
     const updated = await prisma.team.update({
       where: { id },
@@ -194,9 +226,11 @@ teamsRouter.put("/:id", requireAuth, async (req: AuthenticatedRequest, res) => {
         bannerUrl: bannerUrl !== undefined ? bannerUrl : undefined,
         captainId: captainId !== undefined ? captainId : undefined,
         viceCaptainId: viceCaptainId !== undefined ? viceCaptainId : undefined,
+        managerId: managerId !== undefined ? managerId : undefined,
       },
       include: {
         captain: true,
+        manager: { select: { id: true, name: true, studentId: true, avatarUrl: true } },
         group: true,
         batch: true,
       }
@@ -256,10 +290,9 @@ teamsRouter.post("/:id/members", requireAuth, async (req: AuthenticatedRequest, 
       return;
     }
 
-    const isOrg = await isOrganizerOrAdmin(req.user!.id, req.user!.role, team.tournamentId);
-    const isCaptainUser = team.captainId === req.user!.id;
-    if (!isOrg && !isCaptainUser) {
-      res.status(403).json({ error: "Access denied. Only Organizers or Team Captain can add members." });
+    const allowed = await canManageTeam(req.user!.id, req.user!.role, teamId);
+    if (!allowed) {
+      res.status(403).json({ error: "Access denied. Only Team Manager, Organizers, or Admin can add members." });
       return;
     }
 
@@ -320,10 +353,9 @@ teamsRouter.delete("/:id/members/:userId", requireAuth, async (req: Authenticate
       return;
     }
 
-    const isOrg = await isOrganizerOrAdmin(req.user!.id, req.user!.role, team.tournamentId);
-    const isCaptain = team.captainId === req.user!.id;
-    if (!isOrg && !isCaptain) {
-      res.status(403).json({ error: "Access denied. Only Organizers or Team Captain can remove members." });
+    const isOrg = await canManageTeam(req.user!.id, req.user!.role, teamId);
+    if (!isOrg) {
+      res.status(403).json({ error: "Access denied. Only Team Manager, Organizers, or Admin can remove members." });
       return;
     }
 

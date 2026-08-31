@@ -146,6 +146,7 @@ model User {
   moderatorBatches     BatchModerator[]
   organizerTournaments TournamentOrganizer[]
   captainTeams         Team[]               @relation("TeamCaptain")
+  managedTeams         Team[]               @relation("TeamManager")
   teamMemberships      TeamMember[]
   scoredMatches        MatchScorer[]
   matchSquadEntries    MatchSquad[]
@@ -229,6 +230,7 @@ model Team {
   bannerUrl     String?
   captainId     Int?
   viceCaptainId Int?
+  managerId     Int?         // Team Manager — any registered user, does NOT need to be a player
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
 
@@ -236,6 +238,7 @@ model Team {
   batch         Batch?       @relation(fields: [batchId], references: [id])
   group         TournamentGroup? @relation(fields: [groupId], references: [id])
   captain       User?        @relation("TeamCaptain", fields: [captainId], references: [id])
+  manager       User?        @relation("TeamManager", fields: [managerId], references: [id])
 
   members       TeamMember[]
   homeMatches   Match[]      @relation("HomeTeamMatches")

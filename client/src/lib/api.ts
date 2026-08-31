@@ -588,6 +588,7 @@ export const api = {
       logoUrl?: string | null;
       bannerUrl?: string | null;
       captainId?: number | null;
+      managerId?: number | null;
     }) => {
       const res = await fetch(`${API_BASE}/teams`, {
         method: "POST",
@@ -607,6 +608,7 @@ export const api = {
       bannerUrl?: string | null;
       captainId?: number | null;
       viceCaptainId?: number | null;
+      managerId?: number | null;
     }) => {
       const res = await fetch(`${API_BASE}/teams/${id}`, {
         method: "PUT",
@@ -794,6 +796,20 @@ export const api = {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to setup match");
+      return data;
+    },
+
+    setLineup: async (matchId: number, payload: {
+      teamId: number;
+      playerIds: number[];
+    }) => {
+      const res = await fetch(`${API_BASE}/scoring/${matchId}/lineup`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to set lineup");
       return data;
     },
 

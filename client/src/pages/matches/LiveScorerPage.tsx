@@ -164,14 +164,25 @@ export const LiveScorerPage: React.FC = () => {
       const m = res.match;
       setMatchData(m);
 
-      // Pre-fill toss & squad states if not set
-      if (!m.tossWinnerTeamId && isInitial) {
-        setTossWinnerTeamId(m.teamAId);
-        setTossDecision(m.tournament.sport === "FOOTBALL" ? "KICKOFF" : "BAT");
-        setSelectedTeamAPlayers(m.teamA.members?.slice(0, 11).map((x: any) => x.userId) || []);
-        setSelectedTeamBPlayers(m.teamB.members?.slice(0, 11).map((x: any) => x.userId) || []);
-      } else if (m.tossDecision && isInitial) {
-        setTossDecision(m.tossDecision);
+      // Pre-fill toss & squad states from database / manager pre-configuration
+      if (isInitial) {
+        if (!m.tossWinnerTeamId) {
+          setTossWinnerTeamId(m.teamAId);
+          setTossDecision(m.tournament.sport === "FOOTBALL" ? "KICKOFF" : "BAT");
+        } else if (m.tossDecision) {
+          setTossDecision(m.tossDecision);
+        }
+
+        // Check if lineups were pre-set by Team Manager
+        const existingSquadA = m.matchSquads
+          ?.filter((s: any) => s.teamId === m.teamAId && s.isPlayingXI)
+          ?.map((s: any) => s.userId) || [];
+        const existingSquadB = m.matchSquads
+          ?.filter((s: any) => s.teamId === m.teamBId && s.isPlayingXI)
+          ?.map((s: any) => s.userId) || [];
+
+        setSelectedTeamAPlayers(existingSquadA.length > 0 ? existingSquadA : m.teamA.members?.slice(0, 11).map((x: any) => x.userId) || []);
+        setSelectedTeamBPlayers(existingSquadB.length > 0 ? existingSquadB : m.teamB.members?.slice(0, 11).map((x: any) => x.userId) || []);
       }
 
       // Initialize Cricket Innings active batters/bowlers
@@ -1887,10 +1898,17 @@ export const LiveScorerPage: React.FC = () => {
 
                 {/* Team A Lineup Checkbox list */}
                 <div className="space-y-1 pt-2 border-t border-[#EFE8DC]">
-                  <label className="block font-black text-[#2C221E]">{matchData.teamA.name} Lineup ({selectedTeamAPlayers.length} selected):</label>
+                  <div className="flex items-center justify-between">
+                    <label className="block font-black text-[#2C221E]">{matchData.teamA.name} Lineup ({selectedTeamAPlayers.length} selected):</label>
+                    {(matchData.matchSquads?.filter((s: any) => s.teamId === matchData.teamAId && s.isPlayingXI).length || 0) > 0 && (
+                      <span className="text-[10px] bg-[#EBFBEE] text-[#2B8A3E] font-bold px-2 py-0.5 rounded-full border border-[#B2F2BB]">
+                        ✓ Pre-set by Manager
+                      </span>
+                    )}
+                  </div>
                   <div className="grid grid-cols-2 gap-1.5 max-h-32 overflow-y-auto p-2 bg-[#FAF7F2] rounded-xl border">
                     {matchData.teamA.members?.map((m: any) => (
-                      <label key={m.userId} className="flex items-center gap-1.5 text-[11px]">
+                      <label key={m.userId} className="flex items-center gap-1.5 text-[11px] cursor-pointer">
                         <input
                           type="checkbox"
                           checked={selectedTeamAPlayers.includes(m.userId)}
@@ -1907,10 +1925,17 @@ export const LiveScorerPage: React.FC = () => {
 
                 {/* Team B Lineup Checkbox list */}
                 <div className="space-y-1 pt-2 border-t border-[#EFE8DC]">
-                  <label className="block font-black text-[#2C221E]">{matchData.teamB.name} Lineup ({selectedTeamBPlayers.length} selected):</label>
+                  <div className="flex items-center justify-between">
+                    <label className="block font-black text-[#2C221E]">{matchData.teamB.name} Lineup ({selectedTeamBPlayers.length} selected):</label>
+                    {(matchData.matchSquads?.filter((s: any) => s.teamId === matchData.teamBId && s.isPlayingXI).length || 0) > 0 && (
+                      <span className="text-[10px] bg-[#EBFBEE] text-[#2B8A3E] font-bold px-2 py-0.5 rounded-full border border-[#B2F2BB]">
+                        ✓ Pre-set by Manager
+                      </span>
+                    )}
+                  </div>
                   <div className="grid grid-cols-2 gap-1.5 max-h-32 overflow-y-auto p-2 bg-[#FAF7F2] rounded-xl border">
                     {matchData.teamB.members?.map((m: any) => (
-                      <label key={m.userId} className="flex items-center gap-1.5 text-[11px]">
+                      <label key={m.userId} className="flex items-center gap-1.5 text-[11px] cursor-pointer">
                         <input
                           type="checkbox"
                           checked={selectedTeamBPlayers.includes(m.userId)}
