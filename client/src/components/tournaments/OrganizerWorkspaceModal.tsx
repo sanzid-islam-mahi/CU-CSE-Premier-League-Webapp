@@ -15,7 +15,8 @@ import {
   Flame,
   UserMinus,
   Pencil,
-  Clock
+  Clock,
+  Search
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { api, type BatchItem, type UserItem } from "@/lib/api";
@@ -86,8 +87,8 @@ export const OrganizerWorkspaceModal: React.FC<OrganizerWorkspaceModalProps> = (
   const [editMatchResultSummary, setEditMatchResultSummary] = useState("");
 
   // Scorer assignment state
-  const [selectedScorerMatchId, setSelectedScorerMatchId] = useState<number | null>(null);
-  const [selectedScorerUserId, setSelectedScorerUserId] = useState<number | "">("");
+  const [managingScorerMatch, setManagingScorerMatch] = useState<any | null>(null);
+  const [scorerSearchQuery, setScorerSearchQuery] = useState("");
 
   const triggerToast = (msg: string) => {
     setNotification(msg);
@@ -399,17 +400,39 @@ export const OrganizerWorkspaceModal: React.FC<OrganizerWorkspaceModalProps> = (
     }
   };
 
-  // 15. Assign Scorer Handler
-  const handleAssignScorer = async (matchId: number) => {
-    if (!selectedScorerUserId) return;
+  // 15. Assign & Remove Scorer Handlers
+  const handleAssignScorer = async (matchId: number, userId: number) => {
     try {
-      await api.matches.assignScorer(matchId, Number(selectedScorerUserId));
+      await api.matches.assignScorer(matchId, userId);
       triggerToast("Scorer delegated to match.");
-      setSelectedScorerMatchId(null);
-      setSelectedScorerUserId("");
       onRefresh();
+      if (managingScorerMatch && managingScorerMatch.id === matchId) {
+        const assignedUser = allStudents.find(s => s.id === userId);
+        if (assignedUser) {
+          setManagingScorerMatch((prev: any) => ({
+            ...prev,
+            scorers: [...(prev.scorers || []), { userId, user: assignedUser }]
+          }));
+        }
+      }
     } catch (err: any) {
       alert(err.message || "Failed to assign scorer.");
+    }
+  };
+
+  const handleRemoveScorer = async (matchId: number, userId: number) => {
+    try {
+      await api.matches.removeScorer(matchId, userId);
+      triggerToast("Scorer removed from match.");
+      onRefresh();
+      if (managingScorerMatch && managingScorerMatch.id === matchId) {
+        setManagingScorerMatch((prev: any) => ({
+          ...prev,
+          scorers: (prev.scorers || []).filter((s: any) => s.userId !== userId)
+        }));
+      }
+    } catch (err: any) {
+      alert(err.message || "Failed to remove scorer.");
     }
   };
 
@@ -1158,42 +1181,25 @@ export const OrganizerWorkspaceModal: React.FC<OrganizerWorkspaceModalProps> = (
                       </div>
 
                       {/* Scorer Delegation Cell */}
-                      <div className="pt-2 border-t border-[#EFE8DC] flex items-center justify-between">
-                        <div className="flex items-center gap-1.5 text-[11px]">
-                          <UserCheck className="w-3.5 h-3.5 text-[#9E2A2B]" />
-                          <span className="font-semibold text-[#4A3E35]">Scorers:</span>
-                          <span className="text-[#6B5E53]">
+                      <div className="pt-2 border-t border-[#EFE8DC] flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-1.5 text-[11px] min-w-0">
+                          <UserCheck className="w-3.5 h-3.5 text-[#9E2A2B] shrink-0" />
+                          <span className="font-semibold text-[#4A3E35] shrink-0">Scorers:</span>
+                          <span className="text-[#6B5E53] truncate">
                             {m.scorers?.length > 0 ? m.scorers.map((s: any) => s.user.name).join(", ") : "None assigned"}
                           </span>
                         </div>
 
-                        {selectedScorerMatchId === m.id ? (
-                          <div className="flex items-center gap-1">
-                            <select
-                              value={selectedScorerUserId}
-                              onChange={(e) => setSelectedScorerUserId(Number(e.target.value))}
-                              className="px-2 py-1 text-[10px] rounded border border-[#D8C7B3] bg-[#FAF7F2]"
-                            >
-                              <option value="">-- Pick Student --</option>
-                              {allStudents.map(s => (
-                                <option key={s.id} value={s.id}>{s.name} ({s.studentId})</option>
-                              ))}
-                            </select>
-                            <button
-                              onClick={() => handleAssignScorer(m.id)}
-                              className="px-2 py-1 bg-[#9E2A2B] text-white rounded text-[10px] font-bold"
-                            >
-                              Save
-                            </button>
-                          </div>
-                        ) : (
-                          <button
-                            onClick={() => setSelectedScorerMatchId(m.id)}
-                            className="text-[10px] font-bold text-[#9E2A2B] hover:underline"
-                          >
-                            + Assign Scorer
-                          </button>
-                        )}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setManagingScorerMatch(m);
+                            setScorerSearchQuery("");
+                          }}
+                          className="text-[11px] font-bold text-[#9E2A2B] hover:text-[#842021] bg-[#FBEFE9] hover:bg-[#F8E2D7] px-2.5 py-1 rounded-lg border border-[#9E2A2B]/20 transition-all shrink-0 flex items-center gap-1"
+                        >
+                          <span>{m.scorers?.length > 0 ? "Manage Scorers" : "+ Assign Scorer"}</span>
+                        </button>
                       </div>
                     </div>
                   ))}
@@ -1515,6 +1521,184 @@ export const OrganizerWorkspaceModal: React.FC<OrganizerWorkspaceModalProps> = (
                 </Button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* DEDICATED SEARCHABLE ASSIGN SCORER MODAL */}
+      {managingScorerMatch && (
+        <div className="fixed inset-0 z-70 flex items-center justify-center p-3 sm:p-4 bg-black/70 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="bg-white border-2 border-[#E5DACB] rounded-3xl shadow-2xl w-full max-w-lg flex flex-col relative overflow-hidden max-h-[85vh]">
+            <div className="h-2 w-full brick-gradient absolute top-0 left-0 right-0" />
+
+            {/* Modal Header */}
+            <div className="p-4 sm:p-5 border-b border-[#EFE8DC] flex items-center justify-between bg-[#FAF7F2]">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-[#FAF0E6] text-[#9E2A2B] flex items-center justify-center border border-[#E8D6C3]">
+                  <UserCheck className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-[#2C221E]">
+                    Match #{managingScorerMatch.matchNumber} Scorer Delegation
+                  </h3>
+                  <p className="text-[11px] text-[#7C6E63] font-medium truncate max-w-[240px] sm:max-w-none">
+                    {managingScorerMatch.teamA?.name} vs {managingScorerMatch.teamB?.name}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setManagingScorerMatch(null)}
+                className="p-1.5 rounded-full text-[#7C6E63] hover:bg-[#EFE8DC] transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-4 sm:p-5 space-y-4 overflow-y-auto flex-1">
+              {/* Currently Assigned Scorers */}
+              <div>
+                <label className="block text-xs font-bold text-[#4A3E35] uppercase tracking-wider mb-1.5">
+                  Currently Assigned Scorers
+                </label>
+                {managingScorerMatch.scorers && managingScorerMatch.scorers.length > 0 ? (
+                  <div className="space-y-1.5">
+                    {managingScorerMatch.scorers.map((s: any) => (
+                      <div
+                        key={s.userId}
+                        className="flex items-center justify-between p-2.5 rounded-xl bg-[#FAF7F2] border border-[#E8DCCF]"
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className="w-8 h-8 rounded-lg brick-gradient text-white flex items-center justify-center font-bold text-xs shrink-0">
+                            {s.user?.name?.charAt(0) || "U"}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-xs font-bold text-[#2C221E] truncate">{s.user?.name}</p>
+                            <p className="text-[10px] text-[#7C6E63] font-mono">Roll: {s.user?.studentId || "N/A"}</p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveScorer(managingScorerMatch.id, s.userId)}
+                          className="text-[11px] font-bold text-[#C92A2A] hover:bg-[#FFF5F5] px-2.5 py-1 rounded-lg border border-[#FF8787]/50 transition-colors"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-[#7C6E63] italic bg-[#FAF7F2] p-2.5 rounded-xl border border-[#E8DCCF]">
+                    No scorers assigned yet. Search and pick a student below.
+                  </p>
+                )}
+              </div>
+
+              {/* Search Input */}
+              <div>
+                <label className="block text-xs font-bold text-[#4A3E35] uppercase tracking-wider mb-1.5">
+                  Search Students by Name / Roll / Batch
+                </label>
+                <div className="relative">
+                  <Search className="w-4 h-4 text-[#7C6E63] absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    autoFocus
+                    value={scorerSearchQuery}
+                    onChange={(e) => setScorerSearchQuery(e.target.value)}
+                    placeholder="Search by name, roll (e.g. 19040), or batch..."
+                    className="w-full pl-9 pr-8 py-2 text-xs rounded-xl border border-[#D8C7B3] bg-white focus:outline-none focus:ring-2 focus:ring-[#9E2A2B]/20 focus:border-[#9E2A2B]"
+                  />
+                  {scorerSearchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setScorerSearchQuery("")}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#7C6E63] hover:text-[#2C221E]"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Filtered Students List */}
+              <div>
+                <div className="flex items-center justify-between text-[11px] text-[#7C6E63] mb-1.5 font-medium">
+                  <span>Available Students</span>
+                  {scorerSearchQuery && <span className="font-bold text-[#9E2A2B]">Search active</span>}
+                </div>
+
+                <div className="max-h-56 overflow-y-auto space-y-1.5 pr-1">
+                  {allStudents
+                    .filter(st => {
+                      const q = scorerSearchQuery.toLowerCase().trim();
+                      if (!q) return true;
+                      return (
+                        st.name?.toLowerCase().includes(q) ||
+                        st.studentId?.toLowerCase().includes(q) ||
+                        (st.batch as any)?.name?.toLowerCase().includes(q)
+                      );
+                    })
+                    .map((st) => {
+                      const isAlreadyScorer = managingScorerMatch.scorers?.some((s: any) => s.userId === st.id);
+                      return (
+                        <div
+                          key={st.id}
+                          className={`flex items-center justify-between p-2.5 rounded-xl border transition-all ${
+                            isAlreadyScorer
+                              ? "bg-[#FAF0E6]/60 border-[#E8D6C3]"
+                              : "bg-white border-[#E5DACB] hover:border-[#9E2A2B]/40 hover:bg-[#FAF7F2]"
+                          }`}
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <div className="w-7 h-7 rounded-lg bg-[#FAF0E6] text-[#9E2A2B] border border-[#E8D6C3] flex items-center justify-center font-bold text-xs shrink-0">
+                              {st.name?.charAt(0) || "U"}
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-xs font-bold text-[#2C221E] truncate">{st.name}</p>
+                              <div className="flex items-center gap-2 text-[10px] text-[#7C6E63]">
+                                <span className="font-mono">Roll: {st.studentId}</span>
+                                {(st.batch as any)?.name && (
+                                  <span className="font-medium text-[#842021] bg-[#FAF0E6] px-1.5 py-0.2 rounded border border-[#E8D6C3]">
+                                    {(st.batch as any).name}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          {isAlreadyScorer ? (
+                            <span className="text-[11px] font-bold text-[#0CA678] bg-[#E6FCF5] px-2.5 py-1 rounded-lg border border-[#20C997]/40 shrink-0">
+                              ✓ Assigned
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => handleAssignScorer(managingScorerMatch.id, st.id)}
+                              className="text-[11px] font-bold text-white bg-[#9E2A2B] hover:bg-[#842021] px-3 py-1 rounded-lg transition-colors shadow-2xs shrink-0"
+                            >
+                              + Assign
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 bg-[#FAF7F2] border-t border-[#EFE8DC] flex justify-end">
+              <Button
+                type="button"
+                onClick={() => setManagingScorerMatch(null)}
+                className="bg-[#2C221E] hover:bg-[#43352F] text-white text-xs font-bold px-5 h-9 rounded-xl"
+              >
+                Done
+              </Button>
+            </div>
           </div>
         </div>
       )}
