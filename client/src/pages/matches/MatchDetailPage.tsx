@@ -446,26 +446,19 @@ export const MatchDetailPage: React.FC = () => {
           </div>
 
           {/* Big Match Teams Scoreboard */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch py-2">
-            
-            {/* Team A Card */}
-            <div className={`p-5 rounded-3xl border-2 flex flex-col justify-between gap-3 transition-all ${
-              matchData.winnerTeamId === matchData.teamAId
-                ? "bg-[#E6FCF5] border-[#20C997]"
-                : "bg-[#FAF7F2] border-[#E8DCCF]"
-            }`}>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-2xl brick-gradient text-white flex items-center justify-center font-black text-base shadow-xs">
-                    {matchData.teamA.shortName || matchData.teamA.name.slice(0, 2)}
-                  </div>
-                  <div>
-                    <h2 className="font-black text-base sm:text-lg text-[#2C221E] flex items-center gap-1.5">
-                      <span>{matchData.teamA.name}</span>
-                      {matchData.winnerTeamId === matchData.teamAId && <span className="text-sm">👑</span>}
+          {!isCricket ? (
+            /* FOOTBALL UNIFIED BROADCAST SCOREBOARD */
+            <div className="bg-[#FAF7F2] rounded-3xl border-2 border-[#E8DCCF] p-4 sm:p-7 shadow-xs space-y-4">
+              <div className="flex items-center justify-between gap-2 sm:gap-6">
+                {/* Team A (Left / Home) */}
+                <div className="flex-1 flex items-center justify-end gap-2.5 sm:gap-4 text-right min-w-0">
+                  <div className="min-w-0">
+                    <h2 className="font-black text-sm sm:text-xl lg:text-2xl text-[#2C221E] truncate flex items-center justify-end gap-1.5">
+                      {matchData.winnerTeamId === matchData.teamAId && <span className="text-base sm:text-lg">👑</span>}
+                      <span className="truncate">{matchData.teamA.name}</span>
                     </h2>
-                    <div className="mt-0.5">
-                      {matchData.teamA.batch ? (
+                    {matchData.teamA.batch ? (
+                      <div className="flex justify-end mt-0.5">
                         <BatchChip
                           name={matchData.teamA.batch.name}
                           session={matchData.teamA.batch.session}
@@ -474,18 +467,149 @@ export const MatchDetailPage: React.FC = () => {
                           batchNumber={matchData.teamA.batch.batchNumber}
                           size="xs"
                           variant="inline"
-                          className="text-xs text-[#7C6E63]"
+                          className="text-[10px] sm:text-xs text-[#7C6E63]"
                         />
-                      ) : (
-                        <span className="text-xs text-[#7C6E63]">CU CSE Squad</span>
-                      )}
-                    </div>
+                      </div>
+                    ) : (
+                      <span className="text-[11px] sm:text-xs text-[#7C6E63]">CU CSE Squad</span>
+                    )}
+                  </div>
+                  <div className="w-11 h-11 sm:w-16 sm:h-16 rounded-2xl brick-gradient text-white flex items-center justify-center font-black text-sm sm:text-xl shadow-xs ring-2 ring-white shrink-0">
+                    {matchData.teamA.shortName || matchData.teamA.name.slice(0, 2)}
                   </div>
                 </div>
 
-                {/* Score summary */}
-                <div className="text-right">
-                  {isCricket ? (
+                {/* Score & Match Status (Center) */}
+                <div className="shrink-0 px-3 sm:px-8 py-2 sm:py-3.5 bg-white rounded-2xl sm:rounded-3xl border-2 border-[#9E2A2B]/25 shadow-sm text-center min-w-[95px] sm:min-w-[170px]">
+                  <div className="flex items-center justify-center gap-1.5 sm:gap-3">
+                    <span className="font-mono text-2xl sm:text-4xl lg:text-5xl font-black text-[#9E2A2B] tracking-tight">
+                      {matchData.footballDetail?.teamAScore ?? 0}
+                    </span>
+                    <span className="text-base sm:text-2xl font-black text-[#D8C7B3]">-</span>
+                    <span className="font-mono text-2xl sm:text-4xl lg:text-5xl font-black text-[#9E2A2B] tracking-tight">
+                      {matchData.footballDetail?.teamBScore ?? 0}
+                    </span>
+                  </div>
+
+                  {/* Penalty score indicator */}
+                  {matchData.footballDetail?.teamAPenaltyScore !== null && matchData.footballDetail?.teamAPenaltyScore !== undefined && (
+                    <p className="font-mono text-[10px] sm:text-xs font-black text-[#2A7B54] mt-0.5">
+                      ({matchData.footballDetail.teamAPenaltyScore} - {matchData.footballDetail.teamBPenaltyScore} pens)
+                    </p>
+                  )}
+
+                  {/* Phase / Clock badge */}
+                  <div className="mt-1">
+                    {footballPhase && (
+                      <span className={`inline-block text-[10px] sm:text-xs font-black px-2 sm:px-2.5 py-0.5 rounded-full border ${footballPhase.color}`}>
+                        {footballPhase.text}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Team B (Right / Away) */}
+                <div className="flex-1 flex items-center justify-start gap-2.5 sm:gap-4 text-left min-w-0">
+                  <div className="w-11 h-11 sm:w-16 sm:h-16 rounded-2xl brick-gradient text-white flex items-center justify-center font-black text-sm sm:text-xl shadow-xs ring-2 ring-white shrink-0">
+                    {matchData.teamB.shortName || matchData.teamB.name.slice(0, 2)}
+                  </div>
+                  <div className="min-w-0">
+                    <h2 className="font-black text-sm sm:text-xl lg:text-2xl text-[#2C221E] truncate flex items-center justify-start gap-1.5">
+                      <span className="truncate">{matchData.teamB.name}</span>
+                      {matchData.winnerTeamId === matchData.teamBId && <span className="text-base sm:text-lg">👑</span>}
+                    </h2>
+                    {matchData.teamB.batch ? (
+                      <div className="flex justify-start mt-0.5">
+                        <BatchChip
+                          name={matchData.teamB.batch.name}
+                          session={matchData.teamB.batch.session}
+                          slug={matchData.teamB.batch.slug}
+                          avatarUrl={matchData.teamB.batch.avatarUrl}
+                          batchNumber={matchData.teamB.batch.batchNumber}
+                          size="xs"
+                          variant="inline"
+                          className="text-[10px] sm:text-xs text-[#7C6E63]"
+                        />
+                      </div>
+                    ) : (
+                      <span className="text-[11px] sm:text-xs text-[#7C6E63]">CU CSE Squad</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Goalscorers Timeline Underneath */}
+              {(teamAGoalscorers.length > 0 || teamBGoalscorers.length > 0) && (
+                <div className="pt-3 border-t border-[#E8DCCF] grid grid-cols-2 gap-3 sm:gap-6 text-xs">
+                  {/* Team A Scorers */}
+                  <div className="flex flex-col items-end space-y-1">
+                    {teamAGoalscorers.map((g: any) => (
+                      <div key={g.id} className="flex items-center gap-1.5 text-right font-medium text-[#2C221E]">
+                        {g.assistName && (
+                          <span className="text-[10px] text-[#7C6E63] italic hidden sm:inline">(ast: {g.assistName})</span>
+                        )}
+                        <span className="font-bold truncate max-w-[110px] sm:max-w-none">{g.playerName}</span>
+                        <span className="font-mono text-[#9E2A2B] font-extrabold">{g.minute}'</span>
+                        <span>⚽</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Team B Scorers */}
+                  <div className="flex flex-col items-start space-y-1">
+                    {teamBGoalscorers.map((g: any) => (
+                      <div key={g.id} className="flex items-center gap-1.5 text-left font-medium text-[#2C221E]">
+                        <span>⚽</span>
+                        <span className="font-mono text-[#9E2A2B] font-extrabold">{g.minute}'</span>
+                        <span className="font-bold truncate max-w-[110px] sm:max-w-none">{g.playerName}</span>
+                        {g.assistName && (
+                          <span className="text-[10px] text-[#7C6E63] italic hidden sm:inline">(ast: {g.assistName})</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            /* CRICKET 2-COLUMN SCOREBOARD */
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch py-2">
+              {/* Team A Card */}
+              <div className={`p-5 rounded-3xl border-2 flex flex-col justify-between gap-3 transition-all ${
+                matchData.winnerTeamId === matchData.teamAId
+                  ? "bg-[#E6FCF5] border-[#20C997]"
+                  : "bg-[#FAF7F2] border-[#E8DCCF]"
+              }`}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-2xl brick-gradient text-white flex items-center justify-center font-black text-base shadow-xs">
+                      {matchData.teamA.shortName || matchData.teamA.name.slice(0, 2)}
+                    </div>
+                    <div>
+                      <h2 className="font-black text-base sm:text-lg text-[#2C221E] flex items-center gap-1.5">
+                        <span>{matchData.teamA.name}</span>
+                        {matchData.winnerTeamId === matchData.teamAId && <span className="text-sm">👑</span>}
+                      </h2>
+                      <div className="mt-0.5">
+                        {matchData.teamA.batch ? (
+                          <BatchChip
+                            name={matchData.teamA.batch.name}
+                            session={matchData.teamA.batch.session}
+                            slug={matchData.teamA.batch.slug}
+                            avatarUrl={matchData.teamA.batch.avatarUrl}
+                            batchNumber={matchData.teamA.batch.batchNumber}
+                            size="xs"
+                            variant="inline"
+                            className="text-xs text-[#7C6E63]"
+                          />
+                        ) : (
+                          <span className="text-xs text-[#7C6E63]">CU CSE Squad</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="text-right">
                     <div>
                       <span className="font-mono text-2xl sm:text-3xl font-black text-[#2C221E]">
                         {innings1?.battingTeamId === matchData.teamAId ? `${innings1.totalRuns}/${innings1.totalWickets}` :
@@ -496,78 +620,46 @@ export const MatchDetailPage: React.FC = () => {
                          innings2?.battingTeamId === matchData.teamAId ? `(${innings2.totalOvers} ov)` : ""}
                       </p>
                     </div>
-                  ) : (
-                    <div>
-                      <span className="font-mono text-3xl sm:text-4xl font-black text-[#9E2A2B]">
-                        {matchData.footballDetail?.teamAScore || 0}
-                      </span>
-                      {matchData.footballDetail?.teamAPenaltyScore !== null && matchData.footballDetail?.teamAPenaltyScore !== undefined && (
-                        <span className="block font-mono text-xs font-black text-[#2A7B54]">
-                          ({matchData.footballDetail.teamAPenaltyScore} pens)
-                        </span>
-                      )}
-                    </div>
-                  )}
+                  </div>
                 </div>
               </div>
 
-              {/* Football Goalscorers (Team A) */}
-              {!isCricket && teamAGoalscorers.length > 0 && (
-                <div className="pt-2 border-t border-[#EFE8DC]/90 flex flex-wrap items-center gap-1.5 text-[11px] text-[#2C221E]">
-                  {teamAGoalscorers.map((g: any) => (
-                    <span key={g.id} className="bg-white/90 px-2 py-0.5 rounded-lg border border-[#E8DCCF]/60 flex items-center gap-1">
-                      <span>⚽</span>
-                      <PlayerChip
-                        name={g.playerName}
-                        studentId={g.playerStudentId}
-                        avatarUrl={g.playerAvatarUrl}
-                        size="xs"
-                      />
-                      <span className="text-[#7C6E63] font-mono font-bold">{g.minute}'</span>
-                    </span>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Team B Card */}
-            <div className={`p-5 rounded-3xl border-2 flex flex-col justify-between gap-3 transition-all ${
-              matchData.winnerTeamId === matchData.teamBId
-                ? "bg-[#E6FCF5] border-[#20C997]"
-                : "bg-[#FAF7F2] border-[#E8DCCF]"
-            }`}>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-2xl brick-gradient text-white flex items-center justify-center font-black text-base shadow-xs">
-                    {matchData.teamB.shortName || matchData.teamB.name.slice(0, 2)}
-                  </div>
-                  <div>
-                    <h2 className="font-black text-base sm:text-lg text-[#2C221E] flex items-center gap-1.5">
-                      <span>{matchData.teamB.name}</span>
-                      {matchData.winnerTeamId === matchData.teamBId && <span className="text-sm">👑</span>}
-                    </h2>
-                    <div className="mt-0.5">
-                      {matchData.teamB.batch ? (
-                        <BatchChip
-                          name={matchData.teamB.batch.name}
-                          session={matchData.teamB.batch.session}
-                          slug={matchData.teamB.batch.slug}
-                          avatarUrl={matchData.teamB.batch.avatarUrl}
-                          batchNumber={matchData.teamB.batch.batchNumber}
-                          size="xs"
-                          variant="inline"
-                          className="text-xs text-[#7C6E63]"
-                        />
-                      ) : (
-                        <span className="text-xs text-[#7C6E63]">CU CSE Squad</span>
-                      )}
+              {/* Team B Card */}
+              <div className={`p-5 rounded-3xl border-2 flex flex-col justify-between gap-3 transition-all ${
+                matchData.winnerTeamId === matchData.teamBId
+                  ? "bg-[#E6FCF5] border-[#20C997]"
+                  : "bg-[#FAF7F2] border-[#E8DCCF]"
+              }`}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-2xl brick-gradient text-white flex items-center justify-center font-black text-base shadow-xs">
+                      {matchData.teamB.shortName || matchData.teamB.name.slice(0, 2)}
+                    </div>
+                    <div>
+                      <h2 className="font-black text-base sm:text-lg text-[#2C221E] flex items-center gap-1.5">
+                        <span>{matchData.teamB.name}</span>
+                        {matchData.winnerTeamId === matchData.teamBId && <span className="text-sm">👑</span>}
+                      </h2>
+                      <div className="mt-0.5">
+                        {matchData.teamB.batch ? (
+                          <BatchChip
+                            name={matchData.teamB.batch.name}
+                            session={matchData.teamB.batch.session}
+                            slug={matchData.teamB.batch.slug}
+                            avatarUrl={matchData.teamB.batch.avatarUrl}
+                            batchNumber={matchData.teamB.batch.batchNumber}
+                            size="xs"
+                            variant="inline"
+                            className="text-xs text-[#7C6E63]"
+                          />
+                        ) : (
+                          <span className="text-xs text-[#7C6E63]">CU CSE Squad</span>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                {/* Score summary */}
-                <div className="text-right">
-                  {isCricket ? (
+                  <div className="text-right">
                     <div>
                       <span className="font-mono text-2xl sm:text-3xl font-black text-[#2C221E]">
                         {innings1?.battingTeamId === matchData.teamBId ? `${innings1.totalRuns}/${innings1.totalWickets}` :
@@ -578,41 +670,11 @@ export const MatchDetailPage: React.FC = () => {
                          innings2?.battingTeamId === matchData.teamBId ? `(${innings2.totalOvers} ov)` : ""}
                       </p>
                     </div>
-                  ) : (
-                    <div>
-                      <span className="font-mono text-3xl sm:text-4xl font-black text-[#9E2A2B]">
-                        {matchData.footballDetail?.teamBScore || 0}
-                      </span>
-                      {matchData.footballDetail?.teamBPenaltyScore !== null && matchData.footballDetail?.teamBPenaltyScore !== undefined && (
-                        <span className="block font-mono text-xs font-black text-[#2A7B54]">
-                          ({matchData.footballDetail.teamBPenaltyScore} pens)
-                        </span>
-                      )}
-                    </div>
-                  )}
+                  </div>
                 </div>
               </div>
-
-              {/* Football Goalscorers (Team B) */}
-              {!isCricket && teamBGoalscorers.length > 0 && (
-                <div className="pt-2 border-t border-[#EFE8DC]/90 flex flex-wrap items-center gap-1.5 text-[11px] text-[#2C221E]">
-                  {teamBGoalscorers.map((g: any) => (
-                    <span key={g.id} className="bg-white/90 px-2 py-0.5 rounded-lg border border-[#E8DCCF]/60 flex items-center gap-1">
-                      <span>⚽</span>
-                      <PlayerChip
-                        name={g.playerName}
-                        studentId={g.playerStudentId}
-                        avatarUrl={g.playerAvatarUrl}
-                        size="xs"
-                      />
-                      <span className="text-[#7C6E63] font-mono font-bold">{g.minute}'</span>
-                    </span>
-                  ))}
-                </div>
-              )}
             </div>
-
-          </div>
+          )}
 
           {/* DEDICATED PENALTY SHOOTOUT ARENA CARD */}
           {!isCricket && (matchData.footballDetail?.currentHalf === 5 || matchData.footballDetail?.teamAPenaltyScore !== null) && (

@@ -122,7 +122,6 @@ export const LiveMatchCards: React.FC<LiveMatchCardsProps> = ({ activeSport }) =
   const currentInnings = isSecondInnings ? inn2 : inn1;
   const activeBatters = currentInnings?.battingScorecards?.filter((b: any) => !b.isOut).slice(0, 2) || [];
   const currentBowler = currentInnings?.bowlingScorecards?.slice(-1)[0];
-  const recentBalls = currentInnings?.balls || [];
 
   return (
     <section className="py-8">
@@ -150,35 +149,35 @@ export const LiveMatchCards: React.FC<LiveMatchCardsProps> = ({ activeSport }) =
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           
           {/* 1. Featured Match Box */}
-          <div className="lg:col-span-2 bg-white rounded-3xl border-2 border-[#9E2A2B]/30 p-6 shadow-md shadow-[#9E2A2B]/10 relative overflow-hidden flex flex-col justify-between">
+          <div className="lg:col-span-2 bg-white rounded-3xl border-2 border-[#9E2A2B]/30 p-4 sm:p-6 shadow-md shadow-[#9E2A2B]/10 relative overflow-hidden flex flex-col justify-between">
             {/* Status Ribbon */}
-            <div className="absolute top-0 right-0 px-4 py-1.5 bg-[#9E2A2B] text-white text-[11px] font-extrabold uppercase tracking-widest rounded-bl-2xl shadow-sm flex items-center gap-1.5">
+            <div className="absolute top-0 right-0 px-3 sm:px-4 py-1 sm:py-1.5 bg-[#9E2A2B] text-white text-[10px] sm:text-[11px] font-extrabold uppercase tracking-wider sm:tracking-widest rounded-bl-2xl shadow-sm flex items-center gap-1.5 z-10">
               {isLive ? (
                 <>
                   <span className="h-2 w-2 rounded-full bg-white animate-ping" />
-                  {featuredMatch.status === "TOSS" ? "TOSS" : isSecondInnings ? "LIVE · 2nd INNINGS" : "LIVE NOW"}
+                  {featuredMatch.status === "TOSS" ? "TOSS" : isSecondInnings ? "LIVE · 2nd INN" : "LIVE NOW"}
                 </>
               ) : featuredMatch.status === "COMPLETED" ? (
                 <span>FINAL RESULT</span>
               ) : (
-                <span>UPCOMING MATCH</span>
+                <span>UPCOMING</span>
               )}
             </div>
 
             <div>
               {/* Tournament Info Header */}
-              <div className="text-xs font-bold text-[#7C6E63] uppercase tracking-wider mb-4 flex items-center gap-2 flex-wrap">
-                <Link to={`/tournaments/${featuredMatch.tournament?.slug || featuredMatch.tournament?.id}`} className="hover:text-[#9E2A2B] transition-colors">
+              <div className="text-xs font-bold text-[#7C6E63] uppercase tracking-wider mb-4 flex items-center gap-2 flex-wrap pr-24 sm:pr-32">
+                <Link to={`/tournaments/${featuredMatch.tournament?.slug || featuredMatch.tournament?.id}`} className="hover:text-[#9E2A2B] transition-colors truncate max-w-[160px] sm:max-w-none">
                   {featuredMatch.tournament?.name}
                 </Link>
                 <span>•</span>
-                <span className="text-[#9E2A2B]">
+                <span className="text-[#9E2A2B] font-extrabold shrink-0">
                   {featuredMatch.group?.name ? `${featuredMatch.group.name} · ` : ""}Match #{featuredMatch.matchNumber}
                 </span>
                 {featuredMatch.stage && (
                   <>
                     <span>•</span>
-                    <span>{featuredMatch.stage.replace(/_/g, " ")}</span>
+                    <span className="shrink-0">{featuredMatch.stage.replace(/_/g, " ")}</span>
                   </>
                 )}
               </div>
@@ -186,9 +185,9 @@ export const LiveMatchCards: React.FC<LiveMatchCardsProps> = ({ activeSport }) =
               {/* CRICKET LIVE / COMPLETED DISPLAY */}
               {activeSport === "cricket" && (
                 <div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pb-6 border-b border-[#EFE8DC]">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-6 pb-4 sm:pb-6 border-b border-[#EFE8DC]">
                     {/* Team A */}
-                    <div className={`space-y-1.5 p-3.5 rounded-2xl border transition-all ${
+                    <div className={`space-y-1.5 p-3 sm:p-3.5 rounded-2xl border transition-all ${
                       currentInnings?.battingTeamId === featuredMatch.teamAId && isLive
                         ? "bg-[#FBEFE9] border-2 border-[#9E2A2B]/40"
                         : "bg-[#FAF7F2] border-[#E8DCCF]"
@@ -204,17 +203,18 @@ export const LiveMatchCards: React.FC<LiveMatchCardsProps> = ({ activeSport }) =
                           <span className="text-[11px] font-semibold text-[#6B5E53]">{inn2.totalOvers} ov</span>
                         )}
                       </div>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 min-w-0">
                           <SmartAvatar
                             src={featuredMatch.teamA?.logoUrl}
                             alt={featuredMatch.teamA?.name}
                             fallbackText={featuredMatch.teamA?.shortName || "A"}
                             size="sm"
                             shape="rounded"
+                            className="shrink-0"
                           />
                           <div className="min-w-0">
-                            <span className="font-extrabold text-[#2C221E] text-base truncate block">{featuredMatch.teamA?.name}</span>
+                            <span className="font-extrabold text-[#2C221E] text-sm sm:text-base truncate block">{featuredMatch.teamA?.name}</span>
                             {featuredMatch.teamA?.batch && (
                               <BatchChip
                                 name={featuredMatch.teamA.batch.name}
@@ -226,14 +226,14 @@ export const LiveMatchCards: React.FC<LiveMatchCardsProps> = ({ activeSport }) =
                             )}
                           </div>
                         </div>
-                        <div className="text-right pl-2 shrink-0">
+                        <div className="text-right shrink-0">
                           {inn1?.battingTeamId === featuredMatch.teamAId ? (
-                            <span className="text-xl font-black text-[#2C221E]">
-                              {inn1.totalRuns}<span className="text-sm font-bold text-[#7C6E63]">/{inn1.totalWickets}</span>
+                            <span className="text-lg sm:text-xl font-black text-[#2C221E]">
+                              {inn1.totalRuns}<span className="text-xs sm:text-sm font-bold text-[#7C6E63]">/{inn1.totalWickets}</span>
                             </span>
                           ) : inn2?.battingTeamId === featuredMatch.teamAId ? (
-                            <span className="text-xl font-black text-[#9E2A2B]">
-                              {inn2.totalRuns}<span className="text-sm font-bold text-[#842021]">/{inn2.totalWickets}</span>
+                            <span className="text-lg sm:text-xl font-black text-[#9E2A2B]">
+                              {inn2.totalRuns}<span className="text-xs sm:text-sm font-bold text-[#842021]">/{inn2.totalWickets}</span>
                             </span>
                           ) : (
                             <span className="text-sm font-bold text-[#7C6E63]">-</span>
@@ -243,7 +243,7 @@ export const LiveMatchCards: React.FC<LiveMatchCardsProps> = ({ activeSport }) =
                     </div>
 
                     {/* Team B */}
-                    <div className={`space-y-1.5 p-3.5 rounded-2xl border transition-all ${
+                    <div className={`space-y-1.5 p-3 sm:p-3.5 rounded-2xl border transition-all ${
                       currentInnings?.battingTeamId === featuredMatch.teamBId && isLive
                         ? "bg-[#FBEFE9] border-2 border-[#9E2A2B]/40"
                         : "bg-[#FAF7F2] border-[#E8DCCF]"
@@ -259,17 +259,18 @@ export const LiveMatchCards: React.FC<LiveMatchCardsProps> = ({ activeSport }) =
                           <span className="text-[11px] font-semibold text-[#6B5E53]">{inn2.totalOvers} ov</span>
                         )}
                       </div>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 min-w-0">
                           <SmartAvatar
                             src={featuredMatch.teamB?.logoUrl}
                             alt={featuredMatch.teamB?.name}
                             fallbackText={featuredMatch.teamB?.shortName || "B"}
                             size="sm"
                             shape="rounded"
+                            className="shrink-0"
                           />
                           <div className="min-w-0">
-                            <span className="font-extrabold text-[#2C221E] text-base truncate block">{featuredMatch.teamB?.name}</span>
+                            <span className="font-extrabold text-[#2C221E] text-sm sm:text-base truncate block">{featuredMatch.teamB?.name}</span>
                             {featuredMatch.teamB?.batch && (
                               <BatchChip
                                 name={featuredMatch.teamB.batch.name}
@@ -281,14 +282,14 @@ export const LiveMatchCards: React.FC<LiveMatchCardsProps> = ({ activeSport }) =
                             )}
                           </div>
                         </div>
-                        <div className="text-right pl-2 shrink-0">
+                        <div className="text-right shrink-0">
                           {inn1?.battingTeamId === featuredMatch.teamBId ? (
-                            <span className="text-xl font-black text-[#2C221E]">
-                              {inn1.totalRuns}<span className="text-sm font-bold text-[#7C6E63]">/{inn1.totalWickets}</span>
+                            <span className="text-lg sm:text-xl font-black text-[#2C221E]">
+                              {inn1.totalRuns}<span className="text-xs sm:text-sm font-bold text-[#7C6E63]">/{inn1.totalWickets}</span>
                             </span>
                           ) : inn2?.battingTeamId === featuredMatch.teamBId ? (
-                            <span className="text-xl font-black text-[#9E2A2B]">
-                              {inn2.totalRuns}<span className="text-sm font-bold text-[#842021]">/{inn2.totalWickets}</span>
+                            <span className="text-lg sm:text-xl font-black text-[#9E2A2B]">
+                              {inn2.totalRuns}<span className="text-xs sm:text-sm font-bold text-[#842021]">/{inn2.totalWickets}</span>
                             </span>
                           ) : (
                             <span className="text-sm font-bold text-[#7C6E63]">-</span>
@@ -300,7 +301,7 @@ export const LiveMatchCards: React.FC<LiveMatchCardsProps> = ({ activeSport }) =
 
                   {/* Result Summary or Target Equation */}
                   {featuredMatch.resultSummary ? (
-                    <div className="py-3 px-4 my-4 rounded-xl bg-[#FAF0E6] border border-[#E8D6C3] flex items-center justify-between text-xs sm:text-sm font-extrabold text-[#842021]">
+                    <div className="py-2.5 px-3.5 my-3 rounded-xl bg-[#FAF0E6] border border-[#E8D6C3] flex items-center justify-between text-xs sm:text-sm font-extrabold text-[#842021] flex-wrap gap-1">
                       <span>🏆 {featuredMatch.resultSummary}</span>
                       {featuredMatch.playerOfTheMatch && (
                         <span className="text-xs font-semibold text-[#7C6E63]">
@@ -309,7 +310,7 @@ export const LiveMatchCards: React.FC<LiveMatchCardsProps> = ({ activeSport }) =
                       )}
                     </div>
                   ) : isSecondInnings && inn1 ? (
-                    <div className="py-3 px-4 my-4 rounded-xl bg-[#FAF0E6] border border-[#E8D6C3] flex items-center justify-between text-xs sm:text-sm font-extrabold text-[#842021]">
+                    <div className="py-2.5 px-3.5 my-3 rounded-xl bg-[#FAF0E6] border border-[#E8D6C3] flex items-center justify-between text-xs sm:text-sm font-extrabold text-[#842021] flex-wrap gap-1">
                       <span>
                         🎯 Target: {inn1.totalRuns + 1} ({inn1.totalRuns + 1 - inn2.totalRuns} runs needed)
                       </span>
@@ -321,13 +322,13 @@ export const LiveMatchCards: React.FC<LiveMatchCardsProps> = ({ activeSport }) =
 
                   {/* Active Players Spotlight if Live */}
                   {isLive && activeBatters.length > 0 && (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs mt-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs mt-3">
                       <div className="p-3 bg-[#FAF7F2] rounded-xl space-y-1.5">
                         <p className="font-bold text-[#7C6E63] text-[11px] uppercase">Batting at Crease</p>
                         {activeBatters.map((b: any, idx: number) => (
                           <div key={idx} className="flex justify-between font-semibold text-[#2C221E]">
-                            <span>🏏 {b.player?.name} {idx === 0 ? "*" : ""}</span>
-                            <span className="font-mono text-[#9E2A2B]">{b.runs} ({b.balls}) [{b.fours}x4, {b.sixes}x6]</span>
+                            <span className="truncate pr-1">🏏 {b.player?.name} {idx === 0 ? "*" : ""}</span>
+                            <span className="font-mono text-[#9E2A2B] shrink-0">{b.runs} ({b.balls})</span>
                           </div>
                         ))}
                       </div>
@@ -336,30 +337,9 @@ export const LiveMatchCards: React.FC<LiveMatchCardsProps> = ({ activeSport }) =
                         <div className="p-3 bg-[#FAF7F2] rounded-xl space-y-1.5">
                           <p className="font-bold text-[#7C6E63] text-[11px] uppercase">Current Bowler</p>
                           <div className="flex justify-between font-semibold text-[#2C221E]">
-                            <span>🎯 {currentBowler.player?.name}</span>
-                            <span className="font-mono text-[#9E2A2B]">{currentBowler.overs}-{currentBowler.maidens}-{currentBowler.runs}-{currentBowler.wickets}</span>
+                            <span className="truncate pr-1">🎯 {currentBowler.player?.name}</span>
+                            <span className="font-mono text-[#9E2A2B] shrink-0">{currentBowler.overs}-{currentBowler.maidens}-{currentBowler.runs}-{currentBowler.wickets}</span>
                           </div>
-                          {recentBalls.length > 0 && (
-                            <div className="flex items-center gap-1.5 pt-1">
-                              <span className="text-[10px] font-bold text-[#7C6E63]">This Over:</span>
-                              <div className="flex gap-1 font-mono text-[10px] font-bold">
-                                {recentBalls.map((b: any, i: number) => (
-                                  <span
-                                    key={i}
-                                    className={`px-1.5 py-0.5 rounded ${
-                                      b.isWicket
-                                        ? "bg-[#9E2A2B] text-white"
-                                        : b.runsBat === 4 || b.runsBat === 6
-                                        ? "bg-[#FBEFE9] text-[#9E2A2B] border border-[#9E2A2B]/30"
-                                        : "bg-white border border-[#E5DACB]"
-                                    }`}
-                                  >
-                                    {b.isWicket ? "W" : b.runsBat}
-                                  </span>
-                                ))}
-                              </div>
-                            </div>
-                          )}
                         </div>
                       )}
                     </div>
@@ -370,37 +350,39 @@ export const LiveMatchCards: React.FC<LiveMatchCardsProps> = ({ activeSport }) =
               {/* FOOTBALL LIVE / COMPLETED DISPLAY */}
               {activeSport === "football" && (
                 <div>
-                  <div className="p-5 rounded-2xl bg-[#FAF7F2] border border-[#E8DCCF] mb-4">
-                    <div className="flex items-center justify-between gap-4">
-                      {/* Team A */}
-                      <div className="flex-1 text-center space-y-1.5">
+                  <div className="p-3.5 sm:p-5 rounded-2xl bg-[#FAF7F2] border border-[#E8DCCF] mb-3 sm:mb-4">
+                    <div className="flex items-center justify-between gap-2 sm:gap-4">
+                      {/* Team A (Home / Left) */}
+                      <div className="flex-1 text-center min-w-0 space-y-1">
                         <SmartAvatar
                           src={featuredMatch.teamA?.logoUrl}
                           alt={featuredMatch.teamA?.name}
                           fallbackText={featuredMatch.teamA?.shortName || "A"}
-                          size="lg"
+                          size="md"
                           shape="rounded"
-                          className="mx-auto shadow-xs"
+                          className="mx-auto shadow-2xs w-10 h-10 sm:w-14 sm:h-14"
                         />
-                        <p className="font-extrabold text-[#2C221E] text-base">{featuredMatch.teamA?.name}</p>
+                        <p className="font-extrabold text-[#2C221E] text-xs sm:text-base truncate max-w-[100px] sm:max-w-[160px] mx-auto">{featuredMatch.teamA?.name}</p>
                         {featuredMatch.teamA?.batch && (
-                          <BatchChip
-                            name={featuredMatch.teamA.batch.name}
-                            session={featuredMatch.teamA.batch.session}
-                            size="xs"
-                            variant="inline"
-                            className="text-[10px]"
-                          />
+                          <div className="hidden sm:block">
+                            <BatchChip
+                              name={featuredMatch.teamA.batch.name}
+                              session={featuredMatch.teamA.batch.session}
+                              size="xs"
+                              variant="inline"
+                              className="text-[10px]"
+                            />
+                          </div>
                         )}
                       </div>
 
-                      {/* Score */}
-                      <div className="px-6 py-3 rounded-2xl bg-white border-2 border-[#9E2A2B]/30 shadow-xs text-center min-w-[120px]">
-                        <span className="text-3xl sm:text-4xl font-black text-[#9E2A2B] tracking-widest font-mono">
+                      {/* Score (Center) */}
+                      <div className="px-3 sm:px-6 py-2 sm:py-3 rounded-2xl bg-white border-2 border-[#9E2A2B]/30 shadow-xs text-center shrink-0 min-w-[85px] sm:min-w-[130px]">
+                        <span className="text-2xl sm:text-4xl font-black text-[#9E2A2B] tracking-tight font-mono">
                           {featuredMatch.footballDetail?.teamAScore ?? 0} - {featuredMatch.footballDetail?.teamBScore ?? 0}
                         </span>
                         {isLive && (
-                          <p className="text-[10px] font-bold text-[#842021] uppercase tracking-wider mt-1">
+                          <p className="text-[9px] sm:text-[10px] font-bold text-[#842021] uppercase tracking-wider mt-0.5">
                             {featuredMatch.status === "HALFTIME"
                               ? "HALFTIME"
                               : `${Math.floor((featuredMatch.footballDetail?.clockSeconds || 0) / 60)}' · ${
@@ -409,31 +391,33 @@ export const LiveMatchCards: React.FC<LiveMatchCardsProps> = ({ activeSport }) =
                           </p>
                         )}
                         {!isLive && featuredMatch.status === "COMPLETED" && (
-                          <p className="text-[10px] font-bold text-[#7C6E63] uppercase tracking-wider mt-1">
+                          <p className="text-[9px] sm:text-[10px] font-bold text-[#7C6E63] uppercase tracking-wider mt-0.5">
                             FULL TIME
                           </p>
                         )}
                       </div>
 
-                      {/* Team B */}
-                      <div className="flex-1 text-center space-y-1.5">
+                      {/* Team B (Away / Right) */}
+                      <div className="flex-1 text-center min-w-0 space-y-1">
                         <SmartAvatar
                           src={featuredMatch.teamB?.logoUrl}
                           alt={featuredMatch.teamB?.name}
                           fallbackText={featuredMatch.teamB?.shortName || "B"}
-                          size="lg"
+                          size="md"
                           shape="rounded"
-                          className="mx-auto shadow-xs"
+                          className="mx-auto shadow-2xs w-10 h-10 sm:w-14 sm:h-14"
                         />
-                        <p className="font-extrabold text-[#2C221E] text-base">{featuredMatch.teamB?.name}</p>
+                        <p className="font-extrabold text-[#2C221E] text-xs sm:text-base truncate max-w-[100px] sm:max-w-[160px] mx-auto">{featuredMatch.teamB?.name}</p>
                         {featuredMatch.teamB?.batch && (
-                          <BatchChip
-                            name={featuredMatch.teamB.batch.name}
-                            session={featuredMatch.teamB.batch.session}
-                            size="xs"
-                            variant="inline"
-                            className="text-[10px]"
-                          />
+                          <div className="hidden sm:block">
+                            <BatchChip
+                              name={featuredMatch.teamB.batch.name}
+                              session={featuredMatch.teamB.batch.session}
+                              size="xs"
+                              variant="inline"
+                              className="text-[10px]"
+                            />
+                          </div>
                         )}
                       </div>
                     </div>
@@ -441,16 +425,17 @@ export const LiveMatchCards: React.FC<LiveMatchCardsProps> = ({ activeSport }) =
 
                   {/* Football Events Timeline */}
                   {featuredMatch.footballEvents && featuredMatch.footballEvents.length > 0 && (
-                    <div className="space-y-2 mt-4">
-                      <p className="text-xs font-bold text-[#7C6E63] uppercase tracking-wider">Match Events</p>
-                      <div className="flex flex-wrap gap-2 text-xs">
+                    <div className="space-y-1.5 my-3">
+                      <p className="text-[11px] font-bold text-[#7C6E63] uppercase tracking-wider">Latest Events</p>
+                      <div className="flex flex-wrap gap-1.5 text-xs">
                         {featuredMatch.footballEvents.slice(-4).map((ev: any, idx: number) => (
                           <span
                             key={idx}
-                            className="px-2.5 py-1 bg-white rounded-lg border border-[#E5DACB] text-[#2C221E] font-medium flex items-center gap-1"
+                            className="px-2 py-0.5 bg-white rounded-lg border border-[#E5DACB] text-[#2C221E] font-medium flex items-center gap-1 text-[11px]"
                           >
-                            {ev.eventType.includes("GOAL") ? "⚽" : ev.eventType.includes("YELLOW") ? "🟨" : "🟥"}{" "}
-                            {ev.minute}' {ev.eventType.replace(/_/g, " ")}: <strong>{ev.primaryPlayer?.name}</strong>
+                            <span>{ev.eventType.includes("GOAL") ? "⚽" : ev.eventType.includes("YELLOW") ? "🟨" : "🟥"}</span>
+                            <span className="font-mono text-[#9E2A2B] font-bold">{ev.minute}'</span>
+                            <strong className="truncate max-w-[90px]">{ev.primaryPlayer?.name}</strong>
                           </span>
                         ))}
                       </div>
@@ -458,7 +443,7 @@ export const LiveMatchCards: React.FC<LiveMatchCardsProps> = ({ activeSport }) =
                   )}
 
                   {featuredMatch.resultSummary && (
-                    <div className="py-2.5 px-4 my-3 rounded-xl bg-[#FAF0E6] border border-[#E8D6C3] text-xs sm:text-sm font-extrabold text-[#842021]">
+                    <div className="py-2 px-3.5 my-2.5 rounded-xl bg-[#FAF0E6] border border-[#E8D6C3] text-xs sm:text-sm font-extrabold text-[#842021]">
                       🏆 {featuredMatch.resultSummary}
                     </div>
                   )}
@@ -467,16 +452,16 @@ export const LiveMatchCards: React.FC<LiveMatchCardsProps> = ({ activeSport }) =
             </div>
 
             {/* Bottom Match Actions */}
-            <div className="pt-4 mt-4 border-t border-[#EFE8DC] flex items-center justify-between">
-              <div className="flex items-center gap-1.5 text-xs text-[#7C6E63]">
-                <MapPin className="w-3.5 h-3.5 text-[#9E2A2B]" />
-                <span>{featuredMatch.venue || "CU Main Ground"}</span>
+            <div className="pt-3 sm:pt-4 mt-3 sm:mt-4 border-t border-[#EFE8DC] flex items-center justify-between gap-2 flex-wrap">
+              <div className="flex items-center gap-1.5 text-xs text-[#7C6E63] truncate">
+                <MapPin className="w-3.5 h-3.5 text-[#9E2A2B] shrink-0" />
+                <span className="truncate">{featuredMatch.venue || "CU Main Ground"}</span>
               </div>
               <Link
                 to={`/matches/${featuredMatch.id}`}
-                className="inline-flex items-center gap-1.5 text-xs font-black text-[#9E2A2B] hover:text-[#842021] bg-[#FBEFE9] px-3.5 py-1.5 rounded-xl border border-[#9E2A2B]/20 transition-all hover:scale-105"
+                className="inline-flex items-center gap-1.5 text-xs font-black text-[#9E2A2B] hover:text-[#842021] bg-[#FBEFE9] px-3 py-1.5 rounded-xl border border-[#9E2A2B]/20 transition-all hover:scale-105 shrink-0"
               >
-                <span>{isLive ? "Enter Live Match Center" : "View Full Match Center"}</span>
+                <span>{isLive ? "Live Match Center" : "Match Details"}</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </Link>
             </div>
