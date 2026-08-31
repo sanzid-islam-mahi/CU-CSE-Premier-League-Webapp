@@ -89,16 +89,16 @@ export const Navbar: React.FC<NavbarProps> = ({ activeSport, onSelectSport }) =>
           <div className="flex items-center justify-between h-18">
             
             {/* Department Brand & Logo */}
-            <Link to="/" className="flex items-center gap-3.5">
-              <div className="w-11 h-11 rounded-xl brick-gradient flex items-center justify-center text-white shadow-md shadow-[#9E2A2B]/25 border border-[#842021]">
-                <Trophy className="w-6 h-6" />
+            <Link to="/" className="flex items-center gap-2 sm:gap-3.5 shrink-0">
+              <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl brick-gradient flex items-center justify-center text-white shadow-md shadow-[#9E2A2B]/25 border border-[#842021]">
+                <Trophy className="w-5 h-5 sm:w-6 sm:h-6" />
               </div>
               <div>
-                <div className="flex items-center gap-2">
-                  <span className="font-extrabold text-xl tracking-tight text-[#2C221E] font-heading">
+                <div className="flex items-center gap-1.5 sm:gap-2">
+                  <span className="font-extrabold text-lg sm:text-xl tracking-tight text-[#2C221E] font-heading">
                     CSE<span className="text-[#9E2A2B]">PL</span>
                   </span>
-                  <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-[#9E2A2B]/10 text-[#9E2A2B] border border-[#9E2A2B]/20">
+                  <span className="hidden xs:inline-block text-[9px] sm:text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-[#9E2A2B]/10 text-[#9E2A2B] border border-[#9E2A2B]/20">
                     CU CSE
                   </span>
                 </div>
@@ -109,30 +109,30 @@ export const Navbar: React.FC<NavbarProps> = ({ activeSport, onSelectSport }) =>
             </Link>
 
             {/* Sport Switcher Toggle */}
-            <div className="flex items-center bg-[#EDE4D6] p-1 rounded-full border border-[#DFD2BF] shadow-inner">
+            <div className="flex items-center bg-[#EDE4D6] p-0.5 sm:p-1 rounded-full border border-[#DFD2BF] shadow-inner shrink-0">
               <button
                 type="button"
                 onClick={() => onSelectSport("cricket")}
-                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold transition-all ${
+                className={`flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-full text-xs font-bold transition-all ${
                   activeSport === "cricket"
                     ? "bg-[#9E2A2B] text-white shadow-sm shadow-[#9E2A2B]/30"
                     : "text-[#6A5D52] hover:text-[#2C221E]"
                 }`}
               >
                 <span>🏏</span>
-                <span className="hidden md:inline">Cricket</span>
+                <span className="hidden sm:inline">Cricket</span>
               </button>
               <button
                 type="button"
                 onClick={() => onSelectSport("football")}
-                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold transition-all ${
+                className={`flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-full text-xs font-bold transition-all ${
                   activeSport === "football"
                     ? "bg-[#9E2A2B] text-white shadow-sm shadow-[#9E2A2B]/30"
                     : "text-[#6A5D52] hover:text-[#2C221E]"
                 }`}
               >
                 <span>⚽</span>
-                <span className="hidden md:inline">Football</span>
+                <span className="hidden sm:inline">Football</span>
               </button>
             </div>
 
@@ -152,12 +152,12 @@ export const Navbar: React.FC<NavbarProps> = ({ activeSport, onSelectSport }) =>
             </nav>
 
             {/* User Area (Signed in vs Guest) */}
-            <div className="flex items-center gap-2.5">
+            <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
               {currentUser ? (
                 <div className="relative">
                   <button
                     onClick={() => setUserDropdownOpen(!userDropdownOpen)}
-                    className="flex items-center gap-2.5 bg-white border border-[#D8C7B3] hover:border-[#9E2A2B] px-3 py-1.5 rounded-2xl shadow-xs transition-all"
+                    className="flex items-center gap-2 bg-white border border-[#D8C7B3] hover:border-[#9E2A2B] px-2 sm:px-3 py-1.5 rounded-2xl shadow-xs transition-all"
                   >
                     <div className="w-7 h-7 rounded-xl brick-gradient text-white flex items-center justify-center font-bold text-xs">
                       {currentUser.name?.charAt(0) || "U"}
@@ -221,10 +221,10 @@ export const Navbar: React.FC<NavbarProps> = ({ activeSport, onSelectSport }) =>
                   variant="outline"
                   size="sm"
                   onClick={() => setShowLoginModal(true)}
-                  className="border-[#D8C7B3] text-[#6B1C1D] bg-white/80 hover:bg-[#FBEFE9] hover:text-[#9E2A2B] hover:border-[#9E2A2B] font-semibold text-xs h-9 px-3.5 rounded-xl shadow-xs"
+                  className="border-[#D8C7B3] text-[#6B1C1D] bg-white/90 hover:bg-[#FBEFE9] hover:text-[#9E2A2B] hover:border-[#9E2A2B] font-bold text-xs h-8 sm:h-9 px-2.5 sm:px-3.5 rounded-xl shadow-xs"
                 >
-                  <UserIcon className="w-3.5 h-3.5 mr-1.5 text-[#9E2A2B]" />
-                  <span>Player Sign In</span>
+                  <UserIcon className="w-3.5 h-3.5 mr-1 text-[#9E2A2B]" />
+                  <span>Sign In</span>
                 </Button>
               )}
 
@@ -232,8 +232,9 @@ export const Navbar: React.FC<NavbarProps> = ({ activeSport, onSelectSport }) =>
               <button
                 type="button"
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="lg:hidden p-2 rounded-lg text-[#6A5D52] hover:bg-[#EFE8DC]"
-                aria-label="Toggle menu"
+                className="lg:hidden p-1.5 sm:p-2 rounded-xl text-[#2C221E] bg-[#EDE4D6]/80 hover:bg-[#E2D5C3] border border-[#DFD2BF] transition-colors flex items-center justify-center"
+                aria-label="Toggle navigation drawer"
+                title="Menu"
               >
                 {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
               </button>
@@ -244,14 +245,14 @@ export const Navbar: React.FC<NavbarProps> = ({ activeSport, onSelectSport }) =>
 
         {/* Mobile Navigation Drawer */}
         {mobileMenuOpen && (
-          <div className="lg:hidden border-t border-[#E8DCCF] bg-[#FAF7F2] px-4 pt-3 pb-5 space-y-2">
-            <div className="grid grid-cols-2 gap-2 pb-2">
+          <div className="lg:hidden border-t border-[#E8DCCF] bg-[#FAF7F2] px-4 pt-3 pb-5 space-y-3 shadow-lg animate-in slide-in-from-top-2 duration-200">
+            <div className="grid grid-cols-2 gap-2">
               {navItems.map((item) => (
                 <Link
                   key={item.label}
                   to={item.href}
                   onClick={(e) => handleNavClick(e, item.href)}
-                  className="flex items-center gap-2 p-2.5 rounded-lg bg-[#F3ECE2] hover:bg-[#EFE5D7] text-[#2C221E] font-medium text-xs transition-colors"
+                  className="flex items-center gap-2 p-3 rounded-xl bg-white border border-[#E5DACB] hover:border-[#9E2A2B] hover:text-[#9E2A2B] text-[#2C221E] font-bold text-xs shadow-2xs transition-all"
                 >
                   <item.icon className="w-4 h-4 text-[#9E2A2B]" />
                   <span>{item.label}</span>
@@ -261,18 +262,42 @@ export const Navbar: React.FC<NavbarProps> = ({ activeSport, onSelectSport }) =>
 
             {currentUser ? (
               <div className="pt-2 border-t border-[#E8DCCF] space-y-2">
+                <div className="flex items-center gap-3 p-3 bg-white border border-[#E5DACB] rounded-2xl">
+                  <div className="w-9 h-9 rounded-xl brick-gradient text-white flex items-center justify-center font-black text-sm">
+                    {currentUser.name?.charAt(0) || "U"}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-black text-[#2C221E] truncate">{currentUser.name}</p>
+                    <p className="text-[10px] text-[#7C6E63] font-mono">Roll: {currentUser.studentId}</p>
+                  </div>
+                </div>
+
                 <Link
                   to="/profile"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="block w-full text-center py-2.5 bg-[#9E2A2B] text-white text-xs font-bold rounded-xl"
+                  className="flex items-center justify-center gap-2 w-full py-2.5 bg-white border border-[#D8C7B3] hover:border-[#9E2A2B] text-[#2C221E] text-xs font-bold rounded-xl shadow-2xs transition-colors"
                 >
-                  Go to My Profile ({currentUser.name})
+                  <UserIcon className="w-4 h-4 text-[#9E2A2B]" />
+                  <span>My Profile & Sports Roles</span>
                 </Link>
+
+                {currentUser.role === "ADMIN" && (
+                  <Link
+                    to="/admin/dashboard"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="flex items-center justify-center gap-2 w-full py-2.5 bg-[#FAF0E6] border border-[#E8D6C3] text-[#842021] text-xs font-bold rounded-xl transition-colors"
+                  >
+                    <Shield className="w-4 h-4 text-[#9E2A2B]" />
+                    <span>Admin Dashboard</span>
+                  </Link>
+                )}
+
                 <button
                   onClick={handleLogout}
-                  className="block w-full text-center py-2 text-xs font-bold text-[#C92A2A] bg-[#FFF5F5] rounded-xl border border-[#FF8787]"
+                  className="flex items-center justify-center gap-2 w-full py-2.5 text-xs font-bold text-[#C92A2A] bg-[#FFF5F5] hover:bg-[#FFE3E3] rounded-xl border border-[#FF8787] transition-colors"
                 >
-                  Sign Out
+                  <LogOut className="w-4 h-4" />
+                  <span>Sign Out</span>
                 </button>
               </div>
             ) : (
@@ -282,9 +307,10 @@ export const Navbar: React.FC<NavbarProps> = ({ activeSport, onSelectSport }) =>
                     setMobileMenuOpen(false);
                     setShowLoginModal(true);
                   }}
-                  className="w-full bg-[#9E2A2B] hover:bg-[#842021] text-white text-xs font-semibold h-10 rounded-xl"
+                  className="w-full bg-[#9E2A2B] hover:bg-[#842021] text-white text-xs font-bold h-10 rounded-xl shadow-sm flex items-center justify-center gap-2"
                 >
-                  Player Sign In (Roll & Temp Pass)
+                  <UserIcon className="w-4 h-4" />
+                  <span>Sign In with Roll & Temp Pass</span>
                 </Button>
               </div>
             )}
