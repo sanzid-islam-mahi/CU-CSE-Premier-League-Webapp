@@ -8,14 +8,19 @@ export const scoringRouter = Router();
 
 // Helper to verify scorer, organizer, or admin permission
 export async function canScoreMatch(userId: number, role: string, matchId: number): Promise<boolean> {
-  if (role === "ADMIN") return true;
-
   const match = await prisma.match.findUnique({
     where: { id: matchId },
-    select: { tournamentId: true }
+    select: { tournamentId: true, status: true }
   });
 
   if (!match) return false;
+
+  // Strict Lifecycle Security: Once a match is COMPLETED, ONLY Super Admin can edit/score it
+  if (match.status === "COMPLETED") {
+    return role === "ADMIN";
+  }
+
+  if (role === "ADMIN") return true;
 
   // Check if assigned scorer
   const isAssignedScorer = await prisma.matchScorer.findUnique({

@@ -513,6 +513,12 @@ matchesRouter.put("/:id", requireAuth, async (req: AuthenticatedRequest, res) =>
       return;
     }
 
+    // Strict Security Guard: Completed matches can only be altered by Super Admin
+    if (match.status === "COMPLETED" && req.user!.role !== "ADMIN") {
+      res.status(403).json({ error: "Access denied. Completed matches are finalized and can only be modified by the Super Admin." });
+      return;
+    }
+
     const parsed = updateMatchSchema.safeParse(req.body);
     if (!parsed.success) {
       res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalid input" });

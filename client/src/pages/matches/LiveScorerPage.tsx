@@ -153,6 +153,14 @@ export const LiveScorerPage: React.FC = () => {
     try {
       if (isInitial) setLoading(true);
       const res = await api.scoring.getLive(matchId);
+      if (!res.isScorer) {
+        setError(res.match?.status === "COMPLETED"
+          ? "This match has completed and is locked. Only the Super Admin can edit or modify finished match scores."
+          : "Access denied. You are not authorized to score this match."
+        );
+        setMatchData(res.match);
+        return;
+      }
       const m = res.match;
       setMatchData(m);
 
