@@ -351,33 +351,29 @@ export const LiveMatchCards: React.FC<LiveMatchCardsProps> = ({ activeSport }) =
               {activeSport === "football" && (
                 <div>
                   <div className="p-3.5 sm:p-5 rounded-2xl bg-[#FAF7F2] border border-[#E8DCCF] mb-3 sm:mb-4">
-                    <div className="flex items-center justify-between gap-2 sm:gap-4">
+                    <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 sm:gap-4">
                       {/* Team A (Home / Left) */}
-                      <div className="flex-1 text-center min-w-0 space-y-1">
+                      <div className="flex flex-col items-center text-center space-y-1 min-w-0">
                         <SmartAvatar
                           src={featuredMatch.teamA?.logoUrl}
                           alt={featuredMatch.teamA?.name}
                           fallbackText={featuredMatch.teamA?.shortName || "A"}
                           size="md"
                           shape="rounded"
-                          className="mx-auto shadow-2xs w-10 h-10 sm:w-14 sm:h-14"
+                          className="shadow-2xs w-11 h-11 sm:w-14 sm:h-14 shrink-0"
                         />
-                        <p className="font-extrabold text-[#2C221E] text-xs sm:text-base truncate max-w-[100px] sm:max-w-[160px] mx-auto">{featuredMatch.teamA?.name}</p>
+                        <p className="font-extrabold text-[#2C221E] text-xs sm:text-base leading-tight line-clamp-2 w-full">
+                          {featuredMatch.teamA?.name}
+                        </p>
                         {featuredMatch.teamA?.batch && (
-                          <div className="hidden sm:block">
-                            <BatchChip
-                              name={featuredMatch.teamA.batch.name}
-                              session={featuredMatch.teamA.batch.session}
-                              size="xs"
-                              variant="inline"
-                              className="text-[10px]"
-                            />
-                          </div>
+                          <span className="inline-block text-[9px] sm:text-[10px] font-bold text-[#842021] bg-[#FAF0E6] px-1.5 py-0.5 rounded border border-[#E8D6C3] truncate max-w-full">
+                            {featuredMatch.teamA.batch.name}
+                          </span>
                         )}
                       </div>
 
                       {/* Score (Center) */}
-                      <div className="px-3 sm:px-6 py-2 sm:py-3 rounded-2xl bg-white border-2 border-[#9E2A2B]/30 shadow-xs text-center shrink-0 min-w-[85px] sm:min-w-[130px]">
+                      <div className="px-3 sm:px-6 py-2 sm:py-3 rounded-2xl bg-white border-2 border-[#9E2A2B]/30 shadow-xs text-center shrink-0 min-w-[80px] sm:min-w-[130px]">
                         <span className="text-2xl sm:text-4xl font-black text-[#9E2A2B] tracking-tight font-mono">
                           {featuredMatch.footballDetail?.teamAScore ?? 0} - {featuredMatch.footballDetail?.teamBScore ?? 0}
                         </span>
@@ -398,26 +394,22 @@ export const LiveMatchCards: React.FC<LiveMatchCardsProps> = ({ activeSport }) =
                       </div>
 
                       {/* Team B (Away / Right) */}
-                      <div className="flex-1 text-center min-w-0 space-y-1">
+                      <div className="flex flex-col items-center text-center space-y-1 min-w-0">
                         <SmartAvatar
                           src={featuredMatch.teamB?.logoUrl}
                           alt={featuredMatch.teamB?.name}
                           fallbackText={featuredMatch.teamB?.shortName || "B"}
                           size="md"
                           shape="rounded"
-                          className="mx-auto shadow-2xs w-10 h-10 sm:w-14 sm:h-14"
+                          className="shadow-2xs w-11 h-11 sm:w-14 sm:h-14 shrink-0"
                         />
-                        <p className="font-extrabold text-[#2C221E] text-xs sm:text-base truncate max-w-[100px] sm:max-w-[160px] mx-auto">{featuredMatch.teamB?.name}</p>
+                        <p className="font-extrabold text-[#2C221E] text-xs sm:text-base leading-tight line-clamp-2 w-full">
+                          {featuredMatch.teamB?.name}
+                        </p>
                         {featuredMatch.teamB?.batch && (
-                          <div className="hidden sm:block">
-                            <BatchChip
-                              name={featuredMatch.teamB.batch.name}
-                              session={featuredMatch.teamB.batch.session}
-                              size="xs"
-                              variant="inline"
-                              className="text-[10px]"
-                            />
-                          </div>
+                          <span className="inline-block text-[9px] sm:text-[10px] font-bold text-[#842021] bg-[#FAF0E6] px-1.5 py-0.5 rounded border border-[#E8D6C3] truncate max-w-full">
+                            {featuredMatch.teamB.batch.name}
+                          </span>
                         )}
                       </div>
                     </div>
@@ -468,7 +460,7 @@ export const LiveMatchCards: React.FC<LiveMatchCardsProps> = ({ activeSport }) =
           </div>
 
           {/* 2. Side Match Box (Next Fixture or Recent Result) */}
-          <div className="bg-white rounded-3xl border border-[#E5DACB] p-6 shadow-xs flex flex-col justify-between">
+          <div className="bg-white rounded-3xl border border-[#E5DACB] p-4 sm:p-6 shadow-xs flex flex-col justify-between">
             {sideMatch ? (
               <>
                 <div>
@@ -489,11 +481,11 @@ export const LiveMatchCards: React.FC<LiveMatchCardsProps> = ({ activeSport }) =
                     </span>
                   </div>
 
-                  <p className="text-xs font-bold text-[#7C6E63] uppercase tracking-wider mb-4">
+                  <p className="text-xs font-bold text-[#7C6E63] uppercase tracking-wider mb-4 truncate">
                     {sideMatch.tournament?.name} · Match #{sideMatch.matchNumber}
                   </p>
 
-                  <div className="space-y-4 my-6">
+                  <div className="space-y-3 my-4">
                     {/* Team A */}
                     <div className="flex items-center justify-between p-3 rounded-xl bg-[#FAF7F2] border border-[#E8DCCF]">
                       <div className="flex items-center gap-2.5 min-w-0">
@@ -503,17 +495,14 @@ export const LiveMatchCards: React.FC<LiveMatchCardsProps> = ({ activeSport }) =
                           fallbackText={sideMatch.teamA?.shortName || "A"}
                           size="sm"
                           shape="rounded"
+                          className="shrink-0"
                         />
                         <div className="min-w-0">
                           <span className="font-bold text-[#2C221E] text-sm truncate block">{sideMatch.teamA?.name}</span>
                           {sideMatch.teamA?.batch && (
-                            <BatchChip
-                              name={sideMatch.teamA.batch.name}
-                              session={sideMatch.teamA.batch.session}
-                              size="xs"
-                              variant="inline"
-                              className="text-[10px]"
-                            />
+                            <span className="inline-block text-[10px] font-bold text-[#842021] bg-[#FAF0E6] px-1.5 py-0.2 rounded border border-[#E8D6C3]">
+                              {sideMatch.teamA.batch.name}
+                            </span>
                           )}
                         </div>
                       </div>
@@ -530,17 +519,14 @@ export const LiveMatchCards: React.FC<LiveMatchCardsProps> = ({ activeSport }) =
                           fallbackText={sideMatch.teamB?.shortName || "B"}
                           size="sm"
                           shape="rounded"
+                          className="shrink-0"
                         />
                         <div className="min-w-0">
                           <span className="font-bold text-[#2C221E] text-sm truncate block">{sideMatch.teamB?.name}</span>
                           {sideMatch.teamB?.batch && (
-                            <BatchChip
-                              name={sideMatch.teamB.batch.name}
-                              session={sideMatch.teamB.batch.session}
-                              size="xs"
-                              variant="inline"
-                              className="text-[10px]"
-                            />
+                            <span className="inline-block text-[10px] font-bold text-[#842021] bg-[#FAF0E6] px-1.5 py-0.2 rounded border border-[#E8D6C3]">
+                              {sideMatch.teamB.batch.name}
+                            </span>
                           )}
                         </div>
                       </div>

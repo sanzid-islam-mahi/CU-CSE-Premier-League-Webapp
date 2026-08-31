@@ -449,46 +449,41 @@ export const MatchDetailPage: React.FC = () => {
           {!isCricket ? (
             /* FOOTBALL UNIFIED BROADCAST SCOREBOARD */
             <div className="bg-[#FAF7F2] rounded-3xl border-2 border-[#E8DCCF] p-4 sm:p-7 shadow-xs space-y-4">
-              <div className="flex items-center justify-between gap-2 sm:gap-6">
-                {/* Team A (Left / Home) */}
-                <div className="flex-1 flex items-center justify-end gap-2.5 sm:gap-4 text-right min-w-0">
-                  <div className="min-w-0">
-                    <h2 className="font-black text-sm sm:text-xl lg:text-2xl text-[#2C221E] truncate flex items-center justify-end gap-1.5">
-                      {matchData.winnerTeamId === matchData.teamAId && <span className="text-base sm:text-lg">👑</span>}
-                      <span className="truncate">{matchData.teamA.name}</span>
-                    </h2>
-                    {matchData.teamA.batch ? (
-                      <div className="flex justify-end mt-0.5">
-                        <BatchChip
-                          name={matchData.teamA.batch.name}
-                          session={matchData.teamA.batch.session}
-                          slug={matchData.teamA.batch.slug}
-                          avatarUrl={matchData.teamA.batch.avatarUrl}
-                          batchNumber={matchData.teamA.batch.batchNumber}
-                          size="xs"
-                          variant="inline"
-                          className="text-[10px] sm:text-xs text-[#7C6E63]"
-                        />
-                      </div>
-                    ) : (
-                      <span className="text-[11px] sm:text-xs text-[#7C6E63]">CU CSE Squad</span>
-                    )}
-                  </div>
-                  <div className="w-11 h-11 sm:w-16 sm:h-16 rounded-2xl brick-gradient text-white flex items-center justify-center font-black text-sm sm:text-xl shadow-xs ring-2 ring-white shrink-0">
+              {/* Top Phase & Timer Strip */}
+              {footballPhase && (
+                <div className="flex items-center justify-center">
+                  <span className={`inline-flex items-center gap-1.5 text-xs sm:text-sm font-black px-3 sm:px-4 py-1 rounded-full border shadow-2xs ${footballPhase.color}`}>
+                    {footballPhase.text}
+                  </span>
+                </div>
+              )}
+
+              {/* 3-Column Team A | Score | Team B Layout */}
+              <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 sm:gap-6">
+                {/* Team A (Home) */}
+                <div className="flex flex-col items-center text-center space-y-1.5 sm:space-y-2 min-w-0">
+                  <div className="w-13 h-13 sm:w-20 sm:h-20 rounded-2xl sm:rounded-3xl brick-gradient text-white flex items-center justify-center font-black text-base sm:text-2xl shadow-xs ring-2 ring-white shrink-0">
                     {matchData.teamA.shortName || matchData.teamA.name.slice(0, 2)}
+                  </div>
+                  <div className="w-full">
+                    <h2 className="font-black text-xs sm:text-lg lg:text-xl text-[#2C221E] leading-tight line-clamp-2">
+                      {matchData.winnerTeamId === matchData.teamAId && <span className="inline-block mr-1">👑</span>}
+                      {matchData.teamA.name}
+                    </h2>
+                    {matchData.teamA.batch && (
+                      <span className="inline-block text-[10px] sm:text-xs font-bold text-[#842021] bg-[#FAF0E6] px-2 py-0.5 rounded-md border border-[#E8D6C3] mt-1">
+                        {matchData.teamA.batch.name}
+                      </span>
+                    )}
                   </div>
                 </div>
 
-                {/* Score & Match Status (Center) */}
-                <div className="shrink-0 px-3 sm:px-8 py-2 sm:py-3.5 bg-white rounded-2xl sm:rounded-3xl border-2 border-[#9E2A2B]/25 shadow-sm text-center min-w-[95px] sm:min-w-[170px]">
-                  <div className="flex items-center justify-center gap-1.5 sm:gap-3">
-                    <span className="font-mono text-2xl sm:text-4xl lg:text-5xl font-black text-[#9E2A2B] tracking-tight">
-                      {matchData.footballDetail?.teamAScore ?? 0}
-                    </span>
-                    <span className="text-base sm:text-2xl font-black text-[#D8C7B3]">-</span>
-                    <span className="font-mono text-2xl sm:text-4xl lg:text-5xl font-black text-[#9E2A2B] tracking-tight">
-                      {matchData.footballDetail?.teamBScore ?? 0}
-                    </span>
+                {/* Score (Center) */}
+                <div className="flex flex-col items-center justify-center px-3 sm:px-8 py-2.5 sm:py-4 bg-white rounded-2xl sm:rounded-3xl border-2 border-[#9E2A2B]/25 shadow-sm min-w-[88px] sm:min-w-[150px]">
+                  <div className="flex items-center justify-center gap-1.5 sm:gap-3 font-mono font-black text-2xl sm:text-5xl lg:text-6xl text-[#9E2A2B] tracking-tight">
+                    <span>{matchData.footballDetail?.teamAScore ?? 0}</span>
+                    <span className="text-lg sm:text-3xl text-[#D8C7B3] font-sans font-bold">-</span>
+                    <span>{matchData.footballDetail?.teamBScore ?? 0}</span>
                   </div>
 
                   {/* Penalty score indicator */}
@@ -498,41 +493,27 @@ export const MatchDetailPage: React.FC = () => {
                     </p>
                   )}
 
-                  {/* Phase / Clock badge */}
-                  <div className="mt-1">
-                    {footballPhase && (
-                      <span className={`inline-block text-[10px] sm:text-xs font-black px-2 sm:px-2.5 py-0.5 rounded-full border ${footballPhase.color}`}>
-                        {footballPhase.text}
-                      </span>
-                    )}
-                  </div>
+                  {matchData.venue && (
+                    <p className="text-[9px] sm:text-[11px] font-semibold text-[#7C6E63] mt-1 truncate max-w-[100px] sm:max-w-[180px]">
+                      {matchData.venue}
+                    </p>
+                  )}
                 </div>
 
-                {/* Team B (Right / Away) */}
-                <div className="flex-1 flex items-center justify-start gap-2.5 sm:gap-4 text-left min-w-0">
-                  <div className="w-11 h-11 sm:w-16 sm:h-16 rounded-2xl brick-gradient text-white flex items-center justify-center font-black text-sm sm:text-xl shadow-xs ring-2 ring-white shrink-0">
+                {/* Team B (Away) */}
+                <div className="flex flex-col items-center text-center space-y-1.5 sm:space-y-2 min-w-0">
+                  <div className="w-13 h-13 sm:w-20 sm:h-20 rounded-2xl sm:rounded-3xl brick-gradient text-white flex items-center justify-center font-black text-base sm:text-2xl shadow-xs ring-2 ring-white shrink-0">
                     {matchData.teamB.shortName || matchData.teamB.name.slice(0, 2)}
                   </div>
-                  <div className="min-w-0">
-                    <h2 className="font-black text-sm sm:text-xl lg:text-2xl text-[#2C221E] truncate flex items-center justify-start gap-1.5">
-                      <span className="truncate">{matchData.teamB.name}</span>
-                      {matchData.winnerTeamId === matchData.teamBId && <span className="text-base sm:text-lg">👑</span>}
+                  <div className="w-full">
+                    <h2 className="font-black text-xs sm:text-lg lg:text-xl text-[#2C221E] leading-tight line-clamp-2">
+                      {matchData.teamB.name}
+                      {matchData.winnerTeamId === matchData.teamBId && <span className="inline-block ml-1">👑</span>}
                     </h2>
-                    {matchData.teamB.batch ? (
-                      <div className="flex justify-start mt-0.5">
-                        <BatchChip
-                          name={matchData.teamB.batch.name}
-                          session={matchData.teamB.batch.session}
-                          slug={matchData.teamB.batch.slug}
-                          avatarUrl={matchData.teamB.batch.avatarUrl}
-                          batchNumber={matchData.teamB.batch.batchNumber}
-                          size="xs"
-                          variant="inline"
-                          className="text-[10px] sm:text-xs text-[#7C6E63]"
-                        />
-                      </div>
-                    ) : (
-                      <span className="text-[11px] sm:text-xs text-[#7C6E63]">CU CSE Squad</span>
+                    {matchData.teamB.batch && (
+                      <span className="inline-block text-[10px] sm:text-xs font-bold text-[#842021] bg-[#FAF0E6] px-2 py-0.5 rounded-md border border-[#E8D6C3] mt-1">
+                        {matchData.teamB.batch.name}
+                      </span>
                     )}
                   </div>
                 </div>
@@ -540,28 +521,28 @@ export const MatchDetailPage: React.FC = () => {
 
               {/* Goalscorers Timeline Underneath */}
               {(teamAGoalscorers.length > 0 || teamBGoalscorers.length > 0) && (
-                <div className="pt-3 border-t border-[#E8DCCF] grid grid-cols-2 gap-3 sm:gap-6 text-xs">
+                <div className="pt-3 border-t border-[#E8DCCF] grid grid-cols-2 gap-2 sm:gap-6 text-[11px] sm:text-xs">
                   {/* Team A Scorers */}
-                  <div className="flex flex-col items-end space-y-1">
+                  <div className="flex flex-col items-start sm:items-end space-y-1">
                     {teamAGoalscorers.map((g: any) => (
-                      <div key={g.id} className="flex items-center gap-1.5 text-right font-medium text-[#2C221E]">
+                      <div key={g.id} className="flex items-center gap-1 font-medium text-[#2C221E]">
+                        <span className="font-bold">{g.playerName}</span>
+                        <span className="font-mono text-[#9E2A2B] font-extrabold">{g.minute}'</span>
+                        <span>⚽</span>
                         {g.assistName && (
                           <span className="text-[10px] text-[#7C6E63] italic hidden sm:inline">(ast: {g.assistName})</span>
                         )}
-                        <span className="font-bold truncate max-w-[110px] sm:max-w-none">{g.playerName}</span>
-                        <span className="font-mono text-[#9E2A2B] font-extrabold">{g.minute}'</span>
-                        <span>⚽</span>
                       </div>
                     ))}
                   </div>
 
                   {/* Team B Scorers */}
-                  <div className="flex flex-col items-start space-y-1">
+                  <div className="flex flex-col items-end sm:items-start space-y-1">
                     {teamBGoalscorers.map((g: any) => (
-                      <div key={g.id} className="flex items-center gap-1.5 text-left font-medium text-[#2C221E]">
+                      <div key={g.id} className="flex items-center gap-1 font-medium text-[#2C221E]">
                         <span>⚽</span>
                         <span className="font-mono text-[#9E2A2B] font-extrabold">{g.minute}'</span>
-                        <span className="font-bold truncate max-w-[110px] sm:max-w-none">{g.playerName}</span>
+                        <span className="font-bold">{g.playerName}</span>
                         {g.assistName && (
                           <span className="text-[10px] text-[#7C6E63] italic hidden sm:inline">(ast: {g.assistName})</span>
                         )}
