@@ -44,6 +44,21 @@ app.use("/api/scoring", scoringRouter);
 app.use("/api/upload", uploadRouter);
 app.use("/api/media", mediaRouter);
 
+// Serve compiled client bundle in production if present
+const clientDistDir = fs.existsSync(path.join(process.cwd(), "client", "dist"))
+  ? path.join(process.cwd(), "client", "dist")
+  : path.join(process.cwd(), "..", "client", "dist");
+
+if (fs.existsSync(clientDistDir)) {
+  app.use(express.static(clientDistDir));
+  app.use((req, res, next) => {
+    if ((req.method === "GET" || req.method === "HEAD") && !req.path.startsWith("/api") && !req.path.startsWith("/uploads")) {
+      return res.sendFile(path.join(clientDistDir, "index.html"));
+    }
+    next();
+  });
+}
+
 app.listen(PORT, () => {
   console.log(`CSEPL Server running on http://localhost:${PORT}`);
 });

@@ -8,7 +8,8 @@
     "db:push": "npm run db:push -w server",
     "db:migrate": "npm run db:migrate -w server",
     "db:seed": "npm run db:seed -w server",
-    "build": "npm run build -w client && npm run build -w server"
+    "build": "npm run build -w client && npm run build -w server",
+    "start": "npm run start -w server"
   },
   "workspaces": [
     "client",
