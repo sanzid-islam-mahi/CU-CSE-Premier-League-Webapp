@@ -74,7 +74,7 @@ export const LiveScorerPage: React.FC = () => {
   // Setup / Toss Modal
   const [showSetupModal, setShowSetupModal] = useState(false);
   const [tossWinnerTeamId, setTossWinnerTeamId] = useState<number | "">("");
-  const [tossDecision, setTossDecision] = useState<"BAT" | "BOWL">("BAT");
+  const [tossDecision, setTossDecision] = useState<string>("BAT");
   const [selectedTeamAPlayers, setSelectedTeamAPlayers] = useState<number[]>([]);
   const [selectedTeamBPlayers, setSelectedTeamBPlayers] = useState<number[]>([]);
 
@@ -159,8 +159,11 @@ export const LiveScorerPage: React.FC = () => {
       // Pre-fill toss & squad states if not set
       if (!m.tossWinnerTeamId && isInitial) {
         setTossWinnerTeamId(m.teamAId);
+        setTossDecision(m.tournament.sport === "FOOTBALL" ? "KICKOFF" : "BAT");
         setSelectedTeamAPlayers(m.teamA.members?.slice(0, 11).map((x: any) => x.userId) || []);
         setSelectedTeamBPlayers(m.teamB.members?.slice(0, 11).map((x: any) => x.userId) || []);
+      } else if (m.tossDecision && isInitial) {
+        setTossDecision(m.tossDecision);
       }
 
       // Initialize Cricket Innings active batters/bowlers
@@ -1847,16 +1850,28 @@ export const LiveScorerPage: React.FC = () => {
                     </select>
                   </div>
 
-                  {isCricket && (
+                  {isCricket ? (
                     <div>
                       <label className="block font-bold text-[#4A3E35] mb-1">Elected Decision</label>
                       <select
                         value={tossDecision}
-                        onChange={(e) => setTossDecision(e.target.value as "BAT" | "BOWL")}
+                        onChange={(e) => setTossDecision(e.target.value)}
                         className="w-full px-3 py-2 rounded-xl border border-[#D8C7B3] bg-[#FAF7F2]"
                       >
                         <option value="BAT">Bat First 🏏</option>
                         <option value="BOWL">Bowl First ⚾</option>
+                      </select>
+                    </div>
+                  ) : (
+                    <div>
+                      <label className="block font-bold text-[#4A3E35] mb-1">Toss Choice</label>
+                      <select
+                        value={tossDecision}
+                        onChange={(e) => setTossDecision(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl border border-[#D8C7B3] bg-[#FAF7F2]"
+                      >
+                        <option value="KICKOFF">Kick Off ⚽</option>
+                        <option value="SIDE">Choose Side / Pitch End 🥅</option>
                       </select>
                     </div>
                   )}

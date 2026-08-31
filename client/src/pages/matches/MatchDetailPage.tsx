@@ -749,7 +749,11 @@ export const MatchDetailPage: React.FC = () => {
               </div>
             ) : matchData.tossWinnerTeamId ? (
               <p className="text-xs font-bold text-[#4A3E35]">
-                🪙 {matchData.tossWinnerTeamId === matchData.teamAId ? matchData.teamA.name : matchData.teamB.name} won the toss and elected to {matchData.tossDecision?.toLowerCase()} first.
+                {isCricket ? (
+                  <>🪙 {matchData.tossWinnerTeamId === matchData.teamAId ? matchData.teamA.name : matchData.teamB.name} won the toss and elected to {matchData.tossDecision === "BOWL" ? "bowl" : "bat"} first.</>
+                ) : (
+                  <>🪙 {matchData.tossWinnerTeamId === matchData.teamAId ? matchData.teamA.name : matchData.teamB.name} won the toss ({matchData.tossDecision === "SIDE" ? "elected choice of ends / side" : "elected to kick off"}).</>
+                )}
               </p>
             ) : (
               <p className="text-xs text-[#7C6E63] italic">Toss not conducted yet.</p>
@@ -1413,7 +1417,11 @@ export const MatchDetailPage: React.FC = () => {
               <div className="p-3 bg-[#FAF7F2] rounded-xl border">
                 <span className="font-bold text-[#7C6E63] block text-[11px]">🪙 Toss Result:</span>
                 <span className="font-extrabold text-[#2C221E]">
-                  {matchData.tossWinnerTeamId ? `${matchData.tossWinnerTeamId === matchData.teamAId ? matchData.teamA.name : matchData.teamB.name} (${matchData.tossDecision})` : "TBD"}
+                  {matchData.tossWinnerTeamId
+                    ? isCricket
+                      ? `${matchData.tossWinnerTeamId === matchData.teamAId ? matchData.teamA.name : matchData.teamB.name} (${matchData.tossDecision === "BOWL" ? "Bowl First" : "Bat First"})`
+                      : `${matchData.tossWinnerTeamId === matchData.teamAId ? matchData.teamA.name : matchData.teamB.name} (${matchData.tossDecision === "SIDE" ? "Choice of Ends" : "Kick Off"})`
+                    : "TBD"}
                 </span>
               </div>
             </div>
