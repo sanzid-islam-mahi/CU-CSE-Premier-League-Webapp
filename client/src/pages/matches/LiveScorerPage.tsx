@@ -252,6 +252,11 @@ export const LiveScorerPage: React.FC = () => {
 
   // 2. Cricket: Start Innings Handler
   const handleStartInnings = async (inningsNum: 1 | 2) => {
+    if (!matchData.tossWinnerTeamId) {
+      toast.warning("Coin toss and playing lineups must be configured before starting the innings.");
+      setShowSetupModal(true);
+      return;
+    }
     if (!strikerId || !nonStrikerId || !currentBowlerId) {
       toast.error("Please select Striker, Non-Striker, and Opening Bowler.");
       return;
@@ -465,6 +470,7 @@ export const LiveScorerPage: React.FC = () => {
   const handleStartFootballFirstHalf = async () => {
     // If toss has not happened or lineups not saved, popup the setup modal first
     if (!matchData.tossWinnerTeamId || (matchData.matchSquads?.length || 0) === 0) {
+      toast.warning("Coin toss and starting lineups must be configured before starting the match.");
       setShowSetupModal(true);
       return;
     }
@@ -1536,14 +1542,26 @@ export const LiveScorerPage: React.FC = () => {
                 <div className="flex flex-wrap items-center gap-2">
                   {/* State 1: Match not started yet */}
                   {(matchData.status === "SCHEDULED" || matchData.status === "TOSS") && (
-                    <Button
-                      type="button"
-                      onClick={handleStartFootballFirstHalf}
-                      className="bg-[#2A7B54] hover:bg-[#206042] text-white font-black text-xs h-10 px-5 rounded-2xl shadow-md flex items-center gap-1.5"
-                    >
-                      <Play className="w-4 h-4" />
-                      <span>Start Match (1st Half) ▶</span>
-                    </Button>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {!matchData.tossWinnerTeamId || (matchData.matchSquads?.length || 0) === 0 ? (
+                        <Button
+                          type="button"
+                          onClick={() => setShowSetupModal(true)}
+                          className="bg-[#9E2A2B] hover:bg-[#842021] text-white font-black text-xs h-10 px-5 rounded-2xl shadow-md flex items-center gap-1.5 animate-pulse"
+                        >
+                          <span>🪙 Configure Toss & Lineups First</span>
+                        </Button>
+                      ) : (
+                        <Button
+                          type="button"
+                          onClick={handleStartFootballFirstHalf}
+                          className="bg-[#2A7B54] hover:bg-[#206042] text-white font-black text-xs h-10 px-5 rounded-2xl shadow-md flex items-center gap-1.5"
+                        >
+                          <Play className="w-4 h-4" />
+                          <span>Start Match (1st Half) ▶</span>
+                        </Button>
+                      )}
+                    </div>
                   )}
 
                   {/* State 2: 1st Half LIVE */}

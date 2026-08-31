@@ -208,6 +208,17 @@ scoringRouter.post("/:id/cricket/start-innings", requireAuth, async (req: Authen
 
     const { inningsNumber, battingTeamId, bowlingTeamId, strikerId, nonStrikerId, bowlerId } = req.body;
 
+    const match = await prisma.match.findUnique({ where: { id: matchId } });
+    if (!match) {
+      res.status(404).json({ error: "Match not found" });
+      return;
+    }
+
+    if (!match.tossWinnerTeamId) {
+      res.status(400).json({ error: "Match coin toss and playing lineups must be configured before starting the innings." });
+      return;
+    }
+
     // Check if innings already exists
     let innings = await prisma.cricketInnings.findUnique({
       where: { matchId_inningsNumber: { matchId, inningsNumber: Number(inningsNumber) } }
@@ -630,6 +641,18 @@ scoringRouter.post("/:id/football/timer", requireAuth, async (req: Authenticated
     });
 
     if (status) {
+      if (status === "LIVE") {
+        const match = await prisma.match.findUnique({ where: { id: matchId } });
+        if (!match) {
+          res.status(404).json({ error: "Match not found" });
+          return;
+        }
+        if (!match.tossWinnerTeamId) {
+          res.status(400).json({ error: "Match coin toss and playing lineups must be configured before starting the match." });
+          return;
+        }
+      }
+
       await prisma.match.update({
         where: { id: matchId },
         data: { status }
