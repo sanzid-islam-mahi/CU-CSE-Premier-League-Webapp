@@ -378,9 +378,11 @@ export const LiveMatchCards: React.FC<LiveMatchCardsProps> = ({ activeSport }) =
                           {featuredMatch.footballDetail?.teamAScore ?? 0} - {featuredMatch.footballDetail?.teamBScore ?? 0}
                         </span>
                         {isLive && (
-                          <p className="text-[9px] sm:text-[10px] font-bold text-[#842021] uppercase tracking-wider mt-0.5">
+                          <p className={`text-[9px] sm:text-[10px] font-black uppercase tracking-wider mt-0.5 ${
+                            featuredMatch.status === "HALFTIME" ? "text-[#D97706]" : "text-[#842021]"
+                          }`}>
                             {featuredMatch.status === "HALFTIME"
-                              ? "HALFTIME"
+                              ? `⏸ HT · ${Math.floor((featuredMatch.footballDetail?.clockSeconds || 0) / 60)}'`
                               : `${Math.floor((featuredMatch.footballDetail?.clockSeconds || 0) / 60)}' · ${
                                   featuredMatch.footballDetail?.currentHalf === 1 ? "1st Half" : "2nd Half"
                                 }`}
@@ -388,7 +390,7 @@ export const LiveMatchCards: React.FC<LiveMatchCardsProps> = ({ activeSport }) =
                         )}
                         {!isLive && featuredMatch.status === "COMPLETED" && (
                           <p className="text-[9px] sm:text-[10px] font-bold text-[#7C6E63] uppercase tracking-wider mt-0.5">
-                            FULL TIME
+                            FULL TIME · {Math.floor((featuredMatch.footballDetail?.clockSeconds || 0) / 60)}'
                           </p>
                         )}
                       </div>

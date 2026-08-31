@@ -21,6 +21,12 @@ import { ConfirmModal } from "@/components/common/ConfirmModal";
 import { CricketLiveAnalytics } from "@/components/matches/CricketLiveAnalytics";
 import { MatchStoryCardModal } from "@/components/matches/MatchStoryCardModal";
 
+const formatTimer = (totalSecs: number) => {
+  const mins = Math.floor(totalSecs / 60);
+  const secs = totalSecs % 60;
+  return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+};
+
 export const LiveScorerPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const matchId = Number(id);
@@ -498,19 +504,34 @@ export const LiveScorerPage: React.FC = () => {
     }
   };
 
+  // Football: Adjust Stopwatch Timer (+/- seconds)
+  const handleAdjustFootballTimer = async (deltaSec: number) => {
+    const newSec = Math.max(0, footballTimerSeconds + deltaSec);
+    setFootballTimerSeconds(newSec);
+    try {
+      await api.scoring.updateFootballTimer(matchId, {
+        clockSeconds: newSec,
+        isClockRunning: isFootballTimerRunning,
+        currentHalf: footballCurrentHalf,
+      });
+      toast.info(`Clock adjusted: ${formatTimer(newSec)}`);
+    } catch (err: any) {
+      console.error(err);
+    }
+  };
+
   // Football: Lifecycle - Mark Half Time
   const handleMarkHalfTime = () => {
     setConfirmModal({
       isOpen: true,
       title: "Mark Half-Time",
-      message: "Conclude 1st Half and mark Half-Time break?",
+      message: `Conclude 1st Half at ${formatTimer(footballTimerSeconds)} (${Math.ceil(footballTimerSeconds / 60)}') and mark Half-Time break?`,
       variant: "warning",
       confirmLabel: "Mark Half-Time",
       onConfirm: async () => {
         setConfirmModal(prev => ({ ...prev, isOpen: false }));
         setIsFootballTimerRunning(false);
-        const halfDur = (matchData?.footballDetail?.halfDurationMinutes || 20) * 60;
-        const finalHalfSeconds = Math.max(footballTimerSeconds, halfDur);
+        const finalHalfSeconds = footballTimerSeconds;
         setFootballTimerSeconds(finalHalfSeconds);
         try {
           await api.scoring.updateFootballTimer(matchId, {
@@ -519,7 +540,7 @@ export const LiveScorerPage: React.FC = () => {
             currentHalf: 1,
             status: "HALFTIME",
           });
-          toast.success("1st Half Concluded (HALFTIME ⏸)");
+          toast.success(`1st Half Concluded at ${formatTimer(finalHalfSeconds)} (HALFTIME ⏸)`);
           fetchMatchData();
         } catch (err: any) {
           toast.error(err.message || "Failed to mark halftime.");
@@ -530,8 +551,7 @@ export const LiveScorerPage: React.FC = () => {
 
   // Football: Lifecycle - Start 2nd Half
   const handleStartFootballSecondHalf = async () => {
-    const halfDur = (matchData?.footballDetail?.halfDurationMinutes || 20) * 60;
-    const startSec = Math.max(footballTimerSeconds, halfDur);
+    const startSec = footballTimerSeconds;
     setFootballTimerSeconds(startSec);
     setIsFootballTimerRunning(true);
     setFootballCurrentHalf(2);
@@ -542,7 +562,7 @@ export const LiveScorerPage: React.FC = () => {
         currentHalf: 2,
         status: "LIVE",
       });
-      triggerToast("2nd Half Started! LIVE ▶");
+      triggerToast(`2nd Half Started! Resumed from ${formatTimer(startSec)} ▶`);
       fetchMatchData();
     } catch (err: any) {
       toast.error(err.message || "Failed to start 2nd half.");
@@ -995,13 +1015,6 @@ export const LiveScorerPage: React.FC = () => {
 
   // Recent 12 balls in current innings
   const recentBalls = currentInnings?.balls?.slice(-12) || [];
-
-  // Stopwatch formatted string
-  const formatTimer = (totalSecs: number) => {
-    const mins = Math.floor(totalSecs / 60);
-    const secs = totalSecs % 60;
-    return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
-  };
 
   return (
     <div className="min-h-screen bg-[#FAF7F2] text-[#2C221E] pb-16">
@@ -1484,7 +1497,7 @@ export const LiveScorerPage: React.FC = () => {
               
               {/* Timer Header & Lifecycle Actions */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#EFE8DC]">
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 flex-wrap">
                   <div className={`w-3 h-3 rounded-full ${isFootballTimerRunning ? "bg-[#2A7B54] animate-pulse" : "bg-[#F59F00]"}`} />
                   <span className="font-mono text-3xl sm:text-4xl font-black text-[#2C221E] tracking-tight">
                     {formatTimer(footballTimerSeconds)}
@@ -1496,6 +1509,28 @@ export const LiveScorerPage: React.FC = () => {
                       ? "1st Half"
                       : "2nd Half"}
                   </span>
+
+                  {/* Fine-Tuning Timer Adjustment Buttons */}
+                  {matchData.status !== "COMPLETED" && (
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => handleAdjustFootballTimer(-60)}
+                        title="Subtract 1 minute"
+                        className="px-2 py-0.5 text-[11px] font-bold rounded-lg bg-[#FAF7F2] hover:bg-[#EFE8DC] border border-[#D8C7B3] text-[#7C6E63] transition-colors"
+                      >
+                        -1m
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleAdjustFootballTimer(60)}
+                        title="Add 1 minute"
+                        className="px-2 py-0.5 text-[11px] font-bold rounded-lg bg-[#FAF7F2] hover:bg-[#EFE8DC] border border-[#D8C7B3] text-[#7C6E63] transition-colors"
+                      >
+                        +1m
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">

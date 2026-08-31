@@ -281,24 +281,32 @@ export const MatchDetailPage: React.FC = () => {
       };
     }
 
+    if (status === "HALFTIME") {
+      const mins = Math.floor(footballTimerSeconds / 60);
+      return {
+        text: `⏸ Half-Time Break · ${mins}' (${formatFootballClock(footballTimerSeconds)})`,
+        color: "bg-[#FFF9DB] text-[#B45309] border-[#FDE68A] font-black shadow-xs"
+      };
+    }
+
     if (status === "COMPLETED") {
       if (matchData.footballDetail.teamAPenaltyScore !== null && matchData.footballDetail.teamAPenaltyScore !== undefined) {
         return { text: "Full Time (FT-PEN) 🏆", color: "bg-[#E6FCF5] text-[#0CA678] border-[#20C997] font-black" };
       }
-      return { text: "Full Time (FT)", color: "bg-[#E6FCF5] text-[#0CA678] border-[#20C997] font-bold" };
+      return { text: `Full Time (FT · ${Math.floor(footballTimerSeconds / 60)}')`, color: "bg-[#E6FCF5] text-[#0CA678] border-[#20C997] font-bold" };
     }
 
     if (currentHalf === 1) {
       return {
-        text: isClockRunning ? `1st Half · ${formatFootballClock(footballTimerSeconds)}` : "1st Half (Paused)",
-        color: isClockRunning ? "bg-[#EBFBEE] text-[#2B8A3E] border-[#B2F2BB] animate-pulse font-bold" : "bg-[#FFF9DB] text-[#F59F00] border-[#FFE066] font-bold"
+        text: isClockRunning ? `🟢 1st Half · ${formatFootballClock(footballTimerSeconds)}` : `1st Half (Paused · ${formatFootballClock(footballTimerSeconds)})`,
+        color: isClockRunning ? "bg-[#EBFBEE] text-[#2B8A3E] border-[#B2F2BB] font-bold" : "bg-[#FFF9DB] text-[#F59F00] border-[#FFE066] font-bold"
       };
     }
 
     if (currentHalf === 2) {
       return {
-        text: isClockRunning ? `2nd Half · ${formatFootballClock(footballTimerSeconds)}` : "2nd Half (Paused)",
-        color: isClockRunning ? "bg-[#EBFBEE] text-[#2B8A3E] border-[#B2F2BB] animate-pulse font-bold" : "bg-[#FFF9DB] text-[#F59F00] border-[#FFE066] font-bold"
+        text: isClockRunning ? `🟢 2nd Half · ${formatFootballClock(footballTimerSeconds)}` : `2nd Half (Paused · ${formatFootballClock(footballTimerSeconds)})`,
+        color: isClockRunning ? "bg-[#EBFBEE] text-[#2B8A3E] border-[#B2F2BB] font-bold" : "bg-[#FFF9DB] text-[#F59F00] border-[#FFE066] font-bold"
       };
     }
 
